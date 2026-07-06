@@ -16,6 +16,8 @@ inline Color ColorForBlock(common::world::BlockId id) {
         case common::world::BlockId::Water: return Color{64, 105, 224, 160};
         case common::world::BlockId::Wood: return Color{92, 64, 40, 255};
         case common::world::BlockId::Leaves: return Color{34, 139, 34, 255};
+        case common::world::BlockId::Planks: return Color{188, 152, 98, 255};
+        case common::world::BlockId::Stick: return Color{120, 90, 60, 255};
         case common::world::BlockId::Air:
         default:
             return BLANK;
@@ -32,6 +34,8 @@ inline const char* NameForBlock(common::world::BlockId id) {
         case common::world::BlockId::Water: return "Eau";
         case common::world::BlockId::Wood: return "Bois";
         case common::world::BlockId::Leaves: return "Feuilles";
+        case common::world::BlockId::Planks: return "Planches";
+        case common::world::BlockId::Stick: return "Baton";
         case common::world::BlockId::Air:
         default:
             return "";

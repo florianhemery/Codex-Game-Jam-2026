@@ -185,12 +185,189 @@ bool TestTreesAndWater() {
     return ok;
 }
 
+bool TestCrafting() {
+    server_core::ServerConfig cfg;
+    cfg.worldSaveDir = "world_crafting_test";
+    cfg.seed = 99; // seed connu pour contenir des arbres pres du spawn (cf. TestTreesAndWater)
+
+    server_core::ServerCore* core = server_core::create(cfg);
+    server_core::ClientId client = server_core::connect_client(core, "debug");
+
+    common::messages::PlayerInputMsg inputMsg;
+    inputMsg.posX = 8.0f;
+    inputMsg.posY = 40.0f;
+    inputMsg.posZ = 8.0f;
+    common::messages::UnreliableMessage input;
+    input.type = common::messages::UnreliableMsgType::PlayerInput;
+    input.payload = inputMsg;
+    server_core::submit_unreliable(core, client, input);
+    server_core::tick(core, 0.05f);
+
+    // Trouve un bloc de bois dans les chunks streames.
+    common::world::ChunkCoord woodCoord{};
+    int woodLx = -1, woodLy = -1, woodLz = -1;
+    bool woodFound = false;
+    common::messages::ReliableMessage msg;
+    while (server_core::poll_outgoing_reliable(core, client, msg)) {
+        if (msg.type != common::messages::ReliableMsgType::ChunkData || woodFound) continue;
+        const auto& chunkMsg = std::get<common::messages::ChunkDataMsg>(msg.payload);
+        for (int x = 0; x < common::world::CHUNK_SIZE_X && !woodFound; ++x) {
+            for (int y = 0; y < common::world::CHUNK_SIZE_Y && !woodFound; ++y) {
+                for (int z = 0; z < common::world::CHUNK_SIZE_Z && !woodFound; ++z) {
+                    if (BlockAt(chunkMsg, x, y, z) == static_cast<uint8_t>(common::world::BlockId::Wood)) {
+                        woodCoord = chunkMsg.coord;
+                        woodLx = x;
+                        woodLy = y;
+                        woodLz = z;
+                        woodFound = true;
+                    }
+                }
+            }
+        }
+    }
+
+    if (!woodFound) {
+        std::printf("CRAFTING: ECHEC (aucun bloc de bois trouve pour amorcer le test)\n");
+        server_core::destroy(core);
+        return false;
+    }
+    std::printf("[crafting] bois trouve en chunk(%d,%d) local(%d,%d,%d)\n", woodCoord.x, woodCoord.z, woodLx, woodLy, woodLz);
+
+    common::messages::BreakBlockRequestMsg breakReq{woodCoord, static_cast<uint8_t>(woodLx), static_cast<uint8_t>(woodLy),
+                                                     static_cast<uint8_t>(woodLz)};
+    common::messages::ReliableMessage breakMsg;
+    breakMsg.type = common::messages::ReliableMsgType::BreakBlockRequest;
+    breakMsg.payload = breakReq;
+    server_core::submit_reliable(core, client, breakMsg);
+
+    common::messages::InventoryUpdateMsg inv{};
+    while (server_core::poll_outgoing_reliable(core, client, msg)) {
+        if (msg.type == common::messages::ReliableMsgType::InventoryUpdate) {
+            inv = std::get<common::messages::InventoryUpdateMsg>(msg.payload);
+        }
+    }
+
+    int woodSlot = -1;
+    for (size_t i = 0; i < inv.slots.size(); ++i) {
+        if (inv.slots[i].blockId == static_cast<uint8_t>(common::world::BlockId::Wood) && inv.slots[i].count > 0) {
+            woodSlot = static_cast<int>(i);
+            break;
+        }
+    }
+    if (woodSlot < 0) {
+        std::printf("CRAFTING: ECHEC (le bois casse n'est pas arrive en inventaire)\n");
+        server_core::destroy(core);
+        return false;
+    }
+
+    // Recette 1 : bois au centre -> 4 planches.
+    common::messages::CraftRequestMsg craft1;
+    craft1.gridSlots.fill(common::messages::kCraftSlotEmpty);
+    craft1.gridSlots[4] = static_cast<uint8_t>(woodSlot);
+    common::messages::ReliableMessage craft1Msg;
+    craft1Msg.type = common::messages::ReliableMsgType::CraftRequest;
+    craft1Msg.payload = craft1;
+    server_core::submit_reliable(core, client, craft1Msg);
+
+    bool planksOk = false;
+    while (server_core::poll_outgoing_reliable(core, client, msg)) {
+        if (msg.type == common::messages::ReliableMsgType::CraftResponse) {
+            const auto& resp = std::get<common::messages::CraftResponseMsg>(msg.payload);
+            planksOk = resp.success && resp.resultBlockId == static_cast<uint8_t>(common::world::BlockId::Planks) &&
+                       resp.resultCount == 4;
+            std::printf("[crafting] recette 1 (bois->planches) : success=%d blockId=%d count=%d\n", resp.success,
+                        resp.resultBlockId, resp.resultCount);
+        } else if (msg.type == common::messages::ReliableMsgType::InventoryUpdate) {
+            inv = std::get<common::messages::InventoryUpdateMsg>(msg.payload);
+        }
+    }
+
+    int planksSlot = -1;
+    for (size_t i = 0; i < inv.slots.size(); ++i) {
+        if (inv.slots[i].blockId == static_cast<uint8_t>(common::world::BlockId::Planks) && inv.slots[i].count >= 2) {
+            planksSlot = static_cast<int>(i);
+            break;
+        }
+    }
+    if (planksSlot < 0) {
+        std::printf("CRAFTING: ECHEC (pas assez de planches apres la recette 1)\n");
+        server_core::destroy(core);
+        return false;
+    }
+
+    // Recette 2 : 2 planches empilees (colonne du milieu) -> 4 batons.
+    common::messages::CraftRequestMsg craft2;
+    craft2.gridSlots.fill(common::messages::kCraftSlotEmpty);
+    craft2.gridSlots[1] = static_cast<uint8_t>(planksSlot);
+    craft2.gridSlots[4] = static_cast<uint8_t>(planksSlot);
+    common::messages::ReliableMessage craft2Msg;
+    craft2Msg.type = common::messages::ReliableMsgType::CraftRequest;
+    craft2Msg.payload = craft2;
+    server_core::submit_reliable(core, client, craft2Msg);
+
+    bool sticksOk = false;
+    while (server_core::poll_outgoing_reliable(core, client, msg)) {
+        if (msg.type == common::messages::ReliableMsgType::CraftResponse) {
+            const auto& resp = std::get<common::messages::CraftResponseMsg>(msg.payload);
+            sticksOk = resp.success && resp.resultBlockId == static_cast<uint8_t>(common::world::BlockId::Stick) &&
+                       resp.resultCount == 4;
+            std::printf("[crafting] recette 2 (planches->batons) : success=%d blockId=%d count=%d\n", resp.success,
+                        resp.resultBlockId, resp.resultCount);
+        }
+    }
+
+    std::printf("CRAFTING: %s\n", (planksOk && sticksOk) ? "OK" : "ECHEC");
+    server_core::destroy(core);
+    return planksOk && sticksOk;
+}
+
+bool TestMobs() {
+    server_core::ServerConfig cfg;
+    cfg.worldSaveDir = "world_mobs_test";
+    cfg.seed = 1234;
+
+    server_core::ServerCore* core = server_core::create(cfg);
+    server_core::ClientId client = server_core::connect_client(core, "debug");
+
+    common::messages::PlayerInputMsg inputMsg;
+    inputMsg.posX = 8.0f;
+    inputMsg.posY = 40.0f;
+    inputMsg.posZ = 8.0f;
+    common::messages::UnreliableMessage input;
+    input.type = common::messages::UnreliableMsgType::PlayerInput;
+    input.payload = inputMsg;
+    server_core::submit_unreliable(core, client, input);
+
+    size_t lastCount = 0;
+    for (int i = 0; i < 20; ++i) {
+        server_core::tick(core, 0.1f);
+        common::messages::ReliableMessage rmsg;
+        while (server_core::poll_outgoing_reliable(core, client, rmsg)) {} // draine
+
+        common::messages::UnreliableMessage umsg;
+        while (server_core::poll_outgoing_unreliable(core, client, umsg)) {
+            if (umsg.type == common::messages::UnreliableMsgType::EntitySnapshot) {
+                lastCount = std::get<common::messages::EntitySnapshotMsg>(umsg.payload).entities.size();
+            }
+        }
+    }
+
+    std::printf("[mobs] %zu entite(s) presente(s) apres streaming + 20 ticks\n", lastCount);
+    bool ok = lastCount > 0;
+    std::printf("MOBS: %s\n", ok ? "OK" : "ECHEC (aucun mob n'est apparu dans ce voisinage)");
+
+    server_core::destroy(core);
+    return ok;
+}
+
 } // namespace
 
 int main() {
     bool persistenceOk = TestPersistence();
     bool physicsOk = TestBlockPhysics();
     bool treesWaterOk = TestTreesAndWater();
+    bool craftingOk = TestCrafting();
+    bool mobsOk = TestMobs();
 
-    return (persistenceOk && physicsOk && treesWaterOk) ? 0 : 1;
+    return (persistenceOk && physicsOk && treesWaterOk && craftingOk && mobsOk) ? 0 : 1;
 }

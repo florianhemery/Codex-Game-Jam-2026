@@ -2,12 +2,14 @@
 
 #include <cstdint>
 #include <variant>
+#include <vector>
 
 namespace common::messages {
 
 enum class UnreliableMsgType : uint8_t {
     PlayerInput,
     WorldTime,
+    EntitySnapshot,
 };
 
 // Jour 2 : porte la position courante du joueur (pas encore des deltas d'intention),
@@ -31,9 +33,22 @@ struct WorldTimeMsg {
     float timeOfDay01 = 0.0f; // 0 = minuit, 0.5 = midi
 };
 
+struct EntityStateWire {
+    uint32_t id = 0;
+    uint8_t mobType = 0;
+    float x = 0.0f, y = 0.0f, z = 0.0f;
+    float yaw = 0.0f;
+};
+
+// Un seul message par tick contenant tous les mobs, plutot qu'un message par
+// entite -- limite le nombre de datagrammes (cf. plan reseau).
+struct EntitySnapshotMsg {
+    std::vector<EntityStateWire> entities;
+};
+
 struct UnreliableMessage {
     UnreliableMsgType type;
-    std::variant<PlayerInputMsg, WorldTimeMsg> payload;
+    std::variant<PlayerInputMsg, WorldTimeMsg, EntitySnapshotMsg> payload;
 };
 
 } // namespace common::messages

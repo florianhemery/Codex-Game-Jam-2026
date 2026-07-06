@@ -8,7 +8,9 @@
 #include "common/world/block.h"
 #include "common/world/world_coords.h"
 #include "server_core/block_physics.h"
+#include "server_core/crafting.h"
 #include "server_core/inventory.h"
+#include "server_core/mob_ai.h"
 #include "server_core/player_storage.h"
 #include "server_core/world_manager.h"
 
@@ -48,6 +50,7 @@ struct ServerCore {
     WorldManager worldManager;
     PlayerStorage playerStorage;
     BlockPhysics blockPhysics;
+    MobManager mobManager;
     std::unordered_map<ClientId, ClientChannel> clients;
     ClientId nextClientId = 0;
     float worldTime = kDayLengthSeconds * 0.5f; // demarre a midi, plus lisible pour un premier lancement
@@ -179,6 +182,61 @@ void HandlePlaceRequest(ServerCore* sc, ClientId from, const common::messages::P
     }
 }
 
+void HandleCraftRequest(ServerCore* sc, ClientId from, const common::messages::CraftRequestMsg& req) {
+    auto requester = sc->clients.find(from);
+    if (requester == sc->clients.end()) return;
+    Inventory& inv = requester->second.inventory;
+
+    // Nombre de fois que chaque slot est reference dans la grille (une meme
+    // case d'inventaire peut apparaitre a plusieurs positions de la grille).
+    std::array<int, common::messages::kInventorySlotCount> usage{};
+    std::array<uint8_t, 9> grid{};
+    bool validSlots = true;
+
+    for (int i = 0; i < 9; ++i) {
+        uint8_t slotIdx = req.gridSlots[i];
+        if (slotIdx == common::messages::kCraftSlotEmpty) {
+            grid[i] = 0;
+            continue;
+        }
+        if (slotIdx >= inv.SlotCount()) {
+            validSlots = false;
+            break;
+        }
+        grid[i] = inv.Slot(slotIdx).blockId;
+        usage[slotIdx] += 1;
+    }
+
+    uint8_t resultId = 0;
+    uint16_t resultCount = 0;
+    bool matched = validSlots && TryCraft(grid, resultId, resultCount);
+
+    bool enoughStock = matched;
+    if (matched) {
+        for (int i = 0; i < inv.SlotCount(); ++i) {
+            if (usage[static_cast<size_t>(i)] > 0 && inv.Slot(i).count < usage[static_cast<size_t>(i)]) {
+                enoughStock = false;
+                break;
+            }
+        }
+    }
+
+    common::messages::CraftResponseMsg resp;
+    if (matched && enoughStock) {
+        for (int i = 0; i < inv.SlotCount(); ++i) {
+            int count = usage[static_cast<size_t>(i)];
+            if (count > 0) inv.RemoveFromSlot(i, inv.Slot(i).blockId, count);
+        }
+        inv.AddBlock(resultId, resultCount);
+        resp.success = true;
+        resp.resultBlockId = resultId;
+        resp.resultCount = resultCount;
+    }
+
+    PushReliable(requester->second, common::messages::ReliableMsgType::CraftResponse, resp);
+    PushReliable(requester->second, common::messages::ReliableMsgType::InventoryUpdate, inv.ToMessage());
+}
+
 } // namespace
 
 void submit_reliable(ServerCore* sc, ClientId from, const common::messages::ReliableMessage& msg) {
@@ -186,6 +244,8 @@ void submit_reliable(ServerCore* sc, ClientId from, const common::messages::Reli
         HandleBreakRequest(sc, from, std::get<common::messages::BreakBlockRequestMsg>(msg.payload));
     } else if (msg.type == common::messages::ReliableMsgType::PlaceBlockRequest) {
         HandlePlaceRequest(sc, from, std::get<common::messages::PlaceBlockRequestMsg>(msg.payload));
+    } else if (msg.type == common::messages::ReliableMsgType::CraftRequest) {
+        HandleCraftRequest(sc, from, std::get<common::messages::CraftRequestMsg>(msg.payload));
     }
 }
 
@@ -220,6 +280,20 @@ void tick(ServerCore* sc, float dt) {
         }
     }
 
+    // Mobs : simulation globale (pas liee a un client), diffusee a tous ensuite.
+    sc->mobManager.Tick(dt, sc->worldManager);
+    common::messages::EntitySnapshotMsg snapshot;
+    for (const Entity& e : sc->mobManager.Entities()) {
+        common::messages::EntityStateWire wire;
+        wire.id = e.id;
+        wire.mobType = static_cast<uint8_t>(e.type);
+        wire.x = e.x;
+        wire.y = e.y;
+        wire.z = e.z;
+        wire.yaw = e.yaw;
+        snapshot.entities.push_back(wire);
+    }
+
     for (auto& [clientId, channel] : sc->clients) {
         // Horloge de jeu, diffusee a tous -- tolerant a la perte (UDP-like).
         common::messages::WorldTimeMsg timeMsg;
@@ -228,6 +302,11 @@ void tick(ServerCore* sc, float dt) {
         umsg.type = common::messages::UnreliableMsgType::WorldTime;
         umsg.payload = timeMsg;
         channel.outgoingUnreliable.push_back(umsg);
+
+        common::messages::UnreliableMessage entityMsg;
+        entityMsg.type = common::messages::UnreliableMsgType::EntitySnapshot;
+        entityMsg.payload = snapshot;
+        channel.outgoingUnreliable.push_back(entityMsg);
 
         // Faim/sante : decroissance simple, pas de mort/respawn en V1 (clamp a kMinHealth).
         bool hungerChanged = false;
@@ -274,6 +353,7 @@ void tick(ServerCore* sc, float dt) {
             chunkMsg.coord = coord;
             chunkMsg.blocks = sc->worldManager.GetChunk(coord).blocks;
             PushReliable(channel, common::messages::ReliableMsgType::ChunkData, chunkMsg);
+            sc->mobManager.MaybeSpawn(coord, sc->worldManager, sc->config.seed);
         }
 
         for (const auto& coord : delta.toUnload) {

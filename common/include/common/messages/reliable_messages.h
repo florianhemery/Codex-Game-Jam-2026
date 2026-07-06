@@ -16,6 +16,8 @@ enum class ReliableMsgType : uint8_t {
     InventoryUpdate,
     SpawnState,
     HealthHungerUpdate,
+    CraftRequest,
+    CraftResponse,
 };
 
 struct ChunkDataMsg {
@@ -77,9 +79,25 @@ struct HealthHungerUpdateMsg {
     uint16_t hunger;
 };
 
+constexpr uint8_t kCraftSlotEmpty = 255;
+
+// Client -> serveur : intention de crafter. Chaque case de la grille 3x3
+// (ligne-majeur) reference un index de slot d'inventaire (kCraftSlotEmpty =
+// case vide) -- jamais un blockId directement, le serveur lit lui-meme le
+// contenu du slot pour decider quoi deduire.
+struct CraftRequestMsg {
+    std::array<uint8_t, 9> gridSlots;
+};
+
+struct CraftResponseMsg {
+    bool success = false;
+    uint8_t resultBlockId = 0;
+    uint16_t resultCount = 0;
+};
+
 using ReliableMessagePayload =
     std::variant<ChunkDataMsg, ChunkUnloadMsg, BlockUpdateMsg, BreakBlockRequestMsg, PlaceBlockRequestMsg,
-                 InventoryUpdateMsg, SpawnStateMsg, HealthHungerUpdateMsg>;
+                 InventoryUpdateMsg, SpawnStateMsg, HealthHungerUpdateMsg, CraftRequestMsg, CraftResponseMsg>;
 
 struct ReliableMessage {
     ReliableMsgType type;

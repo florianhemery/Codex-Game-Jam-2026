@@ -5,6 +5,7 @@ add_executable(voxel_client
     src/render/sky_renderer.cpp
     src/input/voxel_raycast.cpp
     src/ui/hud.cpp
+    src/ui/crafting_ui.cpp
 )
 target_include_directories(voxel_client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 

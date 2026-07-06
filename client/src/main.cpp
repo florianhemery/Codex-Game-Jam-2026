@@ -1,27 +1,39 @@
 #include <cmath>
 #include <cstdio>
+#include <vector>
 
 #include "raylib.h"
 
 #include "client/input/voxel_raycast.h"
 #include "client/render/chunk_renderer.h"
 #include "client/render/sky_renderer.h"
+#include "client/ui/crafting_ui.h"
 #include "client/ui/hud.h"
 #include "client/world/client_world.h"
 #include "common/transport/transport.h"
 #include "transports/loopback/loopback_transport.h"
 
+namespace {
+
+Color ColorForMob(uint8_t mobType) {
+    return mobType == 0 ? PINK : Color{34, 100, 34, 255}; // 0=Pig, 1=Zombie
+}
+
+} // namespace
+
 int main() {
     const int screenWidth = 1280;
     const int screenHeight = 720;
-    InitWindow(screenWidth, screenHeight, "voxel-game client (jour 4 - persistance, sante/faim, jour-nuit)");
+    InitWindow(screenWidth, screenHeight, "voxel-game client (jour 6 - crafting, mobs)");
     SetTargetFPS(60);
 
     Transport* transport = loopback_transport_create("world", 1234, "Player1");
 
     client::ClientWorld clientWorld;
     client::ChunkRenderer chunkRenderer;
+    client::CraftingUIState craftingUI;
     common::messages::InventoryUpdateMsg inventory{};
+    std::vector<common::messages::EntityStateWire> mobs;
     int selectedSlot = 0;
     uint16_t health = 100;
     uint16_t hunger = 100;
@@ -42,42 +54,62 @@ int main() {
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
 
-        UpdateCamera(&camera, CAMERA_FREE);
-
-        for (int key = KEY_ONE; key <= KEY_NINE; ++key) {
-            if (IsKeyPressed(key)) selectedSlot = key - KEY_ONE;
-        }
-        float wheel = GetMouseWheelMove();
-        if (wheel > 0.0f) selectedSlot = (selectedSlot + client::kHotbarSlotCount - 1) % client::kHotbarSlotCount;
-        if (wheel < 0.0f) selectedSlot = (selectedSlot + 1) % client::kHotbarSlotCount;
-
-        Vector3 forward{camera.target.x - camera.position.x, camera.target.y - camera.position.y,
-                         camera.target.z - camera.position.z};
-
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-            client::RaycastHit hit = client::RaycastVoxels(clientWorld, camera.position, forward, kReachDistance);
-            if (hit.hit) {
-                common::messages::ReliableMessage req;
-                if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-                    common::messages::BreakBlockRequestMsg breakReq;
-                    breakReq.coord = common::world::WorldToChunkCoordInt(hit.blockX, hit.blockZ);
-                    breakReq.lx = static_cast<uint8_t>(hit.blockX - breakReq.coord.x * common::world::CHUNK_SIZE_X);
-                    breakReq.ly = static_cast<uint8_t>(hit.blockY);
-                    breakReq.lz = static_cast<uint8_t>(hit.blockZ - breakReq.coord.z * common::world::CHUNK_SIZE_Z);
-                    req.type = common::messages::ReliableMsgType::BreakBlockRequest;
-                    req.payload = breakReq;
-                } else {
-                    common::messages::PlaceBlockRequestMsg placeReq;
-                    placeReq.coord = common::world::WorldToChunkCoordInt(hit.prevX, hit.prevZ);
-                    placeReq.lx = static_cast<uint8_t>(hit.prevX - placeReq.coord.x * common::world::CHUNK_SIZE_X);
-                    placeReq.ly = static_cast<uint8_t>(hit.prevY);
-                    placeReq.lz = static_cast<uint8_t>(hit.prevZ - placeReq.coord.z * common::world::CHUNK_SIZE_Z);
-                    placeReq.hotbarSlot = static_cast<uint8_t>(selectedSlot);
-                    req.type = common::messages::ReliableMsgType::PlaceBlockRequest;
-                    req.payload = placeReq;
-                }
-                transport_send_reliable(transport, req);
+        if (IsKeyPressed(KEY_C)) {
+            if (craftingUI.open) {
+                CloseCraftingUI(craftingUI);
+                DisableCursor();
+            } else {
+                OpenCraftingUI(craftingUI);
+                EnableCursor();
             }
+        }
+
+        if (!craftingUI.open) {
+            UpdateCamera(&camera, CAMERA_FREE);
+
+            for (int key = KEY_ONE; key <= KEY_NINE; ++key) {
+                if (IsKeyPressed(key)) selectedSlot = key - KEY_ONE;
+            }
+            float wheel = GetMouseWheelMove();
+            if (wheel > 0.0f) selectedSlot = (selectedSlot + client::kHotbarSlotCount - 1) % client::kHotbarSlotCount;
+            if (wheel < 0.0f) selectedSlot = (selectedSlot + 1) % client::kHotbarSlotCount;
+
+            Vector3 forward{camera.target.x - camera.position.x, camera.target.y - camera.position.y,
+                             camera.target.z - camera.position.z};
+
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+                client::RaycastHit hit = client::RaycastVoxels(clientWorld, camera.position, forward, kReachDistance);
+                if (hit.hit) {
+                    common::messages::ReliableMessage req;
+                    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                        common::messages::BreakBlockRequestMsg breakReq;
+                        breakReq.coord = common::world::WorldToChunkCoordInt(hit.blockX, hit.blockZ);
+                        breakReq.lx = static_cast<uint8_t>(hit.blockX - breakReq.coord.x * common::world::CHUNK_SIZE_X);
+                        breakReq.ly = static_cast<uint8_t>(hit.blockY);
+                        breakReq.lz = static_cast<uint8_t>(hit.blockZ - breakReq.coord.z * common::world::CHUNK_SIZE_Z);
+                        req.type = common::messages::ReliableMsgType::BreakBlockRequest;
+                        req.payload = breakReq;
+                    } else {
+                        common::messages::PlaceBlockRequestMsg placeReq;
+                        placeReq.coord = common::world::WorldToChunkCoordInt(hit.prevX, hit.prevZ);
+                        placeReq.lx = static_cast<uint8_t>(hit.prevX - placeReq.coord.x * common::world::CHUNK_SIZE_X);
+                        placeReq.ly = static_cast<uint8_t>(hit.prevY);
+                        placeReq.lz = static_cast<uint8_t>(hit.prevZ - placeReq.coord.z * common::world::CHUNK_SIZE_Z);
+                        placeReq.hotbarSlot = static_cast<uint8_t>(selectedSlot);
+                        req.type = common::messages::ReliableMsgType::PlaceBlockRequest;
+                        req.payload = placeReq;
+                    }
+                    transport_send_reliable(transport, req);
+                }
+            }
+        }
+
+        common::messages::CraftRequestMsg craftReq;
+        if (UpdateCraftingUI(craftingUI, selectedSlot, screenWidth, screenHeight, craftReq)) {
+            common::messages::ReliableMessage req;
+            req.type = common::messages::ReliableMsgType::CraftRequest;
+            req.payload = craftReq;
+            transport_send_reliable(transport, req);
         }
 
         common::messages::PlayerInputMsg inputMsg;
@@ -136,6 +168,10 @@ int main() {
                     hunger = hh.hunger;
                     break;
                 }
+                case common::messages::ReliableMsgType::CraftResponse: {
+                    OnCraftResponse(craftingUI, std::get<common::messages::CraftResponseMsg>(rmsg.payload));
+                    break;
+                }
                 default:
                     break;
             }
@@ -145,6 +181,8 @@ int main() {
         while (transport_poll_unreliable(transport, umsg)) {
             if (umsg.type == common::messages::UnreliableMsgType::WorldTime) {
                 timeOfDay01 = std::get<common::messages::WorldTimeMsg>(umsg.payload).timeOfDay01;
+            } else if (umsg.type == common::messages::UnreliableMsgType::EntitySnapshot) {
+                mobs = std::get<common::messages::EntitySnapshotMsg>(umsg.payload).entities;
             }
         }
 
@@ -155,13 +193,19 @@ int main() {
 
         BeginMode3D(camera);
         chunkRenderer.DrawAll(dayNight.groundTint);
+        for (const auto& mob : mobs) {
+            DrawCube({mob.x, mob.y + 0.4f, mob.z}, 0.8f, 0.8f, 0.8f, ColorForMob(mob.mobType));
+            DrawCubeWires({mob.x, mob.y + 0.4f, mob.z}, 0.8f, 0.8f, 0.8f, BLACK);
+        }
         EndMode3D();
 
-        DrawLine(screenWidth / 2 - 8, screenHeight / 2, screenWidth / 2 + 8, screenHeight / 2, WHITE);
-        DrawLine(screenWidth / 2, screenHeight / 2 - 8, screenWidth / 2, screenHeight / 2 + 8, WHITE);
+        if (!craftingUI.open) {
+            DrawLine(screenWidth / 2 - 8, screenHeight / 2, screenWidth / 2 + 8, screenHeight / 2, WHITE);
+            DrawLine(screenWidth / 2, screenHeight / 2 - 8, screenWidth / 2, screenHeight / 2 + 8, WHITE);
+        }
 
         char info[128];
-        std::snprintf(info, sizeof(info), "Chunks charges: %zu", chunkRenderer.LoadedCount());
+        std::snprintf(info, sizeof(info), "Chunks charges: %zu  Mobs: %zu", chunkRenderer.LoadedCount(), mobs.size());
         DrawText(info, 10, 10, 20, WHITE);
 
         char posText[128];
@@ -172,8 +216,11 @@ int main() {
         std::snprintf(statsText, sizeof(statsText), "Sante: %d  Faim: %d  Heure: %.0f%%", health, hunger, timeOfDay01 * 100.0f);
         DrawText(statsText, 10, 60, 20, WHITE);
 
+        DrawText("C: crafting", 10, 700, 18, LIGHTGRAY);
+
         DrawFPS(10, 85);
         client::DrawHotbar(inventory, selectedSlot, screenWidth, screenHeight);
+        client::DrawCraftingUI(craftingUI, inventory, screenWidth, screenHeight);
         EndDrawing();
     }
 
