@@ -381,3 +381,20 @@ Les structs `ReliableMessage`/`UnreliableMessage` définies dans `common/message
 - **Déploiement** : `docker/Dockerfile.server` (déjà présent dans l'arborescence, inutilisé pour l'instant), exposition d'un port TCP + un port UDP, bind sur l'interface WireGuard plutôt que derrière Traefik (qui n'apporte rien pour un protocole binaire custom non-HTTP).
 
 Rien de cette section ne bloque le jeu solo — elle existe pour que la transition, le jour où vous voudrez vraiment la faire, soit un projet d'extension isolé et non une réécriture.
+
+---
+
+## 6. État final (jours 1 à 6 exécutés)
+
+Tout le scope V1 du plan a été implémenté et testé (headless + visuel) :
+
+- **J1** fondations : `common`/`server_core`/`transports/loopback`/`client` découplés, garde-fou CMake vérifié.
+- **J2** génération procédurale (Perlin, 3 biomes, grottes 3D) + streaming de chunks multi-viewer.
+- **J3** casser/placer (DDA), greedy meshing, inventaire 36 slots + hotbar.
+- **J4** persistance disque (chunks + joueur), santé/faim, cycle jour-nuit synchronisé.
+- **J5** physique de blocs (sable/gravier en cascade), eau statique, arbres procéduraux.
+- **J6** crafting réel en grille 3×3 (2 recettes : bois→planches→bâtons), mobs (marche aléatoire + gravité, pas d'A*).
+
+`tools/worldgen_debug` sert de suite de tests de régression headless (5 tests : persistance, physique, arbres/eau, crafting, mobs — tous verts). Un test de stabilité de 60s+ avec mouvement/clics simulés n'a montré ni crash ni fuite mémoire (127 Mo stable). `docs/PROTOCOL.md` documente le contrat de messages réel, y compris les écarts assumés par rapport à ce plan (voir sa section 5).
+
+Le jour 7 (stretch `SocketTransport`) reste hors scope, conformément à la décision du pivot v2.
