@@ -5,6 +5,7 @@ add_library(server_core STATIC
     src/inventory.cpp
     src/chunk_storage.cpp
     src/player_storage.cpp
+    src/block_physics.cpp
 )
 
 target_include_directories(server_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)

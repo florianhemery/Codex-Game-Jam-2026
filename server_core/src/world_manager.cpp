@@ -95,6 +95,31 @@ void WorldManager::SetBlock(ChunkCoord coord, int lx, int ly, int lz, uint8_t bl
     storage_.Save(it->second);
 }
 
+bool WorldManager::GetBlockWorld(int worldX, int worldY, int worldZ, uint8_t& outBlockId) const {
+    if (worldY < 0 || worldY >= common::world::CHUNK_SIZE_Y) return false;
+
+    ChunkCoord coord = common::world::WorldToChunkCoordInt(worldX, worldZ);
+    auto it = chunks_.find(coord);
+    if (it == chunks_.end()) return false;
+
+    int lx = common::world::WorldToLocal(worldX, coord.x, common::world::CHUNK_SIZE_X);
+    int lz = common::world::WorldToLocal(worldZ, coord.z, common::world::CHUNK_SIZE_Z);
+    outBlockId = it->second.blocks[common::world::BlockIndex(lx, worldY, lz)];
+    return true;
+}
+
+bool WorldManager::SetBlockWorld(int worldX, int worldY, int worldZ, uint8_t blockId) {
+    if (worldY < 0 || worldY >= common::world::CHUNK_SIZE_Y) return false;
+
+    ChunkCoord coord = common::world::WorldToChunkCoordInt(worldX, worldZ);
+    if (chunks_.find(coord) == chunks_.end()) return false;
+
+    int lx = common::world::WorldToLocal(worldX, coord.x, common::world::CHUNK_SIZE_X);
+    int lz = common::world::WorldToLocal(worldZ, coord.z, common::world::CHUNK_SIZE_Z);
+    SetBlock(coord, lx, worldY, lz, blockId);
+    return true;
+}
+
 std::vector<uint64_t> WorldManager::ViewersOf(ChunkCoord coord) const {
     std::vector<uint64_t> result;
     for (const auto& [viewerId, loaded] : viewerLoaded_) {

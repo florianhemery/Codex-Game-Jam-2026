@@ -11,16 +11,6 @@
 #include "common/transport/transport.h"
 #include "transports/loopback/loopback_transport.h"
 
-namespace {
-
-common::world::ChunkCoord ChunkCoordFromBlock(int worldX, int worldZ) {
-    int cx = static_cast<int>(std::floor(static_cast<double>(worldX) / common::world::CHUNK_SIZE_X));
-    int cz = static_cast<int>(std::floor(static_cast<double>(worldZ) / common::world::CHUNK_SIZE_Z));
-    return {cx, cz};
-}
-
-} // namespace
-
 int main() {
     const int screenWidth = 1280;
     const int screenHeight = 720;
@@ -70,7 +60,7 @@ int main() {
                 common::messages::ReliableMessage req;
                 if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                     common::messages::BreakBlockRequestMsg breakReq;
-                    breakReq.coord = ChunkCoordFromBlock(hit.blockX, hit.blockZ);
+                    breakReq.coord = common::world::WorldToChunkCoordInt(hit.blockX, hit.blockZ);
                     breakReq.lx = static_cast<uint8_t>(hit.blockX - breakReq.coord.x * common::world::CHUNK_SIZE_X);
                     breakReq.ly = static_cast<uint8_t>(hit.blockY);
                     breakReq.lz = static_cast<uint8_t>(hit.blockZ - breakReq.coord.z * common::world::CHUNK_SIZE_Z);
@@ -78,7 +68,7 @@ int main() {
                     req.payload = breakReq;
                 } else {
                     common::messages::PlaceBlockRequestMsg placeReq;
-                    placeReq.coord = ChunkCoordFromBlock(hit.prevX, hit.prevZ);
+                    placeReq.coord = common::world::WorldToChunkCoordInt(hit.prevX, hit.prevZ);
                     placeReq.lx = static_cast<uint8_t>(hit.prevX - placeReq.coord.x * common::world::CHUNK_SIZE_X);
                     placeReq.ly = static_cast<uint8_t>(hit.prevY);
                     placeReq.lz = static_cast<uint8_t>(hit.prevZ - placeReq.coord.z * common::world::CHUNK_SIZE_Z);

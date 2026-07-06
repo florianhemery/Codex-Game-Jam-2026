@@ -5,3 +5,4 @@ out/
 *.pdb
 *.ilk
 world/
+world_*/

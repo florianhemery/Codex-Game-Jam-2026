@@ -22,7 +22,9 @@ public:
 private:
     Biome BiomeAt(float worldX, float worldZ) const;
     int HeightAt(float worldX, float worldZ, Biome biome) const;
+    void PlaceTreeIfEligible(common::world::Chunk& chunk, int lx, int lz, int worldX, int worldZ, int height, Biome biome) const;
 
+    uint32_t seed_;
     common::noise::PerlinNoise heightNoise_;
     common::noise::PerlinNoise biomeNoise_;
     common::noise::PerlinNoise caveNoise_;

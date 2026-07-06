@@ -39,6 +39,12 @@ public:
     // utilise pour diffuser un BlockUpdate a la bonne audience.
     std::vector<uint64_t> ViewersOf(common::world::ChunkCoord coord) const;
 
+    // Variantes en coordonnees monde (pratiques pour block_physics, qui
+    // raisonne en positions absolues plutot qu'en chunk+local). Renvoie
+    // false si le chunk correspondant n'est pas charge.
+    bool GetBlockWorld(int worldX, int worldY, int worldZ, uint8_t& outBlockId) const;
+    bool SetBlockWorld(int worldX, int worldY, int worldZ, uint8_t blockId);
+
 private:
     ChunkGenerator generator_;
     ChunkStorage storage_;

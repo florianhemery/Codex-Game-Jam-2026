@@ -7,6 +7,7 @@
 
 #include "common/world/block.h"
 #include "common/world/world_coords.h"
+#include "server_core/block_physics.h"
 #include "server_core/inventory.h"
 #include "server_core/player_storage.h"
 #include "server_core/world_manager.h"
@@ -46,6 +47,7 @@ struct ServerCore {
     ServerConfig config;
     WorldManager worldManager;
     PlayerStorage playerStorage;
+    BlockPhysics blockPhysics;
     std::unordered_map<ClientId, ClientChannel> clients;
     ClientId nextClientId = 0;
     float worldTime = kDayLengthSeconds * 0.5f; // demarre a midi, plus lisible pour un premier lancement
@@ -128,6 +130,8 @@ void HandleBreakRequest(ServerCore* sc, ClientId from, const common::messages::B
     if (oldBlockId == static_cast<uint8_t>(common::world::BlockId::Air)) return; // rien a casser
 
     sc->worldManager.SetBlock(req.coord, req.lx, req.ly, req.lz, static_cast<uint8_t>(common::world::BlockId::Air));
+    sc->blockPhysics.NotifyChanged(req.coord.x * common::world::CHUNK_SIZE_X + req.lx, req.ly,
+                                    req.coord.z * common::world::CHUNK_SIZE_Z + req.lz);
 
     auto requester = sc->clients.find(from);
     if (requester != sc->clients.end()) {
@@ -161,6 +165,8 @@ void HandlePlaceRequest(ServerCore* sc, ClientId from, const common::messages::P
     if (!requester->second.inventory.RemoveFromSlot(req.hotbarSlot, blockToPlace, 1)) return;
 
     sc->worldManager.SetBlock(req.coord, req.lx, req.ly, req.lz, blockToPlace);
+    sc->blockPhysics.NotifyChanged(req.coord.x * common::world::CHUNK_SIZE_X + req.lx, req.ly,
+                                    req.coord.z * common::world::CHUNK_SIZE_Z + req.lz);
     PushReliable(requester->second, common::messages::ReliableMsgType::InventoryUpdate,
                  requester->second.inventory.ToMessage());
 
@@ -195,6 +201,24 @@ void submit_unreliable(ServerCore* sc, ClientId from, const common::messages::Un
 void tick(ServerCore* sc, float dt) {
     sc->worldTime += dt;
     float timeOfDay01 = std::fmod(sc->worldTime, kDayLengthSeconds) / kDayLengthSeconds;
+
+    // Physique de blocs (sable/gravier) : etat du monde partage, independant
+    // de la boucle par client ci-dessous.
+    std::vector<BlockChangeEvent> physicsEvents;
+    sc->blockPhysics.Tick(sc->worldManager, physicsEvents);
+    for (const auto& ev : physicsEvents) {
+        common::world::ChunkCoord coord = common::world::WorldToChunkCoordInt(ev.worldX, ev.worldZ);
+        int lx = common::world::WorldToLocal(ev.worldX, coord.x, common::world::CHUNK_SIZE_X);
+        int lz = common::world::WorldToLocal(ev.worldZ, coord.z, common::world::CHUNK_SIZE_Z);
+        common::messages::BlockUpdateMsg update{coord, static_cast<uint8_t>(lx), static_cast<uint8_t>(ev.worldY),
+                                                 static_cast<uint8_t>(lz), ev.newBlockId};
+        for (uint64_t viewerId : sc->worldManager.ViewersOf(coord)) {
+            auto viewer = sc->clients.find(static_cast<ClientId>(viewerId));
+            if (viewer != sc->clients.end()) {
+                PushReliable(viewer->second, common::messages::ReliableMsgType::BlockUpdate, update);
+            }
+        }
+    }
 
     for (auto& [clientId, channel] : sc->clients) {
         // Horloge de jeu, diffusee a tous -- tolerant a la perte (UDP-like).
