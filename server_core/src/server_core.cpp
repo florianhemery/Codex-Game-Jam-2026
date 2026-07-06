@@ -1,10 +1,11 @@
 #include "server_core/server_core.h"
 
 #include <deque>
+#include <optional>
 #include <unordered_map>
 
-#include "common/world/block.h"
-#include "common/world/chunk.h"
+#include "common/world/world_coords.h"
+#include "server_core/world_manager.h"
 
 namespace server_core {
 
@@ -13,40 +14,22 @@ namespace {
 struct ClientChannel {
     std::deque<common::messages::ReliableMessage> outgoingReliable;
     std::deque<common::messages::UnreliableMessage> outgoingUnreliable;
+    std::optional<common::messages::PlayerInputMsg> latestInput;
 };
-
-// Jour 1 : un unique chunk plat code en dur, juste pour prouver que le chunk
-// recu par le client transite bien par le transport. La vraie generation
-// procedurale arrive au jour 2 (chunk_generator).
-common::world::Chunk make_debug_flat_chunk() {
-    common::world::Chunk chunk;
-    chunk.coord = {0, 0};
-    for (int x = 0; x < common::world::CHUNK_SIZE_X; ++x) {
-        for (int z = 0; z < common::world::CHUNK_SIZE_Z; ++z) {
-            for (int y = 0; y < 8; ++y) {
-                common::world::BlockId id = (y == 7) ? common::world::BlockId::Grass
-                                                       : common::world::BlockId::Stone;
-                chunk.blocks[common::world::BlockIndex(x, y, z)] = static_cast<uint8_t>(id);
-            }
-        }
-    }
-    return chunk;
-}
 
 } // namespace
 
 struct ServerCore {
     ServerConfig config;
-    common::world::Chunk debugChunk;
+    WorldManager worldManager;
     std::unordered_map<ClientId, ClientChannel> clients;
     ClientId nextClientId = 0;
+
+    explicit ServerCore(const ServerConfig& cfg) : config(cfg), worldManager(cfg.seed) {}
 };
 
 ServerCore* create(const ServerConfig& cfg) {
-    auto* sc = new ServerCore();
-    sc->config = cfg;
-    sc->debugChunk = make_debug_flat_chunk();
-    return sc;
+    return new ServerCore(cfg);
 }
 
 void destroy(ServerCore* sc) {
@@ -56,39 +39,63 @@ void destroy(ServerCore* sc) {
 ClientId connect_client(ServerCore* sc, const std::string& playerName) {
     (void)playerName;
     ClientId id = sc->nextClientId++;
-    ClientChannel& channel = sc->clients[id];
-
-    common::messages::ChunkDataMsg chunkMsg;
-    chunkMsg.coord = sc->debugChunk.coord;
-    chunkMsg.blocks = sc->debugChunk.blocks;
-
-    common::messages::ReliableMessage msg;
-    msg.type = common::messages::ReliableMsgType::ChunkData;
-    msg.payload = chunkMsg;
-    channel.outgoingReliable.push_back(msg);
-
+    sc->clients.emplace(id, ClientChannel{});
     return id;
 }
 
 void disconnect_client(ServerCore* sc, ClientId id) {
+    sc->worldManager.RemoveViewer(id);
     sc->clients.erase(id);
 }
 
 void submit_reliable(ServerCore* sc, ClientId from, const common::messages::ReliableMessage& msg) {
     (void)sc;
     (void)from;
-    (void)msg; // rien a traiter au jour 1 -- BlockUpdate arrive au jour 3
+    (void)msg; // rien a traiter au jour 2 -- BlockUpdate arrive au jour 3
 }
 
 void submit_unreliable(ServerCore* sc, ClientId from, const common::messages::UnreliableMessage& msg) {
-    (void)sc;
-    (void)from;
-    (void)msg; // le mouvement joueur arrive au jour 2
+    auto it = sc->clients.find(from);
+    if (it == sc->clients.end()) return;
+
+    if (msg.type == common::messages::UnreliableMsgType::PlayerInput) {
+        it->second.latestInput = std::get<common::messages::PlayerInputMsg>(msg.payload);
+    }
 }
 
 void tick(ServerCore* sc, float dt) {
-    (void)sc;
-    (void)dt; // simulation a cadence fixe a partir du jour 2
+    (void)dt;
+
+    for (auto& [clientId, channel] : sc->clients) {
+        if (!channel.latestInput.has_value()) continue;
+
+        const auto& input = *channel.latestInput;
+        common::world::ChunkCoord center = common::world::WorldToChunkCoord(input.posX, input.posZ);
+
+        WorldManager::StreamingDelta delta =
+            sc->worldManager.UpdateViewer(static_cast<uint64_t>(clientId), center, kDefaultViewDistanceChunks);
+
+        for (const auto& coord : delta.toLoad) {
+            common::messages::ChunkDataMsg chunkMsg;
+            chunkMsg.coord = coord;
+            chunkMsg.blocks = sc->worldManager.GetChunk(coord).blocks;
+
+            common::messages::ReliableMessage rmsg;
+            rmsg.type = common::messages::ReliableMsgType::ChunkData;
+            rmsg.payload = chunkMsg;
+            channel.outgoingReliable.push_back(rmsg);
+        }
+
+        for (const auto& coord : delta.toUnload) {
+            common::messages::ChunkUnloadMsg unloadMsg;
+            unloadMsg.coord = coord;
+
+            common::messages::ReliableMessage rmsg;
+            rmsg.type = common::messages::ReliableMsgType::ChunkUnload;
+            rmsg.payload = unloadMsg;
+            channel.outgoingReliable.push_back(rmsg);
+        }
+    }
 }
 
 bool poll_outgoing_reliable(ServerCore* sc, ClientId to, common::messages::ReliableMessage& out) {

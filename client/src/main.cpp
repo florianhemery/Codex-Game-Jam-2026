@@ -1,71 +1,48 @@
-#include <optional>
+#include <cstdio>
 
 #include "raylib.h"
 
+#include "client/render/chunk_renderer.h"
+#include "client/world/client_world.h"
 #include "common/transport/transport.h"
-#include "common/world/block.h"
-#include "common/world/chunk.h"
 #include "transports/loopback/loopback_transport.h"
-
-namespace {
-
-Color ColorForBlock(common::world::BlockId id) {
-    switch (id) {
-        case common::world::BlockId::Stone: return GRAY;
-        case common::world::BlockId::Dirt: return BROWN;
-        case common::world::BlockId::Grass: return GREEN;
-        case common::world::BlockId::Air: default: return BLANK;
-    }
-}
-
-// Jour 1 : un cube par bloc solide, aucune optimisation de mesh. Remplace au
-// jour 2/3 par un vrai mesher (naif puis greedy) une fois le pipeline reseau
-// (ici, le transport) prouve.
-void DrawChunkNaive(const common::world::Chunk& chunk) {
-    using namespace common::world;
-    for (int x = 0; x < CHUNK_SIZE_X; ++x) {
-        for (int z = 0; z < CHUNK_SIZE_Z; ++z) {
-            for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
-                auto id = static_cast<BlockId>(chunk.blocks[BlockIndex(x, y, z)]);
-                if (id == BlockId::Air) continue;
-
-                Vector3 pos{
-                    static_cast<float>(chunk.coord.x * CHUNK_SIZE_X + x) + 0.5f,
-                    static_cast<float>(y) + 0.5f,
-                    static_cast<float>(chunk.coord.z * CHUNK_SIZE_Z + z) + 0.5f,
-                };
-                DrawCube(pos, 1.0f, 1.0f, 1.0f, ColorForBlock(id));
-                DrawCubeWires(pos, 1.0f, 1.0f, 1.0f, BLACK);
-            }
-        }
-    }
-}
-
-} // namespace
 
 int main() {
     const int screenWidth = 1280;
     const int screenHeight = 720;
-    InitWindow(screenWidth, screenHeight, "voxel-game client (jour 1 - loopback transport)");
+    InitWindow(screenWidth, screenHeight, "voxel-game client (jour 2 - streaming procedural)");
     SetTargetFPS(60);
 
     Transport* transport = loopback_transport_create("world", 1234, "Player1");
 
+    client::ClientWorld clientWorld;
+    client::ChunkRenderer chunkRenderer;
+
     Camera3D camera{};
-    camera.position = {8.0f, 12.0f, 24.0f};
-    camera.target = {8.0f, 8.0f, 8.0f};
+    camera.position = {8.0f, 40.0f, 8.0f};
+    camera.target = {8.0f, 40.0f, 9.0f};
     camera.up = {0.0f, 1.0f, 0.0f};
-    camera.fovy = 60.0f;
+    camera.fovy = 70.0f;
     camera.projection = CAMERA_PERSPECTIVE;
 
-    std::optional<common::world::Chunk> receivedChunk;
+    DisableCursor();
+
+    uint32_t inputTick = 0;
 
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
 
+        UpdateCamera(&camera, CAMERA_FREE);
+
+        common::messages::PlayerInputMsg inputMsg;
+        inputMsg.posX = camera.position.x;
+        inputMsg.posY = camera.position.y;
+        inputMsg.posZ = camera.position.z;
+        inputMsg.tick = inputTick++;
+
         common::messages::UnreliableMessage input;
         input.type = common::messages::UnreliableMsgType::PlayerInput;
-        input.payload = common::messages::PlayerInputMsg{};
+        input.payload = inputMsg;
         transport_send_unreliable(transport, input);
 
         transport_tick(transport, dt);
@@ -77,25 +54,31 @@ int main() {
                 common::world::Chunk chunk;
                 chunk.coord = chunkMsg.coord;
                 chunk.blocks = chunkMsg.blocks;
-                receivedChunk = chunk;
+                clientWorld.UpsertChunk(chunk);
+                chunkRenderer.UpsertChunk(chunk);
+            } else if (rmsg.type == common::messages::ReliableMsgType::ChunkUnload) {
+                const auto& unloadMsg = std::get<common::messages::ChunkUnloadMsg>(rmsg.payload);
+                clientWorld.RemoveChunk(unloadMsg.coord);
+                chunkRenderer.RemoveChunk(unloadMsg.coord);
             }
         }
-
-        UpdateCamera(&camera, CAMERA_FREE);
 
         BeginDrawing();
         ClearBackground(SKYBLUE);
 
         BeginMode3D(camera);
-        if (receivedChunk.has_value()) {
-            DrawChunkNaive(*receivedChunk);
-        }
+        chunkRenderer.DrawAll();
         EndMode3D();
 
-        DrawText(receivedChunk.has_value() ? "Chunk (0,0) recu via transport_poll_reliable"
-                                            : "En attente du chunk...",
-                  10, 10, 20, DARKGRAY);
-        DrawFPS(10, 40);
+        char info[128];
+        std::snprintf(info, sizeof(info), "Chunks charges: %zu", chunkRenderer.LoadedCount());
+        DrawText(info, 10, 10, 20, DARKGRAY);
+
+        char posText[128];
+        std::snprintf(posText, sizeof(posText), "Pos: %.1f, %.1f, %.1f", camera.position.x, camera.position.y, camera.position.z);
+        DrawText(posText, 10, 35, 20, DARKGRAY);
+
+        DrawFPS(10, 60);
         EndDrawing();
     }
 

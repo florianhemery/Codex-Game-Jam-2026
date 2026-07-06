@@ -8,6 +8,7 @@ namespace common::messages {
 
 enum class ReliableMsgType : uint8_t {
     ChunkData,
+    ChunkUnload,
 };
 
 struct ChunkDataMsg {
@@ -15,9 +16,13 @@ struct ChunkDataMsg {
     std::array<uint8_t, common::world::CHUNK_BLOCK_COUNT> blocks;
 };
 
+struct ChunkUnloadMsg {
+    common::world::ChunkCoord coord;
+};
+
 struct ReliableMessage {
     ReliableMsgType type;
-    std::variant<ChunkDataMsg> payload;
+    std::variant<ChunkDataMsg, ChunkUnloadMsg> payload;
 };
 
 } // namespace common::messages
