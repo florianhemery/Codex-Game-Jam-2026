@@ -1,8 +1,0 @@
-build/
-out/
-.cache/
-*.obj
-*.pdb
-*.ilk
-world/
-world_*/
