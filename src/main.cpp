@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 
 #include "raylib.h"
@@ -39,19 +40,28 @@ int main() {
     camera.position = {0.0f, 8.0f, -12.0f};
     camera.target = {0.0f, 0.0f, 0.0f};
 
+    // Lisse la direction clavier (tout ou rien par nature) pour se rapprocher
+    // d'un controle analogique -- sans ca, le joueur perd du temps en virage
+    // face a une IA qui pilote avec un gain continu.
+    float steerSmoothed = 0.0f;
+
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
 
         if (IsKeyPressed(KEY_R)) {
             race = MakeNewRace();
+            steerSmoothed = 0.0f;
         }
 
         racer::CarInput input;
         if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) input.throttle = 1.0f;
         else if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) input.throttle = -1.0f;
 
-        if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) input.steer = -1.0f;
-        else if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) input.steer = 1.0f;
+        float steerTarget = 0.0f;
+        if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) steerTarget = -1.0f;
+        else if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) steerTarget = 1.0f;
+        steerSmoothed += (steerTarget - steerSmoothed) * std::min(1.0f, 8.0f * dt);
+        input.steer = steerSmoothed;
 
         input.handbrake = IsKeyDown(KEY_SPACE);
         input.nitro = IsKeyDown(KEY_LEFT_SHIFT);

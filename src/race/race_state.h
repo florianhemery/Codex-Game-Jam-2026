@@ -20,6 +20,7 @@ struct RacerEntry {
     Car car;
     int lap = 0;
     int lastSegment = 0;
+    bool passedMidpoint = false; // garde-fou anti faux-tour (cf. race_state.cpp)
     bool finished = false;
     float finishTime = 0.0f;
     bool isPlayer = false;

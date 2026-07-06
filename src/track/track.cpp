@@ -12,17 +12,23 @@ float Length(Vector2 a, Vector2 b) {
 
 Track Track::MakeStadiumTrack() {
     Track t;
-    t.width_ = 12.0f;
+    t.width_ = 11.0f;
 
-    constexpr float kStraightLength = 60.0f;
-    constexpr float kRadius = 22.0f;
+    constexpr float kStraightLength = 90.0f;
+    constexpr float kRadius = 16.0f;      // virages plus serres -> plus propices au drift
     constexpr int kCurveSegments = 20;
+    constexpr int kStraightSegments = 24; // subdivise pour que les chicanes soient lisses
 
     std::vector<Vector2>& wp = t.waypoints_;
 
-    // Ligne droite "est" (x=+radius), z croissant.
-    wp.push_back({kRadius, -kStraightLength / 2.0f});
-    wp.push_back({kRadius, kStraightLength / 2.0f});
+    // Ligne droite "est" (x=+radius) avec une chicane (un aller-retour lateral
+    // complet, nul aux deux extremites -- ne casse jamais la fermeture de la boucle).
+    for (int i = 0; i <= kStraightSegments; ++i) {
+        float lt = static_cast<float>(i) / kStraightSegments;
+        float z = -kStraightLength / 2.0f + lt * kStraightLength;
+        float chicane = 9.0f * std::sin(2.0f * PI * lt);
+        wp.push_back({kRadius + chicane, z});
+    }
 
     // Virage nord (centre (0, +straight/2)), angle 0 -> pi.
     for (int i = 1; i < kCurveSegments; ++i) {
@@ -30,9 +36,14 @@ Track Track::MakeStadiumTrack() {
         wp.push_back({kRadius * std::cos(a), kStraightLength / 2.0f + kRadius * std::sin(a)});
     }
 
-    // Ligne droite "ouest" (x=-radius), z decroissant.
-    wp.push_back({-kRadius, kStraightLength / 2.0f});
-    wp.push_back({-kRadius, -kStraightLength / 2.0f});
+    // Ligne droite "ouest" (x=-radius) avec une double chicane (esses), plus
+    // resserree, pour varier la sensation par rapport au cote est.
+    for (int i = 0; i <= kStraightSegments; ++i) {
+        float lt = static_cast<float>(i) / kStraightSegments;
+        float z = kStraightLength / 2.0f - lt * kStraightLength;
+        float chicane = 6.0f * std::sin(4.0f * PI * lt);
+        wp.push_back({-kRadius + chicane, z});
+    }
 
     // Virage sud (centre (0, -straight/2)), angle pi -> 2pi.
     for (int i = 1; i < kCurveSegments; ++i) {

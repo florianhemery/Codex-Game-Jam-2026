@@ -1,6 +1,8 @@
 #include "race/race_state.h"
 
 #include <algorithm>
+#include <cmath>
+#include <cstdlib>
 #include <numeric>
 
 namespace racer {
@@ -14,6 +16,7 @@ RaceState::RaceState(Track track, int lapsToWin, int aiCount) : track_(std::move
     player.car.position = track_.StartPosition(0, totalCars);
     player.car.heading = track_.StartHeading();
     player.car.velocityHeading = player.car.heading;
+    player.lastSegment = track_.ProjectPosition(player.car.position).segmentIndex;
     racers_.push_back(player);
     playerIndex_ = 0;
 
@@ -23,6 +26,11 @@ RaceState::RaceState(Track track, int lapsToWin, int aiCount) : track_(std::move
         ai.car.position = track_.StartPosition(i + 1, totalCars);
         ai.car.heading = track_.StartHeading();
         ai.car.velocityHeading = ai.car.heading;
+        // La grille de depart place les voitures en retrait (cf. Track::StartPosition,
+        // parametre "back") -- leur position initiale projette donc deja pres de la
+        // FIN de la piste, pas du segment 0. Sans le garde-fou passedMidpoint (voir
+        // Update), ce petit rattrapage initial serait compte comme un tour complet.
+        ai.lastSegment = track_.ProjectPosition(ai.car.position).segmentIndex;
         racers_.push_back(ai);
 
         float skill = 0.85f + 0.05f * static_cast<float>(i); // legere variation pour ne pas avoir un peloton identique
@@ -55,10 +63,28 @@ void RaceState::Update(float dt, const CarInput& playerInput) {
 
         Track::Progress prog = track_.ProjectPosition(r.car.position);
 
+        // Penalite hors-piste : rouler sur l'herbe freine (sinon les bords de
+        // la piste n'ont aucune consequence, ce qui rend la conduite fade).
+        if (std::fabs(prog.lateralOffset) > track_.Width() * 0.5f) {
+            r.car.speed *= (1.0f - 1.8f * dt);
+        }
+
+        // Passage pres de la moitie de la piste : condition necessaire avant
+        // qu'un "haut segment -> bas segment" compte comme un tour. Sans ce
+        // garde-fou, une voiture qui demarre en retrait de la ligne (grille
+        // de depart) verrait son court rattrapage initial jusqu'au segment 0
+        // comptabilise comme un tour complet.
+        int mid = numSegments / 2;
+        int midWindow = numSegments / 10;
+        if (std::abs(prog.segmentIndex - mid) <= midWindow) {
+            r.passedMidpoint = true;
+        }
+
         // Detection de tour complete : passage de la fin de piste (dernier
         // segment) au debut (segment 0) dans le sens de la marche.
-        if (r.lastSegment > numSegments * 7 / 10 && prog.segmentIndex < numSegments * 3 / 10) {
+        if (r.passedMidpoint && r.lastSegment > numSegments * 7 / 10 && prog.segmentIndex < numSegments * 3 / 10) {
             r.lap += 1;
+            r.passedMidpoint = false;
             if (r.lap >= lapsToWin_) {
                 r.finished = true;
                 r.finishTime = elapsedTime_;
