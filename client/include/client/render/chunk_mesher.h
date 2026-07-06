@@ -6,10 +6,10 @@
 
 namespace client {
 
-// Un quad par face de bloc visible (voisin = air ou hors chunk). Pas de
-// culling inter-chunk au jour 2 : une face a la frontiere entre deux chunks
-// charges peut etre dessinee en double (over-inclusion sans consequence),
-// jamais de trou. Remplace au jour 3 par un vrai greedy mesher.
-Mesh BuildNaiveChunkMesh(const common::world::Chunk& chunk);
+// Greedy meshing : fusionne les faces adjacentes de meme bloc en un seul
+// quad par rectangle maximal. Pas de culling inter-chunk (les blocs hors
+// chunk sont traites comme de l'air) -- over-inclusion sans danger aux
+// frontieres, jamais de trou.
+Mesh BuildGreedyChunkMesh(const common::world::Chunk& chunk);
 
 } // namespace client

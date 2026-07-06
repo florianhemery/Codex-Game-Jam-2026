@@ -76,4 +76,24 @@ const common::world::Chunk& WorldManager::GetChunk(ChunkCoord coord) const {
     return chunks_.at(coord);
 }
 
+bool WorldManager::HasChunk(ChunkCoord coord) const {
+    return chunks_.find(coord) != chunks_.end();
+}
+
+void WorldManager::SetBlock(ChunkCoord coord, int lx, int ly, int lz, uint8_t blockId) {
+    auto it = chunks_.find(coord);
+    if (it == chunks_.end()) return;
+    it->second.blocks[common::world::BlockIndex(lx, ly, lz)] = blockId;
+}
+
+std::vector<uint64_t> WorldManager::ViewersOf(ChunkCoord coord) const {
+    std::vector<uint64_t> result;
+    for (const auto& [viewerId, loaded] : viewerLoaded_) {
+        if (loaded.find(coord) != loaded.end()) {
+            result.push_back(viewerId);
+        }
+    }
+    return result;
+}
+
 } // namespace server_core

@@ -18,4 +18,16 @@ inline Color ColorForBlock(common::world::BlockId id) {
     }
 }
 
+inline const char* NameForBlock(common::world::BlockId id) {
+    switch (id) {
+        case common::world::BlockId::Stone: return "Pierre";
+        case common::world::BlockId::Dirt: return "Terre";
+        case common::world::BlockId::Grass: return "Herbe";
+        case common::world::BlockId::Sand: return "Sable";
+        case common::world::BlockId::Air:
+        default:
+            return "";
+    }
+}
+
 } // namespace client

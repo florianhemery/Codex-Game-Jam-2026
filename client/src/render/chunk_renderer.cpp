@@ -19,7 +19,7 @@ void ChunkRenderer::UpsertChunk(const common::world::Chunk& chunk) {
         models_.erase(it);
     }
 
-    Mesh mesh = BuildNaiveChunkMesh(chunk);
+    Mesh mesh = BuildGreedyChunkMesh(chunk);
     Model model = LoadModelFromMesh(mesh);
     models_.emplace(chunk.coord, model);
 }

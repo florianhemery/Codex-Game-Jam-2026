@@ -29,6 +29,14 @@ public:
     void RemoveViewer(uint64_t viewerId);
 
     const common::world::Chunk& GetChunk(common::world::ChunkCoord coord) const;
+    bool HasChunk(common::world::ChunkCoord coord) const;
+
+    // Modifie un bloc dans un chunk deja charge. Precondition : HasChunk(coord) == true.
+    void SetBlock(common::world::ChunkCoord coord, int lx, int ly, int lz, uint8_t blockId);
+
+    // Tous les viewers qui ont actuellement ce chunk dans leur rayon de vue --
+    // utilise pour diffuser un BlockUpdate a la bonne audience.
+    std::vector<uint64_t> ViewersOf(common::world::ChunkCoord coord) const;
 
 private:
     ChunkGenerator generator_;

@@ -4,7 +4,9 @@
 #include <optional>
 #include <unordered_map>
 
+#include "common/world/block.h"
 #include "common/world/world_coords.h"
+#include "server_core/inventory.h"
 #include "server_core/world_manager.h"
 
 namespace server_core {
@@ -15,7 +17,16 @@ struct ClientChannel {
     std::deque<common::messages::ReliableMessage> outgoingReliable;
     std::deque<common::messages::UnreliableMessage> outgoingUnreliable;
     std::optional<common::messages::PlayerInputMsg> latestInput;
+    Inventory inventory;
 };
+
+void PushReliable(ClientChannel& channel, common::messages::ReliableMsgType type,
+                   common::messages::ReliableMessagePayload payload) {
+    common::messages::ReliableMessage msg;
+    msg.type = type;
+    msg.payload = std::move(payload);
+    channel.outgoingReliable.push_back(std::move(msg));
+}
 
 } // namespace
 
@@ -48,10 +59,68 @@ void disconnect_client(ServerCore* sc, ClientId id) {
     sc->clients.erase(id);
 }
 
+namespace {
+
+void HandleBreakRequest(ServerCore* sc, ClientId from, const common::messages::BreakBlockRequestMsg& req) {
+    if (!sc->worldManager.HasChunk(req.coord)) return;
+
+    uint8_t oldBlockId = sc->worldManager.GetChunk(req.coord).blocks[common::world::BlockIndex(req.lx, req.ly, req.lz)];
+    if (oldBlockId == static_cast<uint8_t>(common::world::BlockId::Air)) return; // rien a casser
+
+    sc->worldManager.SetBlock(req.coord, req.lx, req.ly, req.lz, static_cast<uint8_t>(common::world::BlockId::Air));
+
+    auto requester = sc->clients.find(from);
+    if (requester != sc->clients.end()) {
+        requester->second.inventory.AddBlock(oldBlockId, 1);
+        PushReliable(requester->second, common::messages::ReliableMsgType::InventoryUpdate,
+                     requester->second.inventory.ToMessage());
+    }
+
+    common::messages::BlockUpdateMsg update{req.coord, req.lx, req.ly, req.lz, static_cast<uint8_t>(common::world::BlockId::Air)};
+    for (uint64_t viewerId : sc->worldManager.ViewersOf(req.coord)) {
+        auto viewer = sc->clients.find(static_cast<ClientId>(viewerId));
+        if (viewer != sc->clients.end()) {
+            PushReliable(viewer->second, common::messages::ReliableMsgType::BlockUpdate, update);
+        }
+    }
+}
+
+void HandlePlaceRequest(ServerCore* sc, ClientId from, const common::messages::PlaceBlockRequestMsg& req) {
+    if (!sc->worldManager.HasChunk(req.coord)) return;
+
+    uint8_t currentBlockId = sc->worldManager.GetChunk(req.coord).blocks[common::world::BlockIndex(req.lx, req.ly, req.lz)];
+    if (currentBlockId != static_cast<uint8_t>(common::world::BlockId::Air)) return; // deja occupe
+
+    auto requester = sc->clients.find(from);
+    if (requester == sc->clients.end()) return;
+
+    if (req.hotbarSlot >= requester->second.inventory.SlotCount()) return;
+    uint8_t blockToPlace = requester->second.inventory.Slot(req.hotbarSlot).blockId;
+    if (blockToPlace == static_cast<uint8_t>(common::world::BlockId::Air)) return; // slot vide
+
+    if (!requester->second.inventory.RemoveFromSlot(req.hotbarSlot, blockToPlace, 1)) return;
+
+    sc->worldManager.SetBlock(req.coord, req.lx, req.ly, req.lz, blockToPlace);
+    PushReliable(requester->second, common::messages::ReliableMsgType::InventoryUpdate,
+                 requester->second.inventory.ToMessage());
+
+    common::messages::BlockUpdateMsg update{req.coord, req.lx, req.ly, req.lz, blockToPlace};
+    for (uint64_t viewerId : sc->worldManager.ViewersOf(req.coord)) {
+        auto viewer = sc->clients.find(static_cast<ClientId>(viewerId));
+        if (viewer != sc->clients.end()) {
+            PushReliable(viewer->second, common::messages::ReliableMsgType::BlockUpdate, update);
+        }
+    }
+}
+
+} // namespace
+
 void submit_reliable(ServerCore* sc, ClientId from, const common::messages::ReliableMessage& msg) {
-    (void)sc;
-    (void)from;
-    (void)msg; // rien a traiter au jour 2 -- BlockUpdate arrive au jour 3
+    if (msg.type == common::messages::ReliableMsgType::BreakBlockRequest) {
+        HandleBreakRequest(sc, from, std::get<common::messages::BreakBlockRequestMsg>(msg.payload));
+    } else if (msg.type == common::messages::ReliableMsgType::PlaceBlockRequest) {
+        HandlePlaceRequest(sc, from, std::get<common::messages::PlaceBlockRequestMsg>(msg.payload));
+    }
 }
 
 void submit_unreliable(ServerCore* sc, ClientId from, const common::messages::UnreliableMessage& msg) {
@@ -79,21 +148,13 @@ void tick(ServerCore* sc, float dt) {
             common::messages::ChunkDataMsg chunkMsg;
             chunkMsg.coord = coord;
             chunkMsg.blocks = sc->worldManager.GetChunk(coord).blocks;
-
-            common::messages::ReliableMessage rmsg;
-            rmsg.type = common::messages::ReliableMsgType::ChunkData;
-            rmsg.payload = chunkMsg;
-            channel.outgoingReliable.push_back(rmsg);
+            PushReliable(channel, common::messages::ReliableMsgType::ChunkData, chunkMsg);
         }
 
         for (const auto& coord : delta.toUnload) {
             common::messages::ChunkUnloadMsg unloadMsg;
             unloadMsg.coord = coord;
-
-            common::messages::ReliableMessage rmsg;
-            rmsg.type = common::messages::ReliableMsgType::ChunkUnload;
-            rmsg.payload = unloadMsg;
-            channel.outgoingReliable.push_back(rmsg);
+            PushReliable(channel, common::messages::ReliableMsgType::ChunkUnload, unloadMsg);
         }
     }
 }

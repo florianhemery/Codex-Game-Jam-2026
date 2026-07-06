@@ -2,6 +2,8 @@ add_executable(voxel_client
     src/main.cpp
     src/render/chunk_mesher.cpp
     src/render/chunk_renderer.cpp
+    src/input/voxel_raycast.cpp
+    src/ui/hud.cpp
 )
 target_include_directories(voxel_client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
