@@ -31,6 +31,9 @@ public:
 
     common::messages::InventoryUpdateMsg ToMessage() const;
 
+    const std::array<InventorySlot, common::messages::kInventorySlotCount>& Slots() const { return slots_; }
+    void SetSlots(const std::array<InventorySlot, common::messages::kInventorySlotCount>& slots) { slots_ = slots; }
+
 private:
     std::array<InventorySlot, common::messages::kInventorySlotCount> slots_{};
 };

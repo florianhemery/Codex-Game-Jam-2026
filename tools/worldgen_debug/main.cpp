@@ -6,38 +6,8 @@
 
 namespace {
 
-void PrintReliable(server_core::ServerCore* core, server_core::ClientId client, const char* label) {
-    common::messages::ReliableMessage msg;
-    while (server_core::poll_outgoing_reliable(core, client, msg)) {
-        switch (msg.type) {
-            case common::messages::ReliableMsgType::BlockUpdate: {
-                const auto& u = std::get<common::messages::BlockUpdateMsg>(msg.payload);
-                std::printf("[%s] BlockUpdate chunk(%d,%d) local(%d,%d,%d) -> blockId=%d\n",
-                            label, u.coord.x, u.coord.z, u.lx, u.ly, u.lz, u.newBlockId);
-                break;
-            }
-            case common::messages::ReliableMsgType::InventoryUpdate: {
-                const auto& inv = std::get<common::messages::InventoryUpdateMsg>(msg.payload);
-                std::printf("[%s] InventoryUpdate slot0 = blockId=%d count=%d\n",
-                            label, inv.slots[0].blockId, inv.slots[0].count);
-                break;
-            }
-            default:
-                break;
-        }
-    }
-}
-
-} // namespace
-
-int main() {
-    server_core::ServerConfig cfg;
-    cfg.worldSaveDir = "world";
-    cfg.seed = 1234;
-
-    server_core::ServerCore* core = server_core::create(cfg);
-    server_core::ClientId client = server_core::connect_client(core, "debug");
-
+bool StreamOriginChunk(server_core::ServerCore* core, server_core::ClientId client,
+                        common::messages::ChunkDataMsg& outChunk) {
     common::messages::PlayerInputMsg inputMsg;
     inputMsg.posX = 8.0f;
     inputMsg.posY = 40.0f;
@@ -47,64 +17,84 @@ int main() {
     input.type = common::messages::UnreliableMsgType::PlayerInput;
     input.payload = inputMsg;
     server_core::submit_unreliable(core, client, input);
-
     server_core::tick(core, 0.05f);
 
-    int chunkCount = 0;
-    long long totalSolidBlocks = 0;
-    common::messages::ChunkDataMsg originChunk{};
-    bool haveOriginChunk = false;
-
+    bool found = false;
     common::messages::ReliableMessage msg;
     while (server_core::poll_outgoing_reliable(core, client, msg)) {
         if (msg.type == common::messages::ReliableMsgType::ChunkData) {
             const auto& chunkMsg = std::get<common::messages::ChunkDataMsg>(msg.payload);
-            ++chunkCount;
-            int solid = 0;
-            for (uint8_t block : chunkMsg.blocks) {
-                if (static_cast<common::world::BlockId>(block) != common::world::BlockId::Air) ++solid;
-            }
-            totalSolidBlocks += solid;
             if (chunkMsg.coord.x == 0 && chunkMsg.coord.z == 0) {
-                originChunk = chunkMsg;
-                haveOriginChunk = true;
+                outChunk = chunkMsg;
+                found = true;
             }
         }
     }
+    return found;
+}
 
-    std::printf("worldgen_debug: %d chunk(s) streames, %lld blocs solides au total.\n", chunkCount, totalSolidBlocks);
+uint8_t BlockAt(const common::messages::ChunkDataMsg& chunk, int x, int y, int z) {
+    return chunk.blocks[common::world::BlockIndex(x, y, z)];
+}
 
-    if (!haveOriginChunk) {
-        std::printf("ERREUR: chunk (0,0) absent, impossible de tester casser/placer.\n");
-        server_core::destroy(core);
+} // namespace
+
+int main() {
+    server_core::ServerConfig cfg;
+    cfg.worldSaveDir = "world";
+    cfg.seed = 1234;
+
+    // --- Run A : casse un bloc de surface, sauvegarde a la destruction du core ---
+    server_core::ServerCore* coreA = server_core::create(cfg);
+    server_core::ClientId clientA = server_core::connect_client(coreA, "debug");
+
+    common::messages::ChunkDataMsg chunkA{};
+    if (!StreamOriginChunk(coreA, clientA, chunkA)) {
+        std::printf("ERREUR: chunk (0,0) absent au run A.\n");
+        server_core::destroy(coreA);
         return 1;
     }
 
     int surfaceY = -1;
     for (int y = common::world::CHUNK_SIZE_Y - 1; y >= 0; --y) {
-        if (static_cast<common::world::BlockId>(originChunk.blocks[common::world::BlockIndex(8, y, 8)]) !=
-            common::world::BlockId::Air) {
+        if (static_cast<common::world::BlockId>(BlockAt(chunkA, 8, y, 8)) != common::world::BlockId::Air) {
             surfaceY = y;
             break;
         }
     }
-    std::printf("Colonne (8,_,8) : surface trouvee a y=%d\n", surfaceY);
+    std::printf("[run A] surface en (8,_,8) : y=%d, blockId=%d\n", surfaceY, BlockAt(chunkA, 8, surfaceY, 8));
 
     common::messages::BreakBlockRequestMsg breakReq{{0, 0}, 8, static_cast<uint8_t>(surfaceY), 8};
     common::messages::ReliableMessage breakMsg;
     breakMsg.type = common::messages::ReliableMsgType::BreakBlockRequest;
     breakMsg.payload = breakReq;
-    server_core::submit_reliable(core, client, breakMsg);
-    PrintReliable(core, client, "casser");
+    server_core::submit_reliable(coreA, clientA, breakMsg);
 
-    common::messages::PlaceBlockRequestMsg placeReq{{0, 0}, 8, static_cast<uint8_t>(surfaceY), 8, 0};
-    common::messages::ReliableMessage placeMsg;
-    placeMsg.type = common::messages::ReliableMsgType::PlaceBlockRequest;
-    placeMsg.payload = placeReq;
-    server_core::submit_reliable(core, client, placeMsg);
-    PrintReliable(core, client, "poser");
+    // draine les messages consequents (BlockUpdate + InventoryUpdate) sans les traiter
+    common::messages::ReliableMessage drain;
+    while (server_core::poll_outgoing_reliable(coreA, clientA, drain)) {}
 
-    server_core::disconnect_client(core, client);
-    server_core::destroy(core);
-    return 0;
+    server_core::disconnect_client(coreA, clientA); // sauvegarde le joueur (position, inventaire)
+    server_core::destroy(coreA);
+    std::printf("[run A] bloc casse en y=%d, core A detruit (sauvegarde sur disque).\n", surfaceY);
+
+    // --- Run B : nouvelle instance ServerCore independante, meme dossier de sauvegarde ---
+    server_core::ServerCore* coreB = server_core::create(cfg);
+    server_core::ClientId clientB = server_core::connect_client(coreB, "debug");
+
+    common::messages::ChunkDataMsg chunkB{};
+    if (!StreamOriginChunk(coreB, clientB, chunkB)) {
+        std::printf("ERREUR: chunk (0,0) absent au run B.\n");
+        server_core::destroy(coreB);
+        return 1;
+    }
+
+    uint8_t blockAfterReload = BlockAt(chunkB, 8, surfaceY, 8);
+    std::printf("[run B] meme position apres reload : blockId=%d (attendu 0=air)\n", blockAfterReload);
+
+    bool persistenceOk = (blockAfterReload == static_cast<uint8_t>(common::world::BlockId::Air));
+    std::printf("PERSISTANCE: %s\n", persistenceOk ? "OK" : "ECHEC");
+
+    server_core::destroy(coreB);
+    return persistenceOk ? 0 : 1;
 }

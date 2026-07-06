@@ -8,6 +8,7 @@
 #include "common/world/chunk.h"
 #include "common/world/world_coords.h"
 #include "server_core/chunk_generator.h"
+#include "server_core/chunk_storage.h"
 
 namespace server_core {
 
@@ -18,7 +19,7 @@ constexpr int kDefaultViewDistanceChunks = 3;
 // l'ont dans leur rayon de vue, et n'est libere que quand le dernier s'en va).
 class WorldManager {
 public:
-    explicit WorldManager(uint32_t seed);
+    WorldManager(uint32_t seed, std::string worldSaveDir);
 
     struct StreamingDelta {
         std::vector<common::world::ChunkCoord> toLoad;
@@ -40,6 +41,7 @@ public:
 
 private:
     ChunkGenerator generator_;
+    ChunkStorage storage_;
 
     std::unordered_map<common::world::ChunkCoord, common::world::Chunk, common::world::ChunkCoordHash> chunks_;
     std::unordered_map<common::world::ChunkCoord, int, common::world::ChunkCoordHash> refCount_;

@@ -31,7 +31,7 @@ void ChunkRenderer::RemoveChunk(common::world::ChunkCoord coord) {
     models_.erase(it);
 }
 
-void ChunkRenderer::DrawAll() const {
+void ChunkRenderer::DrawAll(Color tint) const {
     // Le mesher ne garantit pas un ordre de sommets coherent avec le
     // backface culling par defaut ; on le desactive plutot que de risquer
     // des faces invisibles pendant l'iteration rapide du jam.
@@ -42,7 +42,7 @@ void ChunkRenderer::DrawAll() const {
             0.0f,
             static_cast<float>(coord.z * common::world::CHUNK_SIZE_Z),
         };
-        DrawModel(model, origin, 1.0f, WHITE);
+        DrawModel(model, origin, 1.0f, tint);
     }
     rlEnableBackfaceCulling();
 }

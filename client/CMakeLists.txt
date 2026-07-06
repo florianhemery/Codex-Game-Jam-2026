@@ -2,6 +2,7 @@ add_executable(voxel_client
     src/main.cpp
     src/render/chunk_mesher.cpp
     src/render/chunk_renderer.cpp
+    src/render/sky_renderer.cpp
     src/input/voxel_raycast.cpp
     src/ui/hud.cpp
 )

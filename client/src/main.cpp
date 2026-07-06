@@ -5,6 +5,7 @@
 
 #include "client/input/voxel_raycast.h"
 #include "client/render/chunk_renderer.h"
+#include "client/render/sky_renderer.h"
 #include "client/ui/hud.h"
 #include "client/world/client_world.h"
 #include "common/transport/transport.h"
@@ -23,7 +24,7 @@ common::world::ChunkCoord ChunkCoordFromBlock(int worldX, int worldZ) {
 int main() {
     const int screenWidth = 1280;
     const int screenHeight = 720;
-    InitWindow(screenWidth, screenHeight, "voxel-game client (jour 3 - casser/placer, inventaire)");
+    InitWindow(screenWidth, screenHeight, "voxel-game client (jour 4 - persistance, sante/faim, jour-nuit)");
     SetTargetFPS(60);
 
     Transport* transport = loopback_transport_create("world", 1234, "Player1");
@@ -32,6 +33,9 @@ int main() {
     client::ChunkRenderer chunkRenderer;
     common::messages::InventoryUpdateMsg inventory{};
     int selectedSlot = 0;
+    uint16_t health = 100;
+    uint16_t hunger = 100;
+    float timeOfDay01 = 0.5f;
 
     Camera3D camera{};
     camera.position = {8.0f, 40.0f, 8.0f};
@@ -128,16 +132,39 @@ int main() {
                     inventory = std::get<common::messages::InventoryUpdateMsg>(rmsg.payload);
                     break;
                 }
+                case common::messages::ReliableMsgType::SpawnState: {
+                    const auto& spawn = std::get<common::messages::SpawnStateMsg>(rmsg.payload);
+                    camera.position = {spawn.posX, spawn.posY, spawn.posZ};
+                    camera.target = {spawn.posX, spawn.posY, spawn.posZ + 1.0f};
+                    health = spawn.health;
+                    hunger = spawn.hunger;
+                    break;
+                }
+                case common::messages::ReliableMsgType::HealthHungerUpdate: {
+                    const auto& hh = std::get<common::messages::HealthHungerUpdateMsg>(rmsg.payload);
+                    health = hh.health;
+                    hunger = hh.hunger;
+                    break;
+                }
                 default:
                     break;
             }
         }
 
+        common::messages::UnreliableMessage umsg;
+        while (transport_poll_unreliable(transport, umsg)) {
+            if (umsg.type == common::messages::UnreliableMsgType::WorldTime) {
+                timeOfDay01 = std::get<common::messages::WorldTimeMsg>(umsg.payload).timeOfDay01;
+            }
+        }
+
+        client::DayNightState dayNight = client::ComputeDayNight(timeOfDay01);
+
         BeginDrawing();
-        ClearBackground(SKYBLUE);
+        ClearBackground(dayNight.skyColor);
 
         BeginMode3D(camera);
-        chunkRenderer.DrawAll();
+        chunkRenderer.DrawAll(dayNight.groundTint);
         EndMode3D();
 
         DrawLine(screenWidth / 2 - 8, screenHeight / 2, screenWidth / 2 + 8, screenHeight / 2, WHITE);
@@ -145,13 +172,17 @@ int main() {
 
         char info[128];
         std::snprintf(info, sizeof(info), "Chunks charges: %zu", chunkRenderer.LoadedCount());
-        DrawText(info, 10, 10, 20, DARKGRAY);
+        DrawText(info, 10, 10, 20, WHITE);
 
         char posText[128];
         std::snprintf(posText, sizeof(posText), "Pos: %.1f, %.1f, %.1f", camera.position.x, camera.position.y, camera.position.z);
-        DrawText(posText, 10, 35, 20, DARKGRAY);
+        DrawText(posText, 10, 35, 20, WHITE);
 
-        DrawFPS(10, 60);
+        char statsText[128];
+        std::snprintf(statsText, sizeof(statsText), "Sante: %d  Faim: %d  Heure: %.0f%%", health, hunger, timeOfDay01 * 100.0f);
+        DrawText(statsText, 10, 60, 20, WHITE);
+
+        DrawFPS(10, 85);
         client::DrawHotbar(inventory, selectedSlot, screenWidth, screenHeight);
         EndDrawing();
     }

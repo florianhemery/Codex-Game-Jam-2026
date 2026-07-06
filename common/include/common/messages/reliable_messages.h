@@ -14,6 +14,8 @@ enum class ReliableMsgType : uint8_t {
     BreakBlockRequest,
     PlaceBlockRequest,
     InventoryUpdate,
+    SpawnState,
+    HealthHungerUpdate,
 };
 
 struct ChunkDataMsg {
@@ -60,8 +62,24 @@ struct InventoryUpdateMsg {
     std::array<InventorySlotWire, kInventorySlotCount> slots;
 };
 
+// Envoye juste apres connect_client, avant tout ChunkData : position/etat
+// restaures depuis la sauvegarde disque, ou valeurs par defaut si premier lancement.
+struct SpawnStateMsg {
+    float posX = 8.0f;
+    float posY = 40.0f;
+    float posZ = 8.0f;
+    uint16_t health = 100;
+    uint16_t hunger = 100;
+};
+
+struct HealthHungerUpdateMsg {
+    uint16_t health;
+    uint16_t hunger;
+};
+
 using ReliableMessagePayload =
-    std::variant<ChunkDataMsg, ChunkUnloadMsg, BlockUpdateMsg, BreakBlockRequestMsg, PlaceBlockRequestMsg, InventoryUpdateMsg>;
+    std::variant<ChunkDataMsg, ChunkUnloadMsg, BlockUpdateMsg, BreakBlockRequestMsg, PlaceBlockRequestMsg,
+                 InventoryUpdateMsg, SpawnStateMsg, HealthHungerUpdateMsg>;
 
 struct ReliableMessage {
     ReliableMsgType type;

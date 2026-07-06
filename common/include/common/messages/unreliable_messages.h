@@ -7,6 +7,7 @@ namespace common::messages {
 
 enum class UnreliableMsgType : uint8_t {
     PlayerInput,
+    WorldTime,
 };
 
 // Jour 2 : porte la position courante du joueur (pas encore des deltas d'intention),
@@ -23,9 +24,16 @@ struct PlayerInputMsg {
     uint32_t tick = 0;
 };
 
+// Serveur -> client, diffuse chaque tick : horloge de jeu partagee, pour que
+// tous les clients affichent le meme ciel au meme moment. Tolerant a la perte
+// (le prochain tick renvoie une valeur a jour de toute facon).
+struct WorldTimeMsg {
+    float timeOfDay01 = 0.0f; // 0 = minuit, 0.5 = midi
+};
+
 struct UnreliableMessage {
     UnreliableMsgType type;
-    std::variant<PlayerInputMsg> payload;
+    std::variant<PlayerInputMsg, WorldTimeMsg> payload;
 };
 
 } // namespace common::messages

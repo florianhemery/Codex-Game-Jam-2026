@@ -4,7 +4,8 @@ namespace server_core {
 
 using common::world::ChunkCoord;
 
-WorldManager::WorldManager(uint32_t seed) : generator_(seed) {}
+WorldManager::WorldManager(uint32_t seed, std::string worldSaveDir)
+    : generator_(seed), storage_(std::move(worldSaveDir)) {}
 
 WorldManager::StreamingDelta WorldManager::UpdateViewer(uint64_t viewerId, ChunkCoord center, int viewDistanceChunks) {
     StreamingDelta delta;
@@ -22,7 +23,12 @@ WorldManager::StreamingDelta WorldManager::UpdateViewer(uint64_t viewerId, Chunk
         if (loaded.find(coord) != loaded.end()) continue;
 
         if (chunks_.find(coord) == chunks_.end()) {
-            chunks_.emplace(coord, generator_.Generate(coord));
+            common::world::Chunk loadedChunk;
+            if (storage_.Load(coord, loadedChunk)) {
+                chunks_.emplace(coord, std::move(loadedChunk));
+            } else {
+                chunks_.emplace(coord, generator_.Generate(coord));
+            }
             refCount_[coord] = 0;
         }
         refCount_[coord] += 1;
@@ -84,6 +90,9 @@ void WorldManager::SetBlock(ChunkCoord coord, int lx, int ly, int lz, uint8_t bl
     auto it = chunks_.find(coord);
     if (it == chunks_.end()) return;
     it->second.blocks[common::world::BlockIndex(lx, ly, lz)] = blockId;
+    // Sauvegarde immediate : les changements de bloc sont rares (actions
+    // joueur), pas besoin d'un systeme de sauvegarde incrementale differee.
+    storage_.Save(it->second);
 }
 
 std::vector<uint64_t> WorldManager::ViewersOf(ChunkCoord coord) const {

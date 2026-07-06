@@ -18,7 +18,7 @@ public:
 
     void UpsertChunk(const common::world::Chunk& chunk);
     void RemoveChunk(common::world::ChunkCoord coord);
-    void DrawAll() const;
+    void DrawAll(Color tint = WHITE) const;
     size_t LoadedCount() const { return models_.size(); }
 
 private:
