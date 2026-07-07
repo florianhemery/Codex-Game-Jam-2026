@@ -164,48 +164,70 @@ AssetRegistry::~AssetRegistry()
     unloadAll();
 }
 
+ModelAsset *AssetRegistry::findAndAcquireModel(const std::string &key)
+{
+    auto it = models_.find(key);
+
+    if (it == models_.end())
+        return nullptr;
+    it->second->acquire();
+    return it->second.get();
+}
+
+ModelAsset &AssetRegistry::insertNewModel(const std::string &key)
+{
+    auto asset = std::make_unique<ModelAsset>();
+
+    asset->path_ = key;
+    if (!AssetRegistryDetail::tryLoadModelFromDisk(key, *asset))
+        AssetRegistryDetail::assignModelPlaceholder(*asset, key);
+    AssetRegistryDetail::populatePbrInfos(*asset);
+    asset->acquire();
+    ModelAsset *result = asset.get();
+    models_.emplace(key, std::move(asset));
+    return *result;
+}
+
 ModelAsset &AssetRegistry::loadModelAsset(const std::string &path)
 {
     const std::string key = AssetRegistryDetail::normalizePath(path);
-    ModelAsset *result = nullptr;
 
-    if (auto it = models_.find(key); it != models_.end()) {
-        it->second->acquire();
-        result = it->second.get();
-    } else {
-        auto asset = std::make_unique<ModelAsset>();
+    if (ModelAsset *existing = findAndAcquireModel(key))
+        return *existing;
+    return insertNewModel(key);
+}
 
-        asset->path_ = key;
-        if (!AssetRegistryDetail::tryLoadModelFromDisk(key, *asset))
-            AssetRegistryDetail::assignModelPlaceholder(*asset, key);
-        AssetRegistryDetail::populatePbrInfos(*asset);
-        asset->acquire();
-        result = asset.get();
-        models_.emplace(key, std::move(asset));
-    }
+TextureAsset *AssetRegistry::findAndAcquireTexture(const std::string &key)
+{
+    auto it = textures_.find(key);
+
+    if (it == textures_.end())
+        return nullptr;
+    it->second->acquire();
+    return it->second.get();
+}
+
+TextureAsset &AssetRegistry::insertNewTexture(const std::string &key)
+{
+    auto asset = std::make_unique<TextureAsset>();
+
+    asset->path_ = key;
+    if (!AssetRegistryDetail::tryLoadTextureFromDisk(key, *asset))
+        AssetRegistryDetail::assignTexturePlaceholder(*asset, key);
+    AssetRegistryDetail::applyTextureDefaults(asset->texture_);
+    asset->acquire();
+    TextureAsset *result = asset.get();
+    textures_.emplace(key, std::move(asset));
     return *result;
 }
 
 TextureAsset &AssetRegistry::loadTextureAsset(const std::string &path)
 {
     const std::string key = AssetRegistryDetail::normalizePath(path);
-    TextureAsset *result = nullptr;
 
-    if (auto it = textures_.find(key); it != textures_.end()) {
-        it->second->acquire();
-        result = it->second.get();
-    } else {
-        auto asset = std::make_unique<TextureAsset>();
-
-        asset->path_ = key;
-        if (!AssetRegistryDetail::tryLoadTextureFromDisk(key, *asset))
-            AssetRegistryDetail::assignTexturePlaceholder(*asset, key);
-        AssetRegistryDetail::applyTextureDefaults(asset->texture_);
-        asset->acquire();
-        result = asset.get();
-        textures_.emplace(key, std::move(asset));
-    }
-    return *result;
+    if (TextureAsset *existing = findAndAcquireTexture(key))
+        return *existing;
+    return insertNewTexture(key);
 }
 
 void AssetRegistryDetail::unloadZeroRefModels(

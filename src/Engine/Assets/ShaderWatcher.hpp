@@ -53,6 +53,9 @@ public:
 
 private:
     bool tryReload(ShaderSlot &slot);
+    Shader loadFreshShader(const ShaderSlot &slot) const;
+    bool handleReloadFailure(ShaderSlot &slot, Shader &fresh) const;
+    void applyReloadedShader(ShaderSlot &slot, Shader &fresh);
 
     void initSlotMtimes(ShaderSlot &slot,
                         const std::string &name,

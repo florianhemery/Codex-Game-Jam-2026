@@ -41,6 +41,11 @@ public:
     }
 
 private:
+    ModelAsset *findAndAcquireModel(const std::string &key);
+    ModelAsset &insertNewModel(const std::string &key);
+    TextureAsset *findAndAcquireTexture(const std::string &key);
+    TextureAsset &insertNewTexture(const std::string &key);
+
     std::unordered_map<std::string, std::unique_ptr<ModelAsset>> models_;
     std::unordered_map<std::string, std::unique_ptr<TextureAsset>> textures_;
 };

@@ -167,21 +167,25 @@ void ShaderWatcher::poll()
     }
 }
 
-bool ShaderWatcher::tryReload(ShaderSlot &slot)
+Shader ShaderWatcher::loadFreshShader(const ShaderSlot &slot) const
 {
-    const bool wantsCustom = !slot.vsPath_.empty() || !slot.fsPath_.empty();
-    Shader fresh = LoadShader(
+    return LoadShader(
         ShaderLoadUtils::pathOrNull(slot.vsPath_),
         ShaderLoadUtils::pathOrNull(slot.fsPath_));
+}
 
-    if (!ShaderLoadUtils::loadSucceeded(fresh, wantsCustom)) {
-        TraceLog(LOG_WARNING,
-            "SHADERS: [%s] reload echoue, ancien shader conserve",
-            slot.name_.c_str());
-        ShaderLoadUtils::unloadShaderSafe(fresh);
-        return false;
-    }
+bool ShaderWatcher::handleReloadFailure(
+    ShaderSlot &slot, Shader &fresh) const
+{
+    TraceLog(LOG_WARNING,
+        "SHADERS: [%s] reload echoue, ancien shader conserve",
+        slot.name_.c_str());
+    ShaderLoadUtils::unloadShaderSafe(fresh);
+    return false;
+}
 
+void ShaderWatcher::applyReloadedShader(ShaderSlot &slot, Shader &fresh)
+{
     ShaderLoadUtils::unloadShaderSafe(slot.shader_);
     slot.shader_ = fresh;
     slot.valid_ = true;
@@ -189,9 +193,19 @@ bool ShaderWatcher::tryReload(ShaderSlot &slot)
     TraceLog(LOG_INFO,
         "SHADERS: [%s] recharge avec succes (#%d)",
         slot.name_.c_str(), slot.reloadCount_);
-
     if (onReload_)
         onReload_(slot.name_, slot.shader_);
+}
+
+bool ShaderWatcher::tryReload(ShaderSlot &slot)
+{
+    const bool wantsCustom =
+        !slot.vsPath_.empty() || !slot.fsPath_.empty();
+    Shader fresh = loadFreshShader(slot);
+
+    if (!ShaderLoadUtils::loadSucceeded(fresh, wantsCustom))
+        return handleReloadFailure(slot, fresh);
+    applyReloadedShader(slot, fresh);
     return true;
 }
 
