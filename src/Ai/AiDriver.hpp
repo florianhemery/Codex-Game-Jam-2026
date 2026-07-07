@@ -34,6 +34,41 @@ private:
 
     static constexpr float kGripBudget = 1.4f;
     static constexpr float kMinCornerSpeed = 7.0f;
+    static constexpr float kUnlimitedSpeed = 1e9f;
+    static constexpr float kChordBase = 4.0f;
+    static constexpr float kChordSpeedScale = 0.12f;
+    static constexpr int kCornerSampleCount = 5;
+    static constexpr float kMinTurnPerUnit = 1e-3f;
+    static constexpr float kBrakeFraction = 0.7f;
+    static constexpr float kLookaheadBase = 10.0f;
+    static constexpr float kLookaheadSpeedScale = 0.6f;
+    static constexpr float kTangentDelta = 2.0f;
+    static constexpr float kMaxTurnPerUnit = 0.06f;
+    static constexpr float kOffsetScaleMin = 0.4f;
+    static constexpr float kOffsetScaleMax = 1.0f;
+    static constexpr float kMinTangentLength = 1e-4f;
+    static constexpr float kAlignTurnScale = 0.8f;
+    static constexpr float kAlignFactorMin = 0.35f;
+    static constexpr float kAlignFactorMax = 1.0f;
+    static constexpr float kOverspeedRatio = 1.08f;
+    static constexpr float kBrakeThrottle = -0.75f;
+    static constexpr float kFullThrottle = 1.0f;
+    static constexpr float kCoastThrottle = 0.15f;
+    static constexpr float kNitroMarginBase = 6.0f;
+    static constexpr float kNitroMarginSkillScale = 8.0f;
+    static constexpr float kNitroTurnThreshold = 0.15f;
+    static constexpr float kHandbrakeTurnThreshold = 1.2f;
+    static constexpr float kHandbrakeMinSpeed = 6.0f;
+    static constexpr float kSteerGain = 2.0f;
+    static constexpr float kSteerMin = -1.0f;
+    static constexpr float kSteerMax = 1.0f;
+    static constexpr float kDefaultSeedMultiplier = 997.0f;
+    static constexpr unsigned int kDefaultSeedOffset = 17u;
+    static constexpr unsigned int kLaneHashModulus = 1000u;
+    static constexpr float kLaneHashNormalizer = 999.0f;
+    static constexpr float kLaneOffsetRange = 1.8f;
+    static constexpr float kNitroReserveBase = 1.2f;
+    static constexpr float kNitroReserveWeaknessScale = 4.0f;
 
     static float normalizeAngle(float angle);
     static unsigned int hashU32(unsigned int value);
@@ -43,12 +78,24 @@ private:
         const Track &track,
         float currentDist,
         float speedAbs) const;
+    void scanCornerSamples(
+        CornerLimits &limits,
+        const Car &car,
+        const Track &track,
+        float currentDist,
+        float chord) const;
     void accumulateCornerSample(
         CornerLimits &limits,
         const Car &car,
         float chord,
         float turnPerU,
         int sampleIndex) const;
+    float computeLookahead(float speedAbs) const;
+    Vector2 offsetTargetFromLane(
+        const Track &track,
+        float targetDist,
+        float maxTurnPerU,
+        Vector2 target) const;
     Vector2 computeTarget(
         const Track &track,
         float currentDist,
@@ -60,6 +107,11 @@ private:
         float turnSeverity,
         float vLimit,
         bool wantNitro) const;
+    bool shouldUseNitro(
+        const Car &car,
+        float speedAbs,
+        float vLimit,
+        float turnSeverity) const;
     void applyThrottle(
         const Car &car,
         float speedAbs,
