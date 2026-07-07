@@ -27,18 +27,18 @@ RenderTexture2D LoadCaptureTarget()
 void InitCars(racer::Car& red, racer::Car& blue, racer::Car& green)
 {
     red = {};
-    red.position = Vector3{-3.2f, 0.0f, 0.0f};
-    red.speed = 14.0f;
+    red.position() = Vector3{-3.2f, 0.0f, 0.0f};
+    red.speed() = 14.0f;
 
     blue = {};
-    blue.position = Vector3{0.0f, 0.0f, 0.0f};
-    blue.speed = 34.0f;
+    blue.position() = Vector3{0.0f, 0.0f, 0.0f};
+    blue.speed() = 34.0f;
 
     green = {};
-    green.position = Vector3{3.2f, 0.0f, 0.0f};
-    green.heading = 0.35f;
-    green.velocityHeading = -0.15f;
-    green.speed = 22.0f;
+    green.position() = Vector3{3.2f, 0.0f, 0.0f};
+    green.heading() = 0.35f;
+    green.velocityHeading() = -0.15f;
+    green.speed() = 22.0f;
 }
 
 void InitCamera(Camera3D& camera)
@@ -62,7 +62,7 @@ racer::CarVisual BuildRedVisual(const racer::Car& car, float t)
     racer::CarVisual vis{};
     vis.steer = 0.8f;
     vis.braking = true;
-    vis.wheelSpin = t * (car.speed / racer::kWheelRadius) * 0.25f;
+    vis.wheelSpin = t * (car.speed() / racer::kWheelRadius) * 0.25f;
     return vis;
 }
 
@@ -71,7 +71,7 @@ racer::CarVisual BuildBlueVisual(const racer::Car& car, float t)
     racer::CarVisual vis{};
     vis.nitro = true;
     vis.headlights = true;
-    vis.wheelSpin = t * (car.speed / racer::kWheelRadius);
+    vis.wheelSpin = t * (car.speed() / racer::kWheelRadius);
     return vis;
 }
 
@@ -80,7 +80,7 @@ racer::CarVisual BuildGreenVisual(const racer::Car& car, float t)
     racer::CarVisual vis{};
     vis.drifting = true;
     vis.steer = -0.6f;
-    vis.wheelSpin = t * (car.speed / racer::kWheelRadius) * 0.6f;
+    vis.wheelSpin = t * (car.speed() / racer::kWheelRadius) * 0.6f;
     return vis;
 }
 
@@ -88,9 +88,9 @@ void drawCars(const racer::Car& red, const racer::CarVisual& redVis,
               const racer::Car& blue, const racer::CarVisual& blueVis,
               const racer::Car& green, const racer::CarVisual& greenVis)
 {
-    racer::drawCarEx(red, redVis, Color{214, 48, 44, 255});
-    racer::drawCarEx(blue, blueVis, Color{38, 96, 220, 255});
-    racer::drawCarEx(green, greenVis, Color{40, 168, 76, 255});
+    racer::CarRenderer::drawCarEx(red, redVis, Color{214, 48, 44, 255});
+    racer::CarRenderer::drawCarEx(blue, blueVis, Color{38, 96, 220, 255});
+    racer::CarRenderer::drawCarEx(green, greenVis, Color{40, 168, 76, 255});
 }
 
 void RenderScene(RenderTexture2D& target, const Camera3D& camera,
@@ -137,9 +137,12 @@ void ExportCapture(const RenderTexture2D& target, int index)
     UnloadImage(img);
 }
 
-} // namespace
+class CarDemoApp {
+public:
+    static int run();
+};
 
-int main()
+int CarDemoApp::run()
 {
     SetConfigFlags(FLAG_MSAA_4X_HINT);
     SetTraceLogLevel(LOG_WARNING);
@@ -183,4 +186,11 @@ int main()
     UnloadRenderTexture(target);
     CloseWindow();
     return 0;
+}
+
+} // namespace
+
+int main()
+{
+    return CarDemoApp::run();
 }

@@ -168,16 +168,16 @@ void CarRenderHelpers::drawShadowDiscs()
 void CarRenderHelpers::drawShadow(const Car &car, bool drifting)
 {
     const float speedNorm = std::clamp(
-        std::fabs(car.speed) / 30.0f, 0.0f, 1.0f);
+        std::fabs(car.speed()) / 30.0f, 0.0f, 1.0f);
     const float stretch = 1.0f + 0.40f * speedNorm;
-    const float slip = wrapAngle(car.velocityHeading - car.heading);
+    const float slip = wrapAngle(car.velocityHeading() - car.heading());
     const float sideOffset = drifting
         ? std::clamp(-slip * 0.9f, -0.5f, 0.5f)
         : 0.0f;
 
     rlPushMatrix();
-    rlTranslatef(car.position.x, 0.0f, car.position.z);
-    rlRotatef(car.velocityHeading * RAD2DEG, 0.0f, 1.0f, 0.0f);
+    rlTranslatef(car.position().x, 0.0f, car.position().z);
+    rlRotatef(car.velocityHeading() * RAD2DEG, 0.0f, 1.0f, 0.0f);
     rlTranslatef(sideOffset, 0.0f, 0.0f);
     rlScalef(0.62f, 1.0f, stretch);
     drawShadowDiscs();
@@ -259,7 +259,7 @@ void CarRenderHelpers::pushChassisPose(
     const Car &car, const CarVisual &vis)
 {
     const float speedFactor = std::clamp(
-        std::fabs(car.speed) / 12.0f, 0.0f, 1.0f);
+        std::fabs(car.speed()) / 12.0f, 0.0f, 1.0f);
     const float rollDeg = std::clamp(vis.steer, -1.0f, 1.0f)
         * (vis.drifting ? 5.2f : 3.4f) * speedFactor;
     const float pitchDeg = (vis.braking ? 2.1f : 0.0f)
@@ -600,7 +600,7 @@ void CarRenderHelpers::drawHeadlightGlow(const CarVisual &vis)
 
 void CarRenderHelpers::drawNitroFlames(const Car &car, float time)
 {
-    const float phase = car.position.x * 3.7f + car.position.z * 2.9f;
+    const float phase = car.position().x * 3.7f + car.position().z * 2.9f;
 
     drawExhaustFlame(-kExhaustX, time, phase);
     drawExhaustFlame(kExhaustX, time, phase + 2.1f);
@@ -620,15 +620,15 @@ void CarRenderHelpers::drawWindshield()
     rlPopMatrix();
 }
 
-CarLightPoints getCarLightPoints(const Car &car)
+CarLightPoints CarRenderer::getCarLightPoints(const Car &car)
 {
-    const float c = std::cos(car.heading);
-    const float s = std::sin(car.heading);
+    const float c = std::cos(car.heading());
+    const float s = std::sin(car.heading());
     auto toWorld = [&](float lx, float ly, float lz) {
         return Vector3{
-            car.position.x + lx * c + lz * s,
-            car.position.y + ly,
-            car.position.z - lx * s + lz * c,
+            car.position().x + lx * c + lz * s,
+            car.position().y + ly,
+            car.position().z - lx * s + lz * c,
         };
     };
     CarLightPoints points{};
@@ -641,20 +641,20 @@ CarLightPoints getCarLightPoints(const Car &car)
     return points;
 }
 
-void drawCar(const Car &car, Color bodyColor)
+void CarRenderer::drawCar(const Car &car, Color bodyColor)
 {
     drawCarEx(car, CarVisual{}, bodyColor);
 }
 
-void drawCarEx(const Car &car, const CarVisual &vis, Color bodyColor)
+void CarRenderer::drawCarEx(const Car &car, const CarVisual &vis, Color bodyColor)
 {
     const float time = static_cast<float>(GetTime());
     const BodyPalette palette = CarRenderHelpers::makeBodyPalette(bodyColor);
 
     CarRenderHelpers::drawShadow(car, vis.drifting);
     rlPushMatrix();
-    rlTranslatef(car.position.x, car.position.y, car.position.z);
-    rlRotatef(car.heading * RAD2DEG, 0.0f, 1.0f, 0.0f);
+    rlTranslatef(car.position().x, car.position().y, car.position().z);
+    rlRotatef(car.heading() * RAD2DEG, 0.0f, 1.0f, 0.0f);
     CarRenderHelpers::drawWheels(vis);
     CarRenderHelpers::drawGroundEffects(vis);
     CarRenderHelpers::pushChassisPose(car, vis);

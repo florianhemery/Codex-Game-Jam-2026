@@ -63,13 +63,6 @@ void DrawSceneMarkers()
               Color{62, 68, 80, 255});
 }
 
-void drawHudOverlay(int frame, int activeCount)
-{
-    DrawText(TextFormat("frame %d", frame), 12, 10, 20, RAYWHITE);
-    DrawText(TextFormat("particules actives : %d / 4096", activeCount),
-             12, 34, 20, Color{255, 210, 90, 255});
-}
-
 void UpdateScenario(racer::VfxSystem& vfx, int frame, float tf)
 {
     if (frame % 2 == 0)
@@ -96,9 +89,22 @@ void MaybeScreenshot(int frame)
         TakeScreenshot("vfx_demo_3.png");
 }
 
-} // namespace
+class VfxDemoApp {
+public:
+    static int run();
 
-int main()
+private:
+    static void drawHudOverlay(int frame, int activeCount);
+};
+
+void VfxDemoApp::drawHudOverlay(int frame, int activeCount)
+{
+    DrawText(TextFormat("frame %d", frame), 12, 10, 20, RAYWHITE);
+    DrawText(TextFormat("particules actives : %d / 4096", activeCount),
+             12, 34, 20, Color{255, 210, 90, 255});
+}
+
+int VfxDemoApp::run()
 {
     SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(kWidth, kHeight, "vfx_demo particules");
@@ -125,7 +131,7 @@ int main()
         vfx.draw(camera);
         EndMode3D();
 
-        drawHudOverlay(frame, vfx.activeCount());
+        VfxDemoApp::drawHudOverlay(frame, vfx.activeCount());
         EndDrawing();
 
         MaybeScreenshot(frame);
@@ -135,4 +141,11 @@ int main()
                 maxActive);
     CloseWindow();
     return (maxActive < 4096) ? 0 : 1;
+}
+
+} // namespace
+
+int main()
+{
+    return VfxDemoApp::run();
 }

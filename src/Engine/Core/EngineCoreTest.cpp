@@ -12,7 +12,13 @@
 #include <string>
 #include <vector>
 
-#include "Engine/Core/Components.hpp"
+#include "Engine/Core/AiTag.hpp"
+#include "Engine/Core/KinematicsComponent.hpp"
+#include "Engine/Core/LapProgressComponent.hpp"
+#include "Engine/Core/NameComponent.hpp"
+#include "Engine/Core/PlayerTag.hpp"
+#include "Engine/Core/RenderMeshComponent.hpp"
+#include "Engine/Core/TransformComponent.hpp"
 #include "Engine/Core/SnapshotBuffer.hpp"
 #include "Engine/Core/JobSystem.hpp"
 #include "Engine/Core/World.hpp"

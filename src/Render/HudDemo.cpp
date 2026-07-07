@@ -69,13 +69,17 @@ void CaptureHudScene(racer::RaceState& race, const racer::HudExtras& extras,
 {
     RenderAndCapture(file, [&] {
         DrawFakeScene();
-        racer::drawHudEx(race, kScreenWidth, kScreenHeight, extras);
+        racer::Hud hud;
+        hud.drawHudEx(race, kScreenWidth, kScreenHeight, extras);
     });
 }
 
-} // namespace
+class HudDemoApp {
+public:
+    static int run();
+};
 
-int main()
+int HudDemoApp::run()
 {
     SetTraceLogLevel(LOG_WARNING);
     InitWindow(kScreenWidth, kScreenHeight, "hud_demo");
@@ -87,7 +91,8 @@ int main()
     extras.racerColors = {RED, BLUE, DARKGREEN, ORANGE};
 
     RenderAndCapture("hud_demo_menu.png", [&] {
-        racer::drawMenu(presets, 1, kScreenWidth, kScreenHeight);
+        racer::Hud hud;
+        hud.drawMenu(presets, 1, kScreenWidth, kScreenHeight);
     });
 
     racer::RaceState race(racer::Track::make(presets[1]), /*lapsToWin=*/3,
@@ -133,4 +138,11 @@ int main()
 
     CloseWindow();
     return 0;
+}
+
+} // namespace
+
+int main()
+{
+    return HudDemoApp::run();
 }

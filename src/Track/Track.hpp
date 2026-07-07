@@ -8,26 +8,13 @@
 #ifndef TRACK_HPP_
 #define TRACK_HPP_
 
-#include <string>
 #include <vector>
 
 #include "raylib.h"
 
+#include "Track/TrackDef.hpp"
+
 namespace racer {
-
-enum class SurfaceStyle { PROPRE, ABIMEE };
-
-struct TrackDef {
-    std::string name;
-    std::string description;
-    float straightLength = 90.0f;
-    float radius = 16.0f;
-    float width = 11.0f;
-    float chicaneAmpEast = 9.0f;
-    float chicaneAmpWest = 6.0f;
-    float chicaneFreqWest = 2.0f;
-    SurfaceStyle surfaceStyle = SurfaceStyle::PROPRE;
-};
 
 class Track {
 public:

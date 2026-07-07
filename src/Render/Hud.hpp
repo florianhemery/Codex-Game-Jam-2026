@@ -13,7 +13,7 @@
 #include "raylib.h"
 
 #include "Race/RaceState.hpp"
-#include "Track/Track.hpp"
+#include "Track/TrackDef.hpp"
 
 namespace racer {
 
@@ -24,12 +24,15 @@ struct HudExtras {
     std::vector<Color> racerColors;
 };
 
-void drawHud(const RaceState &race, int screenWidth, int screenHeight);
-void drawHudEx(const RaceState &race, int screenWidth, int screenHeight,
-    const HudExtras &extras);
-void drawMenu(const std::vector<TrackDef> &presets, int selectedIndex,
-    int screenWidth, int screenHeight);
+class Hud {
+public:
+    void draw(const RaceState &race, int screenWidth, int screenHeight);
+    void drawHudEx(const RaceState &race, int screenWidth, int screenHeight,
+        const HudExtras &extras);
+    void drawMenu(const std::vector<TrackDef> &presets, int selectedIndex,
+        int screenWidth, int screenHeight);
+};
 
-}
+} // namespace racer
 
 #endif /* !HUD_HPP_ */

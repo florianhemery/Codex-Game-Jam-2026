@@ -7,7 +7,8 @@
 
 #include "Engine/Core/SnapshotBuffer.hpp"
 
-#include "Engine/Core/Components.hpp"
+#include "Engine/Core/RenderMeshComponent.hpp"
+#include "Engine/Core/TransformComponent.hpp"
 #include "Engine/Core/World.hpp"
 
 namespace racer::engine {

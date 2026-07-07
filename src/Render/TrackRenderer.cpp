@@ -2216,7 +2216,7 @@ void TrackRendererDraw::drawNpcs(
         drawOneNpc(npc, timeSeconds);
 }
 
-void drawSkyGradient(int screenWidth, int screenHeight)
+void TrackRenderer::drawSkyGradient(int screenWidth, int screenHeight) const
 {
     Color horizon{135, 196, 235, 255};
     Color zenith{42, 92, 168, 255};

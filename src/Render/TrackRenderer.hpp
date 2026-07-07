@@ -15,8 +15,6 @@
 
 namespace racer {
 
-void drawSkyGradient(int screenWidth, int screenHeight);
-
 class TrackRenderer {
 public:
     TrackRenderer(const Track &track, const TrackDef &def);
@@ -26,6 +24,7 @@ public:
 
     void draw(float timeSeconds) const;
     void drawOpaqueGeometry() const;
+    void drawSkyGradient(int screenWidth, int screenHeight) const;
     void applyShader(Shader shader);
     void queueSkidMark(Vector3 pos, Vector3 dir, float width, float strength);
     void flushSkidMarks();

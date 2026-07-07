@@ -222,7 +222,8 @@ bool MainApp::handleMenuFrame(Context &ctx)
     }
     BeginDrawing();
     ClearBackground(Color{20, 24, 36, 255});
-    racer::drawMenu(ctx.presets, ctx.selectedTrack, ctx.screenWidth,
+    racer::Hud hud;
+    hud.drawMenu(ctx.presets, ctx.selectedTrack, ctx.screenWidth,
         ctx.screenHeight);
     EndDrawing();
     return true;
@@ -270,20 +271,20 @@ void MainApp::updateWheelSpin(Context &ctx, float dt)
     const racer::RacerEntry &player =
         ctx.race->racers()[static_cast<size_t>(ctx.race->playerIndex())];
 
-    ctx.wheelSpin += player.car.speed * dt / racer::kWheelRadius;
+    ctx.wheelSpin += player.car.speed() * dt / racer::kWheelRadius;
 }
 
 void MainApp::updateDriftVfx(Context &ctx, const racer::RacerEntry &entry,
     Vector3 vel, float speed)
 {
-    Vector3 smokePos{entry.car.position.x, 0.12f, entry.car.position.z};
+    Vector3 smokePos{entry.car.position().x, 0.12f, entry.car.position().z};
 
     ctx.vfx.emitDriftSmoke(smokePos, vel);
     if (speed <= 0.1f || !ctx.trackRenderer)
         return;
     Vector3 markPos{
-        entry.car.position.x - vel.x / speed * 1.0f, 0.05f,
-        entry.car.position.z - vel.z / speed * 1.0f};
+        entry.car.position().x - vel.x / speed * 1.0f, 0.05f,
+        entry.car.position().z - vel.z / speed * 1.0f};
 
     ctx.trackRenderer->queueSkidMark(markPos, vel, 0.32f, 0.7f);
 }
@@ -291,7 +292,7 @@ void MainApp::updateDriftVfx(Context &ctx, const racer::RacerEntry &entry,
 void MainApp::updateNitroVfx(Context &ctx, const racer::RacerEntry &entry,
     Vector3 backDir, Vector3 vel)
 {
-    auto lights = racer::getCarLightPoints(entry.car);
+    auto lights = racer::CarRenderer::getCarLightPoints(entry.car);
 
     ctx.vfx.emitNitroFlame(lights.exhaust, backDir, vel);
 }
@@ -299,7 +300,7 @@ void MainApp::updateNitroVfx(Context &ctx, const racer::RacerEntry &entry,
 void MainApp::updateOffroadVfx(Context &ctx, const racer::RacerEntry &entry,
     Vector3 vel)
 {
-    Vector3 dustPos{entry.car.position.x, 0.1f, entry.car.position.z};
+    Vector3 dustPos{entry.car.position().x, 0.1f, entry.car.position().z};
 
     ctx.vfx.emitOffroadDust(dustPos, vel);
 }
@@ -312,12 +313,12 @@ void MainApp::updateRacerVfx(Context &ctx, const racer::RacerEntry &entry)
 
     if (speed > 0.1f)
         backDir = Vector3{-vel.x / speed, 0.0f, -vel.z / speed};
-    if (entry.car.isDrifting && std::fabs(entry.car.speed) > 6.0f)
+    if (entry.car.isDrifting() && std::fabs(entry.car.speed()) > 6.0f)
         updateDriftVfx(ctx, entry, vel, speed);
-    if (entry.lastInput.nitro && entry.car.nitroRemaining > 0.0f)
+    if (entry.lastInput.nitro && entry.car.nitroRemaining() > 0.0f)
         updateNitroVfx(ctx, entry, backDir, vel);
-    if (std::fabs(entry.car.surfaceDrag) > 1.5f
-        && std::fabs(entry.car.speed) > 5.0f)
+    if (std::fabs(entry.car.surfaceDrag()) > 1.5f
+        && std::fabs(entry.car.speed()) > 5.0f)
         updateOffroadVfx(ctx, entry, vel);
 }
 
@@ -328,10 +329,10 @@ racer::CarVisual MainApp::buildCarVisual(Context &ctx,
 
     vis.steer = entry.isPlayer ? ctx.steerSmoothed : 0.0f;
     vis.wheelSpin = entry.isPlayer ? ctx.wheelSpin : 0.0f;
-    vis.braking = entry.lastInput.throttle < -0.01f && entry.car.speed > 1.0f;
-    vis.nitro = entry.lastInput.nitro && entry.car.nitroRemaining > 0.0f;
+    vis.braking = entry.lastInput.throttle < -0.01f && entry.car.speed() > 1.0f;
+    vis.nitro = entry.lastInput.nitro && entry.car.nitroRemaining() > 0.0f;
     vis.headlights = headlights;
-    vis.drifting = entry.car.isDrifting;
+    vis.drifting = entry.car.isDrifting();
     return vis;
 }
 
@@ -341,7 +342,7 @@ void MainApp::updateConfetti(Context &ctx, const racer::Car &playerCar)
         return;
     if (ctx.confettiEmitted)
         return;
-    Vector3 pos{playerCar.position.x, 3.0f, playerCar.position.z};
+    Vector3 pos{playerCar.position().x, 3.0f, playerCar.position().z};
 
     ctx.vfx.emitConfetti(pos);
     ctx.confettiEmitted = true;
@@ -352,14 +353,14 @@ void MainApp::updateCamera(
 {
     Vector3 forward = playerCar.forward();
     Vector3 desiredCamPos{
-        playerCar.position.x - forward.x * 9.0f,
-        playerCar.position.y + 4.5f,
-        playerCar.position.z - forward.z * 9.0f,
+        playerCar.position().x - forward.x * 9.0f,
+        playerCar.position().y + 4.5f,
+        playerCar.position().z - forward.z * 9.0f,
     };
     Vector3 desiredTarget{
-        playerCar.position.x + forward.x * 4.0f,
-        playerCar.position.y + 1.0f,
-        playerCar.position.z + forward.z * 4.0f,
+        playerCar.position().x + forward.x * 4.0f,
+        playerCar.position().y + 1.0f,
+        playerCar.position().z + forward.z * 4.0f,
     };
     float camLerp = std::min(1.0f, 6.0f * dt);
 
@@ -383,7 +384,7 @@ void MainApp::setupHeadlights(Context &ctx)
     if (!pipeParams.headlights)
         return;
     for (size_t i = 0; i < racers.size(); ++i) {
-        auto lp = racer::getCarLightPoints(racers[i].car);
+        auto lp = racer::CarRenderer::getCarLightPoints(racers[i].car);
 
         ctx.pipeline->addLight(lp.headL, Vector3{2.5f, 2.4f, 2.0f});
         ctx.pipeline->addLight(lp.headR, Vector3{2.5f, 2.4f, 2.0f});
@@ -395,9 +396,9 @@ RenderPipeline::PostParams MainApp::buildPostParams(Context &ctx)
     const racer::RacerEntry &player =
         ctx.race->racers()[static_cast<size_t>(ctx.race->playerIndex())];
     float speedRatio = std::clamp(
-        std::fabs(player.car.speed) / player.car.tuning.maxSpeed, 0.0f, 1.0f);
+        std::fabs(player.car.speed()) / player.car.tuning().maxSpeed, 0.0f, 1.0f);
     bool nitroActive = player.lastInput.nitro
-        && player.car.nitroRemaining > 0.0f;
+        && player.car.nitroRemaining() > 0.0f;
 
     return RenderPipeline::PostParams{speedRatio, nitroActive};
 }
@@ -410,7 +411,7 @@ void MainApp::OpaquePass::operator()() const
     const auto &racers = ctx_.race->racers();
 
     for (size_t i = 0; i < racers.size(); ++i) {
-        racer::drawCarEx(
+        racer::CarRenderer::drawCarEx(
             racers[i].car, {},
             colorForRacerIndex(i, racers[i].isPlayer));
     }
@@ -429,7 +430,7 @@ void MainApp::LitPass::operator()() const
         racer::CarVisual vis = buildCarVisual(
             ctx_, r, pipeParams.headlights);
 
-        racer::drawCarEx(
+        racer::CarRenderer::drawCarEx(
             r.car, vis, colorForRacerIndex(i, racers[i].isPlayer));
     }
 }
@@ -481,7 +482,7 @@ void MainApp::simulateRace(Context &ctx, float dt)
     for (const auto &r : ctx.race->racers())
         updateRacerVfx(ctx, r);
     updateConfetti(ctx, player.car);
-    ctx.vfx.update(dt, player.car.position);
+    ctx.vfx.update(dt, player.car.position());
     updateCamera(ctx, player.car, dt);
 }
 
@@ -492,7 +493,8 @@ void MainApp::drawRaceFrame(Context &ctx)
     BeginDrawing();
     renderWorld(ctx);
     buildHudExtras(ctx, extras);
-    racer::drawHudEx(*ctx.race, ctx.screenWidth, ctx.screenHeight, extras);
+    racer::Hud hud;
+    hud.drawHudEx(*ctx.race, ctx.screenWidth, ctx.screenHeight, extras);
     if (ctx.race->phase() == racer::RacePhase::FINISHED)
         drawFinishedHint(ctx);
     DrawFPS(ctx.screenWidth - 90, ctx.screenHeight - 30);

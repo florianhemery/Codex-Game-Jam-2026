@@ -2,7 +2,7 @@
 ** EPITECH PROJECT, 2026
 ** racer
 ** File description:
-** Arcade vehicle model, inputs and tuning
+** Arcade vehicle model and physics
 */
 
 #ifndef CAR_HPP_
@@ -10,44 +10,128 @@
 
 #include "raylib.h"
 
+#include "Vehicle/CarInput.hpp"
+#include "Vehicle/CarTuning.hpp"
+
 namespace racer {
-
-struct CarInput {
-    float throttle = 0.0f;
-    float steer = 0.0f;
-    bool handbrake = false;
-    bool nitro = false;
-};
-
-struct CarTuning {
-    float maxSpeed = 28.0f;
-    float acceleration = 14.0f;
-    float braking = 24.0f;
-    float turnRate = 2.6f;
-    float gripNormal = 6.0f;
-    float gripDrift = 0.8f;
-    float dragCoeff = 0.35f;
-    float nitroBoost = 12.0f;
-    float nitroMaxSpeedBonus = 10.0f;
-    float nitroCapacity = 3.0f;
-    float nitroRegenPerSecond = 0.4f;
-};
 
 class Car {
 public:
-    Vector3 position{0.0f, 0.0f, 0.0f};
-    float heading = 0.0f;
-    float speed = 0.0f;
-    float velocityHeading = 0.0f;
-    float nitroRemaining = 3.0f;
-    bool isDrifting = false;
-    float surfaceGrip = 1.0f;
-    float surfaceDrag = 1.0f;
-    CarTuning tuning{};
+    Car() = default;
+
+    Vector3 &position()
+    {
+        return position_;
+    }
+
+    const Vector3 &position() const
+    {
+        return position_;
+    }
+
+    float &heading()
+    {
+        return heading_;
+    }
+
+    float heading() const
+    {
+        return heading_;
+    }
+
+    float &speed()
+    {
+        return speed_;
+    }
+
+    float speed() const
+    {
+        return speed_;
+    }
+
+    float &velocityHeading()
+    {
+        return velocityHeading_;
+    }
+
+    float velocityHeading() const
+    {
+        return velocityHeading_;
+    }
+
+    float &nitroRemaining()
+    {
+        return nitroRemaining_;
+    }
+
+    float nitroRemaining() const
+    {
+        return nitroRemaining_;
+    }
+
+    bool &isDrifting()
+    {
+        return isDrifting_;
+    }
+
+    bool isDrifting() const
+    {
+        return isDrifting_;
+    }
+
+    float &surfaceGrip()
+    {
+        return surfaceGrip_;
+    }
+
+    float surfaceGrip() const
+    {
+        return surfaceGrip_;
+    }
+
+    float &surfaceDrag()
+    {
+        return surfaceDrag_;
+    }
+
+    float surfaceDrag() const
+    {
+        return surfaceDrag_;
+    }
+
+    CarTuning &tuning()
+    {
+        return tuning_;
+    }
+
+    const CarTuning &tuning() const
+    {
+        return tuning_;
+    }
 
     void update(const CarInput &input, float dt);
     Vector3 forward() const;
     Vector3 velocity() const;
+
+private:
+    static float normalizeAngle(float angle);
+    static float sign(float value);
+    static bool updateNitro(Car &car, const CarInput &input, float dt);
+    static void applyEngineAndDrag(
+        Car &car, const CarInput &input, float dt, bool nitroActive);
+    static void updateHeading(Car &car, const CarInput &input, float dt);
+    static void updateVelocityHeading(Car &car, float dt);
+    static void integratePosition(Car &car, float dt);
+
+    Vector3 position_{0.0f, 0.0f, 0.0f};
+    float heading_ = 0.0f;
+    float speed_ = 0.0f;
+    float velocityHeading_ = 0.0f;
+    float nitroRemaining_ = 3.0f;
+    bool isDrifting_ = false;
+    float surfaceGrip_ = 1.0f;
+    float surfaceDrag_ = 1.0f;
+    CarTuning tuning_{};
 };
 
 } // namespace racer

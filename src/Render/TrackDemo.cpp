@@ -92,9 +92,12 @@ void LoadPreset(int index, const std::vector<racer::TrackDef>& presets, racer::T
     CenterCameraOnTrack(camera, track);
 }
 
-} // namespace
+class TrackDemoApp {
+public:
+    static int run();
+};
 
-int main()
+int TrackDemoApp::run()
 {
     SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(kWidth, kHeight, "track_demo");
@@ -119,7 +122,7 @@ int main()
     {
         const float t = static_cast<float>(GetTime());
         BeginDrawing();
-        racer::drawSkyGradient(kWidth, kHeight);
+        renderer->drawSkyGradient(kWidth, kHeight);
         BeginMode3D(camera);
         renderer->draw(t);
         EndMode3D();
@@ -145,4 +148,11 @@ int main()
 
     CloseWindow();
     return 0;
+}
+
+} // namespace
+
+int main()
+{
+    return TrackDemoApp::run();
 }

@@ -86,7 +86,7 @@ private:
 float RaceSimDebug::totalProgress(
     const racer::Track &track, const racer::RacerEntry &entry)
 {
-    racer::Track::Progress prog = track.projectPosition(entry.car.position);
+    racer::Track::Progress prog = track.projectPosition(entry.car.position());
 
     return static_cast<float>(entry.lap) * track.totalLength()
         + track.cumulativeDistance(prog);
@@ -94,9 +94,9 @@ float RaceSimDebug::totalProgress(
 
 bool RaceSimDebug::isFiniteCar(const racer::Car &car)
 {
-    return std::isfinite(car.position.x) && std::isfinite(car.position.z)
-        && std::isfinite(car.speed) && std::isfinite(car.velocityHeading)
-        && std::isfinite(car.heading);
+    return std::isfinite(car.position().x) && std::isfinite(car.position().z)
+        && std::isfinite(car.speed()) && std::isfinite(car.velocityHeading())
+        && std::isfinite(car.heading());
 }
 
 void RaceSimDebug::printPresetHeader(
@@ -124,8 +124,8 @@ void RaceSimDebug::checkEarlyLaps(SimContext &ctx)
 void RaceSimDebug::updatePairMetrics(
     SimContext &ctx, const racer::Car &a, const racer::Car &b)
 {
-    float dx = b.position.x - a.position.x;
-    float dz = b.position.z - a.position.z;
+    float dx = b.position().x - a.position().x;
+    float dz = b.position().z - a.position().z;
     float dist = std::sqrt(dx * dx + dz * dz);
 
     ctx.minPairDist = std::min(ctx.minPairDist, dist);
@@ -142,7 +142,7 @@ void RaceSimDebug::updateCarMetrics(SimContext &ctx, size_t carIndex)
     if (!isFiniteCar(entry.car))
         ctx.sawNaN = true;
     bool off = std::fabs(
-        ctx.race.getTrack().projectPosition(entry.car.position).lateralOffset)
+        ctx.race.getTrack().projectPosition(entry.car.position()).lateralOffset)
         > ctx.offTrackHalfWidth;
 
     if (off && !ctx.wasOffTrack[carIndex])
@@ -158,7 +158,7 @@ void RaceSimDebug::printProgressLog(const SimContext &ctx)
     for (const auto &entry : ctx.race.racers()) {
         std::printf(
             "%s[lap=%d,v=%4.1f] ", entry.name.c_str(), entry.lap,
-            entry.car.speed);
+            entry.car.speed());
     }
     std::printf("pos_joueur=%d\n", ctx.race.playerPosition());
 }
@@ -196,7 +196,7 @@ void RaceSimDebug::printStandingLine(
         std::printf(
             "retard=%.0fu", row.leaderProgress - row.progress);
     }
-    std::printf(" v=%.1f\n", entry.car.speed);
+    std::printf(" v=%.1f\n", entry.car.speed());
 }
 
 void RaceSimDebug::printStandingRows(SimContext &ctx,
@@ -257,7 +257,7 @@ bool RaceSimDebug::evaluateHealth(const SimContext &ctx)
     bool anyFrozen = false;
 
     for (const auto &entry : ctx.race.racers()) {
-        if (!entry.finished && std::fabs(entry.car.speed) < 0.5f)
+        if (!entry.finished && std::fabs(entry.car.speed()) < 0.5f)
             anyFrozen = true;
     }
     bool ok = finished && !ctx.earlyFalseLap && !ctx.sawNaN && !anyFrozen

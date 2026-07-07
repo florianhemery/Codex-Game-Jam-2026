@@ -81,7 +81,7 @@ void AIDriver::accumulateCornerSample(
         kMinCornerSpeed,
         kGripBudget * skill_ * skill_ / std::max(turnPerU, 1e-3f));
     float distToTurn = chord * static_cast<float>(sampleIndex - 1);
-    float aBrake = car.tuning.braking * 0.7f;
+    float aBrake = car.tuning().braking * 0.7f;
     float vAllowed = std::sqrt(
         vCorner * vCorner + 2.0f * aBrake * distToTurn);
     limits.vLimit = std::min(limits.vLimit, vAllowed);
@@ -111,10 +111,10 @@ Vector2 AIDriver::computeTarget(
 
 float AIDriver::computeHeadingError(const Car &car, const Vector2 &target) const
 {
-    float dx = target.x - car.position.x;
-    float dz = target.y - car.position.z;
+    float dx = target.x - car.position().x;
+    float dz = target.y - car.position().z;
     float desiredHeading = std::atan2(dx, dz);
-    return normalizeAngle(desiredHeading - car.heading);
+    return normalizeAngle(desiredHeading - car.heading());
 }
 
 float AIDriver::computeTargetSpeed(
@@ -124,9 +124,9 @@ float AIDriver::computeTargetSpeed(
     bool wantNitro) const
 {
     float alignFactor = std::clamp(1.0f - turnSeverity * 0.8f, 0.35f, 1.0f);
-    float vCruise = car.tuning.maxSpeed * alignFactor * skill_;
+    float vCruise = car.tuning().maxSpeed * alignFactor * skill_;
     if (wantNitro) {
-        vCruise += car.tuning.nitroMaxSpeedBonus;
+        vCruise += car.tuning().nitroMaxSpeedBonus;
     }
     return std::min(vCruise, vLimit);
 }
@@ -138,7 +138,7 @@ void AIDriver::applyThrottle(
     float vTarget,
     CarInput &input) const
 {
-    if (car.speed > vLimit * 1.08f) {
+    if (car.speed() > vLimit * 1.08f) {
         input.throttle = -0.75f;
     } else if (speedAbs < vTarget) {
         input.throttle = 1.0f;
@@ -155,7 +155,7 @@ void AIDriver::applyDriveInput(
     CarInput &input) const
 {
     float nitroMargin = 6.0f + 8.0f * skill_;
-    bool wantNitro = car.nitroRemaining > nitroReserve_
+    bool wantNitro = car.nitroRemaining() > nitroReserve_
         && turnSeverity < 0.15f
         && vLimit > speedAbs + nitroMargin;
     float vTarget = computeTargetSpeed(car, turnSeverity, vLimit, wantNitro);
@@ -166,9 +166,9 @@ void AIDriver::applyDriveInput(
 
 CarInput AIDriver::computeInput(const Car &car, const Track &track) const
 {
-    Track::Progress prog = track.projectPosition(car.position);
+    Track::Progress prog = track.projectPosition(car.position());
     float currentDist = track.cumulativeDistance(prog);
-    float speedAbs = std::fabs(car.speed);
+    float speedAbs = std::fabs(car.speed());
     CornerLimits limits = anticipateCorners(car, track, currentDist, speedAbs);
     Vector2 target = computeTarget(
         track, currentDist, speedAbs, limits.maxTurnPerU);

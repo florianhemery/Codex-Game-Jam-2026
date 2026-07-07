@@ -300,8 +300,8 @@ void drawMinimapOpponents(const RaceState &race, const HudExtras &extras,
             continue;
         }
         Vector2 pos = proj.apply(Vector2{
-            racers[i].car.position.x,
-            racers[i].car.position.z
+            racers[i].car.position().x,
+            racers[i].car.position().z
         });
         pos.x = std::clamp(pos.x, panel.x + 10.0f,
             panel.x + panel.width - 10.0f);
@@ -318,8 +318,8 @@ void drawMinimapPlayer(const RaceState &race, const HudExtras &extras,
     const std::vector<RacerEntry> &racers = race.racers();
     size_t playerIdx = static_cast<size_t>(race.playerIndex());
     Vector2 pos = proj.apply(Vector2{
-        racers[playerIdx].car.position.x,
-        racers[playerIdx].car.position.z
+        racers[playerIdx].car.position().x,
+        racers[playerIdx].car.position().z
     });
 
     pos.x = std::clamp(pos.x, panel.x + 10.0f, panel.x + panel.width - 10.0f);
@@ -429,7 +429,7 @@ void drawNitroBar(const Car &car, const Rectangle &panel, float panelW,
     float panelH)
 {
     float nitroRatio = std::clamp(
-        car.nitroRemaining / car.tuning.nitroCapacity, 0.0f, 1.0f);
+        car.nitroRemaining() / car.tuning().nitroCapacity, 0.0f, 1.0f);
     float barY = panel.y + panelH - 30.0f;
     Rectangle barBg{panel.x + 86.0f, barY, panelW - 86.0f - 18.0f, 13.0f};
 
@@ -469,7 +469,7 @@ void drawSpeedGauge(const Car &car, int screenHeight)
     const float angleMin = 150.0f;
     const float angleSpan = 240.0f;
     const float kmhMax = 230.0f;
-    float kmh = std::fabs(car.speed) * 6.0f;
+    float kmh = std::fabs(car.speed()) * 6.0f;
     float ratio = std::clamp(kmh / kmhMax, 0.0f, 1.0f);
 
     GaugeArcParams arc{center, ratio, kmhMax, angleMin, angleSpan, rIn, rOut};
@@ -708,7 +708,7 @@ bool estimateGapSeconds(const RaceState &race, const RacerEntry &racer,
     float *outSeconds)
 {
     const Track &track = race.getTrack();
-    Track::Progress prog = track.projectPosition(racer.car.position);
+    Track::Progress prog = track.projectPosition(racer.car.position());
     float done = static_cast<float>(racer.lap) * track.totalLength() +
         track.cumulativeDistance(prog);
     float remaining = static_cast<float>(race.lapsToWin()) *
@@ -718,7 +718,7 @@ bool estimateGapSeconds(const RaceState &race, const RacerEntry &racer,
         *outSeconds = 0.0f;
         return true;
     }
-    float speed = std::fabs(racer.car.speed);
+    float speed = std::fabs(racer.car.speed());
 
     if (speed < 2.0f) {
         return false;
@@ -1007,12 +1007,12 @@ void drawMenuCards(const std::vector<TrackDef> &presets, int selectedIndex,
 
 }
 
-void drawHud(const RaceState &race, int screenWidth, int screenHeight)
+void Hud::draw(const RaceState &race, int screenWidth, int screenHeight)
 {
     drawHudEx(race, screenWidth, screenHeight, HudExtras{});
 }
 
-void drawHudEx(const RaceState &race, int screenWidth, int screenHeight,
+void Hud::drawHudEx(const RaceState &race, int screenWidth, int screenHeight,
     const HudExtras &extras)
 {
     const std::vector<RacerEntry> &racers = race.racers();
@@ -1036,7 +1036,7 @@ void drawHudEx(const RaceState &race, int screenWidth, int screenHeight,
     }
 }
 
-void drawMenu(const std::vector<TrackDef> &presets, int selectedIndex,
+void Hud::drawMenu(const std::vector<TrackDef> &presets, int selectedIndex,
     int screenWidth, int screenHeight)
 {
     ClearBackground(Color{15, 17, 26, 255});

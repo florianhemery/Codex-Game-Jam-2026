@@ -54,10 +54,10 @@ void RaceState::initPlayer(int totalCars)
 
     player.name = "Joueur";
     player.isPlayer = true;
-    player.car.position = track_.startPosition(0, totalCars);
-    player.car.heading = track_.startHeading();
-    player.car.velocityHeading = player.car.heading;
-    Track::Progress prog = track_.projectPosition(player.car.position);
+    player.car.position() = track_.startPosition(0, totalCars);
+    player.car.heading() = track_.startHeading();
+    player.car.velocityHeading() = player.car.heading();
+    Track::Progress prog = track_.projectPosition(player.car.position());
     player.lastSegment = prog.segmentIndex;
     racers_.push_back(player);
     playerIndex_ = 0;
@@ -68,16 +68,16 @@ void RaceState::initAiRacer(int aiIndex, int totalCars)
     RacerEntry ai;
 
     ai.name = "IA " + std::to_string(aiIndex + 1);
-    ai.car.position = track_.startPosition(aiIndex + 1, totalCars);
-    ai.car.heading = track_.startHeading();
-    ai.car.velocityHeading = ai.car.heading;
-    Track::Progress prog = track_.projectPosition(ai.car.position);
+    ai.car.position() = track_.startPosition(aiIndex + 1, totalCars);
+    ai.car.heading() = track_.startHeading();
+    ai.car.velocityHeading() = ai.car.heading();
+    Track::Progress prog = track_.projectPosition(ai.car.position());
     ai.lastSegment = prog.segmentIndex;
     racers_.push_back(ai);
 
     float skill = 1.0f - 0.05f * static_cast<float>(aiIndex);
-    ai.car.tuning.maxSpeed *= 0.90f + 0.10f * skill;
-    ai.car.tuning.acceleration *= 0.85f + 0.15f * skill;
+    ai.car.tuning().maxSpeed *= 0.90f + 0.10f * skill;
+    ai.car.tuning().acceleration *= 0.85f + 0.15f * skill;
     unsigned int seed = static_cast<unsigned int>(1000 + aiIndex * 7919);
     aiDrivers_.emplace_back(skill, seed);
 }
@@ -126,7 +126,7 @@ void RaceState::updateSingleRacer(
         : aiDrivers_[index - 1].computeInput(racer.car, track_);
     racer.lastInput = input;
     racer.car.update(input, dt);
-    Track::Progress prog = track_.projectPosition(racer.car.position);
+    Track::Progress prog = track_.projectPosition(racer.car.position());
     applySurfaceGrip(racer, prog);
     updateMidpointFlag(racer, prog, numSegments);
     updateLapCount(racer, prog, numSegments);
@@ -142,14 +142,14 @@ void RaceState::applySurfaceGrip(
     float grassLimit = track_.width() * 0.5f + 0.6f;
 
     if (std::fabs(prog.lateralOffset) > grassLimit) {
-        racer.car.surfaceGrip = 0.55f;
-        racer.car.surfaceDrag = 3.0f;
+        racer.car.surfaceGrip() = 0.55f;
+        racer.car.surfaceDrag() = 3.0f;
     } else if (track_.style() == SurfaceStyle::ABIMEE) {
-        racer.car.surfaceGrip = 0.85f;
-        racer.car.surfaceDrag = 1.15f;
+        racer.car.surfaceGrip() = 0.85f;
+        racer.car.surfaceDrag() = 1.15f;
     } else {
-        racer.car.surfaceGrip = 1.0f;
-        racer.car.surfaceDrag = 1.0f;
+        racer.car.surfaceGrip() = 1.0f;
+        racer.car.surfaceDrag() = 1.0f;
     }
 }
 
@@ -209,8 +209,8 @@ bool RaceState::tryPrepareContact(
     constexpr float kContactDist = 3.0f;
     const Car& a = racers_[i].car;
     const Car& b = racers_[j].car;
-    float dx = b.position.x - a.position.x;
-    float dz = b.position.z - a.position.z;
+    float dx = b.position().x - a.position().x;
+    float dz = b.position().z - a.position().z;
     float distSq = dx * dx + dz * dz;
 
     if (distSq >= kContactDist * kContactDist) {
@@ -252,10 +252,10 @@ void RaceState::applyContactSeparation(
     constexpr float kMaxPush = 0.25f;
     float push = std::min(overlap * 0.25f, kMaxPush);
 
-    a.position.x -= nx * push;
-    a.position.z -= nz * push;
-    b.position.x += nx * push;
-    b.position.z += nz * push;
+    a.position().x -= nx * push;
+    a.position().z -= nz * push;
+    b.position().x += nx * push;
+    b.position().z += nz * push;
 }
 
 void RaceState::applyContactDamping(Car& a, Car& b, float nx, float nz)
@@ -270,18 +270,18 @@ void RaceState::applyContactDamping(Car& a, Car& b, float nx, float nz)
     bool bRams = vb.x * nx + vb.z * nz < 0.0f;
 
     if (aRams) {
-        a.speed *= damping;
+        a.speed() *= damping;
     }
     if (bRams) {
-        b.speed *= damping;
+        b.speed() *= damping;
     }
 }
 
 void RaceState::nudgeLateral(
     Car& car, float fwdX, float fwdZ, float push, float sideSign)
 {
-    car.position.x += sideSign * fwdZ * push * 0.6f;
-    car.position.z += sideSign * (-fwdX) * push * 0.6f;
+    car.position().x += sideSign * fwdZ * push * 0.6f;
+    car.position().z += sideSign * (-fwdX) * push * 0.6f;
 }
 
 void RaceState::applyContactDeflection(
@@ -291,17 +291,17 @@ void RaceState::applyContactDeflection(
     constexpr float kMaxDeflect = 0.06f;
     float push = std::min(overlap * 0.25f, kMaxPush);
     float deflect = std::min(kMaxDeflect, overlap * 0.04f);
-    float ax = std::sin(a.velocityHeading);
-    float az = std::cos(a.velocityHeading);
-    float bx = std::sin(b.velocityHeading);
-    float bz = std::cos(b.velocityHeading);
+    float ax = std::sin(a.velocityHeading());
+    float az = std::cos(a.velocityHeading());
+    float bx = std::sin(b.velocityHeading());
+    float bz = std::cos(b.velocityHeading());
     float sideA = sign(ax * nz - az * nx);
     float sideB = sign(bx * (-nz) - bz * (-nx));
 
-    a.velocityHeading = normalizeAngle(
-        a.velocityHeading + sideA * deflect);
-    b.velocityHeading = normalizeAngle(
-        b.velocityHeading + sideB * deflect);
+    a.velocityHeading() = normalizeAngle(
+        a.velocityHeading() + sideA * deflect);
+    b.velocityHeading() = normalizeAngle(
+        b.velocityHeading() + sideB * deflect);
 
     Vector3 va = a.velocity();
     Vector3 vb = b.velocity();
@@ -315,7 +315,7 @@ void RaceState::applyContactDeflection(
 
 float RaceState::raceProgress(const RacerEntry& racer) const
 {
-    Track::Progress prog = track_.projectPosition(racer.car.position);
+    Track::Progress prog = track_.projectPosition(racer.car.position());
     float lapDist = static_cast<float>(racer.lap) * track_.totalLength();
 
     return lapDist + track_.cumulativeDistance(prog);
