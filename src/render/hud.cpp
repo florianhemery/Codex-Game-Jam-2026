@@ -83,4 +83,44 @@ void DrawHud(const RaceState& race, int screenWidth, int screenHeight) {
     }
 }
 
+void DrawMenu(const std::vector<TrackDef>& presets, int selectedIndex, int screenWidth, int screenHeight) {
+    ClearBackground(Color{20, 24, 36, 255});
+
+    const char* title = "RACER";
+    int titleSize = 72;
+    int titleWidth = MeasureText(title, titleSize);
+    DrawText(title, screenWidth / 2 - titleWidth / 2, 60, titleSize, ORANGE);
+
+    const char* subtitle = "Choisissez un circuit";
+    int subSize = 26;
+    int subWidth = MeasureText(subtitle, subSize);
+    DrawText(subtitle, screenWidth / 2 - subWidth / 2, 150, subSize, LIGHTGRAY);
+
+    int startY = 220;
+    int rowHeight = 64;
+
+    for (size_t i = 0; i < presets.size(); ++i) {
+        bool selected = (static_cast<int>(i) == selectedIndex);
+        int y = startY + static_cast<int>(i) * rowHeight;
+
+        Color rowColor = selected ? YELLOW : WHITE;
+        if (selected) {
+            DrawRectangle(screenWidth / 2 - 320, y - 8, 640, rowHeight - 8, Fade(YELLOW, 0.12f));
+            DrawRectangleLines(screenWidth / 2 - 320, y - 8, 640, rowHeight - 8, Fade(YELLOW, 0.6f));
+        }
+
+        char line[128];
+        std::snprintf(line, sizeof(line), "%s %s", selected ? ">" : " ", presets[i].name.c_str());
+        DrawText(line, screenWidth / 2 - 300, y, 30, rowColor);
+
+        if (selected) {
+            DrawText(presets[i].description.c_str(), screenWidth / 2 - 300, y + 32, 18, LIGHTGRAY);
+        }
+    }
+
+    const char* help = "Haut/Bas : choisir   --   Entree : demarrer";
+    int helpWidth = MeasureText(help, 20);
+    DrawText(help, screenWidth / 2 - helpWidth / 2, screenHeight - 60, 20, GRAY);
+}
+
 } // namespace racer
