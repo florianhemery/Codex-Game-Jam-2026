@@ -1,3 +1,10 @@
+/*
+** EPITECH PROJECT, 2026
+** racer
+** File description:
+** Arcade vehicle physics implementation
+*/
+
 #include "vehicle/car.h"
 
 #include <algorithm>
@@ -5,72 +12,129 @@
 
 namespace racer {
 
-namespace {
-float NormalizeAngle(float a) {
-    while (a > PI) a -= 2.0f * PI;
-    while (a < -PI) a += 2.0f * PI;
-    return a;
-}
-float Sign(float v) { return v > 0.0f ? 1.0f : (v < 0.0f ? -1.0f : 0.0f); }
-} // namespace
+class CarPhysics {
+public:
+    static float normalizeAngle(float angle);
+    static float sign(float value);
+    static bool updateNitro(Car &car, const CarInput &input, float dt);
+    static void applyEngineAndDrag(
+        Car &car, const CarInput &input, float dt, bool nitroActive);
+    static void updateHeading(Car &car, const CarInput &input, float dt);
+    static void updateVelocityHeading(Car &car, float dt);
+    static void integratePosition(Car &car, float dt);
+};
 
-Vector3 Car::Forward() const {
+float CarPhysics::normalizeAngle(float angle)
+{
+    while (angle > PI)
+        angle -= 2.0f * PI;
+    while (angle < -PI)
+        angle += 2.0f * PI;
+    return angle;
+}
+
+float CarPhysics::sign(float value)
+{
+    return value > 0.0f ? 1.0f : (value < 0.0f ? -1.0f : 0.0f);
+}
+
+bool CarPhysics::updateNitro(Car &car, const CarInput &input, float dt)
+{
+    bool nitroActive = input.nitro && car.nitroRemaining > 0.0f;
+
+    if (nitroActive) {
+        car.nitroRemaining = std::max(0.0f, car.nitroRemaining - dt);
+    } else {
+        car.nitroRemaining = std::min(
+            car.tuning.nitroCapacity,
+            car.nitroRemaining + car.tuning.nitroRegenPerSecond * dt);
+    }
+    return nitroActive;
+}
+
+void CarPhysics::applyEngineAndDrag(
+    Car &car, const CarInput &input, float dt, bool nitroActive)
+{
+    float currentMaxSpeed = car.tuning.maxSpeed;
+    float maxReverseSpeed = car.tuning.maxSpeed * 0.4f;
+    float engineAccel = 0.0f;
+
+    if (nitroActive)
+        currentMaxSpeed += car.tuning.nitroMaxSpeedBonus;
+    if (input.throttle > 0.0f) {
+        engineAccel = input.throttle * car.tuning.acceleration;
+        if (nitroActive)
+            engineAccel += car.tuning.nitroBoost;
+        engineAccel *= 0.55f + 0.45f * car.surfaceGrip;
+    } else if (input.throttle < 0.0f) {
+        if (car.speed > 0.5f) {
+            engineAccel = input.throttle * car.tuning.braking;
+        } else {
+            engineAccel = input.throttle * car.tuning.acceleration * 0.6f;
+        }
+    }
+    car.speed += engineAccel * dt;
+    car.speed -= car.tuning.dragCoeff * car.surfaceDrag * car.speed * dt;
+    car.speed = std::clamp(car.speed, -maxReverseSpeed, currentMaxSpeed);
+}
+
+void CarPhysics::updateHeading(Car &car, const CarInput &input, float dt)
+{
+    float driftTurnBoost = 1.0f;
+    float speedFactor = std::min(1.0f, std::fabs(car.speed) / 3.0f);
+    float speedSign = 1.0f;
+
+    car.isDrifting = input.handbrake && std::fabs(car.speed) > 4.0f;
+    if (car.isDrifting)
+        driftTurnBoost = 1.5f;
+    if (car.speed != 0.0f)
+        speedSign = sign(car.speed);
+    car.heading += input.steer * car.tuning.turnRate * driftTurnBoost
+        * speedFactor * speedSign * dt;
+    car.heading = normalizeAngle(car.heading);
+}
+
+void CarPhysics::updateVelocityHeading(Car &car, float dt)
+{
+    float grip = car.tuning.gripNormal * car.surfaceGrip;
+    float headingDiff = 0.0f;
+
+    if (car.isDrifting)
+        grip = car.tuning.gripDrift * car.surfaceGrip;
+    headingDiff = normalizeAngle(car.heading - car.velocityHeading);
+    car.velocityHeading += headingDiff * std::min(1.0f, grip * dt);
+    car.velocityHeading = normalizeAngle(car.velocityHeading);
+}
+
+void CarPhysics::integratePosition(Car &car, float dt)
+{
+    Vector3 vel = car.Velocity();
+
+    car.position.x += vel.x * dt;
+    car.position.z += vel.z * dt;
+}
+
+Vector3 Car::Forward() const
+{
     return Vector3{std::sin(heading), 0.0f, std::cos(heading)};
 }
 
-Vector3 Car::Velocity() const {
-    return Vector3{std::sin(velocityHeading) * speed, 0.0f, std::cos(velocityHeading) * speed};
+Vector3 Car::Velocity() const
+{
+    return Vector3{
+        std::sin(velocityHeading) * speed,
+        0.0f,
+        std::cos(velocityHeading) * speed};
 }
 
-void Car::Update(const CarInput& input, float dt) {
-    // Nitro : consomme si actif et disponible, sinon regenere lentement.
-    bool nitroActive = input.nitro && nitroRemaining > 0.0f;
-    if (nitroActive) {
-        nitroRemaining = std::max(0.0f, nitroRemaining - dt);
-    } else {
-        nitroRemaining = std::min(tuning.nitroCapacity, nitroRemaining + tuning.nitroRegenPerSecond * dt);
-    }
+void Car::Update(const CarInput &input, float dt)
+{
+    bool nitroActive = CarPhysics::updateNitro(*this, input, dt);
 
-    float currentMaxSpeed = tuning.maxSpeed + (nitroActive ? tuning.nitroMaxSpeedBonus : 0.0f);
-    float maxReverseSpeed = tuning.maxSpeed * 0.4f;
-
-    // Acceleration moteur / freinage / marche arriere.
-    float engineAccel = 0.0f;
-    if (input.throttle > 0.0f) {
-        engineAccel = input.throttle * tuning.acceleration;
-        if (nitroActive) engineAccel += tuning.nitroBoost;
-        // Surface glissante = moins de motricite (mais jamais moins de ~55%).
-        engineAccel *= 0.55f + 0.45f * surfaceGrip;
-    } else if (input.throttle < 0.0f) {
-        if (speed > 0.5f) {
-            engineAccel = input.throttle * tuning.braking; // freine tant qu'on avance encore
-        } else {
-            engineAccel = input.throttle * tuning.acceleration * 0.6f; // marche arriere, plus lente
-        }
-    }
-
-    speed += engineAccel * dt;
-    speed -= tuning.dragCoeff * surfaceDrag * speed * dt; // trainee proportionnelle a la vitesse (x surface)
-    speed = std::clamp(speed, -maxReverseSpeed, currentMaxSpeed);
-
-    // Direction du chassis (heading) : ne tourne efficacement qu'au-dela d'une vitesse minimale.
-    isDrifting = input.handbrake && std::fabs(speed) > 4.0f;
-    float driftTurnBoost = isDrifting ? 1.5f : 1.0f;
-    float speedFactor = std::min(1.0f, std::fabs(speed) / 3.0f);
-    heading += input.steer * tuning.turnRate * driftTurnBoost * speedFactor * Sign(speed == 0.0f ? 1.0f : speed) * dt;
-    heading = NormalizeAngle(heading);
-
-    // Direction reelle de deplacement : rattrape le heading a une vitesse de
-    // "grip" donnee. Grip bas (handbrake) = le chassis tourne plus vite que
-    // la trajectoire ne suit -> glissade visible, c'est le drift.
-    float grip = (isDrifting ? tuning.gripDrift : tuning.gripNormal) * surfaceGrip;
-    float headingDiff = NormalizeAngle(heading - velocityHeading);
-    velocityHeading += headingDiff * std::min(1.0f, grip * dt);
-    velocityHeading = NormalizeAngle(velocityHeading);
-
-    Vector3 vel = Velocity();
-    position.x += vel.x * dt;
-    position.z += vel.z * dt;
+    CarPhysics::applyEngineAndDrag(*this, input, dt, nitroActive);
+    CarPhysics::updateHeading(*this, input, dt);
+    CarPhysics::updateVelocityHeading(*this, dt);
+    CarPhysics::integratePosition(*this, dt);
 }
 
 } // namespace racer
