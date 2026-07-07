@@ -38,3 +38,6 @@
 ## Build
 
 Cible impactee : `render_demo`.
+
+`render_demo.cpp` compile seul (obj genere). Liaison complete bloquee par erreurs
+preexistantes dans `render_pipeline.cpp` (lot A15 en cours).

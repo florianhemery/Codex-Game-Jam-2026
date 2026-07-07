@@ -1,4 +1,12 @@
-#pragma once
+/*
+** EPITECH PROJECT, 2026
+** racer
+** File description:
+** Race state machine (countdown, laps, standings, collisions)
+*/
+
+#ifndef RACE_STATE_H
+#define RACE_STATE_H
 
 #include <string>
 #include <vector>
@@ -18,10 +26,10 @@ enum class RacePhase {
 struct RacerEntry {
     std::string name;
     Car car;
-    CarInput lastInput{}; // input effectivement applique cette frame (feux stop, VFX)
+    CarInput lastInput{};
     int lap = 0;
     int lastSegment = 0;
-    bool passedMidpoint = false; // garde-fou anti faux-tour (cf. race_state.cpp)
+    bool passedMidpoint = false;
     bool finished = false;
     float finishTime = 0.0f;
     bool isPlayer = false;
@@ -44,13 +52,37 @@ public:
     const std::vector<RacerEntry>& Racers() const { return racers_; }
     const Track& GetTrack() const { return track_; }
 
-    std::vector<int> Standings() const; // indices dans Racers(), 1er en tete
-    int PlayerPosition() const;         // 1-based
+    std::vector<int> Standings() const;
+    int PlayerPosition() const;
     int PlayerIndex() const { return playerIndex_; }
 
 private:
-    float RaceProgress(const RacerEntry& r) const;
-    void ResolveCarContacts(); // collisions voiture-voiture (spheres)
+    static float NormalizeAngle(float angle);
+    static float Sign(float value);
+
+    void InitPlayer(int totalCars);
+    void InitAiRacer(int aiIndex, int totalCars);
+    void UpdateCountdown(float dt);
+    void UpdateRacers(float dt, const CarInput& playerInput);
+    void UpdateSingleRacer(
+        size_t index, float dt, const CarInput& playerInput, int numSegments);
+    void ApplySurfaceGrip(RacerEntry& racer, const Track::Progress& prog);
+    void UpdateMidpointFlag(
+        RacerEntry& racer, const Track::Progress& prog, int numSegments);
+    void UpdateLapCount(
+        RacerEntry& racer, const Track::Progress& prog, int numSegments);
+    float RaceProgress(const RacerEntry& racer) const;
+    void ResolveCarContacts();
+    void ResolveContactPair(size_t i, size_t j);
+    bool TryPrepareContact(
+        size_t i, size_t j, float& nx, float& nz, float& overlap);
+    void ApplyContactSeparation(
+        Car& a, Car& b, float nx, float nz, float overlap);
+    void ApplyContactDamping(Car& a, Car& b, float nx, float nz);
+    void ApplyContactDeflection(
+        Car& a, Car& b, float nx, float nz, float overlap);
+    void NudgeLateral(
+        Car& car, float fwdX, float fwdZ, float push, float sideSign);
 
     Track track_;
     std::vector<RacerEntry> racers_;
@@ -63,3 +95,5 @@ private:
 };
 
 } // namespace racer
+
+#endif /* !RACE_STATE_H */
