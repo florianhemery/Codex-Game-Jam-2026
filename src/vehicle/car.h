@@ -38,6 +38,11 @@ struct Car {
     float nitroRemaining = 3.0f;
     bool isDrifting = false;
 
+    // Etat de la surface sous les roues, pose de l'exterieur chaque frame
+    // (RaceState). 1.0/1.0 = asphalte propre, comportement historique.
+    float surfaceGrip = 1.0f; // multiplie le grip et attenue l'acceleration moteur
+    float surfaceDrag = 1.0f; // multiplie la trainee (l'herbe freine fort)
+
     CarTuning tuning{};
 
     void Update(const CarInput& input, float dt);

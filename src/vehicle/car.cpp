@@ -39,6 +39,8 @@ void Car::Update(const CarInput& input, float dt) {
     if (input.throttle > 0.0f) {
         engineAccel = input.throttle * tuning.acceleration;
         if (nitroActive) engineAccel += tuning.nitroBoost;
+        // Surface glissante = moins de motricite (mais jamais moins de ~55%).
+        engineAccel *= 0.55f + 0.45f * surfaceGrip;
     } else if (input.throttle < 0.0f) {
         if (speed > 0.5f) {
             engineAccel = input.throttle * tuning.braking; // freine tant qu'on avance encore
@@ -48,7 +50,7 @@ void Car::Update(const CarInput& input, float dt) {
     }
 
     speed += engineAccel * dt;
-    speed -= tuning.dragCoeff * speed * dt; // trainee proportionnelle a la vitesse
+    speed -= tuning.dragCoeff * surfaceDrag * speed * dt; // trainee proportionnelle a la vitesse (x surface)
     speed = std::clamp(speed, -maxReverseSpeed, currentMaxSpeed);
 
     // Direction du chassis (heading) : ne tourne efficacement qu'au-dela d'une vitesse minimale.
@@ -61,7 +63,7 @@ void Car::Update(const CarInput& input, float dt) {
     // Direction reelle de deplacement : rattrape le heading a une vitesse de
     // "grip" donnee. Grip bas (handbrake) = le chassis tourne plus vite que
     // la trajectoire ne suit -> glissade visible, c'est le drift.
-    float grip = isDrifting ? tuning.gripDrift : tuning.gripNormal;
+    float grip = (isDrifting ? tuning.gripDrift : tuning.gripNormal) * surfaceGrip;
     float headingDiff = NormalizeAngle(heading - velocityHeading);
     velocityHeading += headingDiff * std::min(1.0f, grip * dt);
     velocityHeading = NormalizeAngle(velocityHeading);

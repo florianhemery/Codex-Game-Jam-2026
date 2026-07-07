@@ -22,6 +22,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(raylib)
 
+# Modules moteur (Phase 0) -- libs statiques independantes, chacune possede
+# son propre CMakeLists. Ne pas ajouter de sources moteur ici.
+add_subdirectory(src/engine/rhi)
+add_subdirectory(src/engine/assets)
+add_subdirectory(src/engine/core)
+add_subdirectory(src/engine/render)
+
 add_executable(racer
     src/main.cpp
     src/vehicle/car.cpp
@@ -31,10 +38,11 @@ add_executable(racer
     src/render/track_renderer.cpp
     src/render/car_renderer.cpp
     src/render/hud.cpp
+    src/render/vfx.cpp
 )
 
 target_include_directories(racer PRIVATE src)
-target_link_libraries(racer PRIVATE raylib)
+target_link_libraries(racer PRIVATE raylib engine_render)
 target_compile_features(racer PRIVATE cxx_std_20)
 
 # Outil headless : simule une course complete (IA vs IA) pour valider la
@@ -49,3 +57,36 @@ add_executable(race_sim_debug
 target_include_directories(race_sim_debug PRIVATE src)
 target_link_libraries(race_sim_debug PRIVATE raylib)
 target_compile_features(race_sim_debug PRIVATE cxx_std_20)
+
+# Demos autonomes par sous-systeme : fenetre courte + captures d'ecran
+# automatiques, utilisees par les agents pour valider visuellement leur
+# travail sans lancer le jeu complet.
+function(racer_add_demo name)
+    add_executable(${name} ${ARGN})
+    target_include_directories(${name} PRIVATE src)
+    target_link_libraries(${name} PRIVATE raylib)
+    target_compile_features(${name} PRIVATE cxx_std_20)
+endfunction()
+
+racer_add_demo(car_demo
+    src/render/car_demo.cpp
+    src/render/car_renderer.cpp
+    src/vehicle/car.cpp
+)
+racer_add_demo(track_demo
+    src/render/track_demo.cpp
+    src/render/track_renderer.cpp
+    src/track/track.cpp
+)
+racer_add_demo(vfx_demo
+    src/render/vfx_demo.cpp
+    src/render/vfx.cpp
+)
+racer_add_demo(hud_demo
+    src/render/hud_demo.cpp
+    src/render/hud.cpp
+    src/race/race_state.cpp
+    src/ai/ai_driver.cpp
+    src/vehicle/car.cpp
+    src/track/track.cpp
+)

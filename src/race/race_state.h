@@ -18,6 +18,7 @@ enum class RacePhase {
 struct RacerEntry {
     std::string name;
     Car car;
+    CarInput lastInput{}; // input effectivement applique cette frame (feux stop, VFX)
     int lap = 0;
     int lastSegment = 0;
     bool passedMidpoint = false; // garde-fou anti faux-tour (cf. race_state.cpp)
@@ -49,6 +50,7 @@ public:
 
 private:
     float RaceProgress(const RacerEntry& r) const;
+    void ResolveCarContacts(); // collisions voiture-voiture (spheres)
 
     Track track_;
     std::vector<RacerEntry> racers_;

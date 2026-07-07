@@ -13,6 +13,7 @@ float Length(Vector2 a, Vector2 b) {
 Track Track::Make(const TrackDef& def) {
     Track t;
     t.width_ = def.width;
+    t.style_ = def.surfaceStyle;
 
     constexpr int kCurveSegments = 20;
     constexpr int kStraightSegments = 24; // subdivise pour que les chicanes soient lisses
@@ -69,6 +70,12 @@ const std::vector<TrackDef>& Track::Presets() {
             "Circuit Technique",
             "Court, tres serre, chicanes prononcees -- ideal pour driver",
             55.0f, 11.0f, 10.0f, 8.0f, 9.0f, 3.0f,
+        },
+        {
+            "Route Abimee",
+            "Chaussee delavee, nids-de-poule et decor aride -- grip reduit",
+            70.0f, 14.0f, 10.0f, 5.0f, 7.0f, 2.0f,
+            SurfaceStyle::Abimee,
         },
     };
     return presets;
