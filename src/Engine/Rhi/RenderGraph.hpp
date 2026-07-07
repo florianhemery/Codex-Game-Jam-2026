@@ -41,18 +41,20 @@ private:
 
     struct PoolBucket {
         std::vector<RenderTargetHandle> targets;
-        std::size_t usedThisFrame_ = 0;
+        std::size_t borrowedThisFrame = 0;
     };
 
     RenderTargetHandle acquireTransientTarget(const RenderTargetDesc &desc);
+    RenderTargetHandle resolvePassOutput(const Pass &pass);
     bool tryReusePooledTarget(
         PoolBucket &bucket, RenderTargetHandle &out);
+    void runPassCallback(const Pass &pass, RenderTargetHandle output);
     void executePass(const Pass &pass);
 
     Device &device_;
     std::vector<Pass> passes_;
     std::unordered_map<RenderTargetDesc, PoolBucket, RenderTargetDescHash>
-        pool_;
+        transientTargetPool_;
     std::unordered_map<std::string, RenderTargetHandle> producedTargets_;
 };
 

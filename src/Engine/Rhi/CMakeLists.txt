@@ -8,6 +8,7 @@
 # Module RHI : abstraction GPU (Device) + render graph. Voir README.md.
 add_library(engine_rhi STATIC
     Device.cpp
+    DeviceFramebuffer.cpp
     RenderGraph.cpp
 )
 target_include_directories(engine_rhi PUBLIC ${CMAKE_SOURCE_DIR}/src)
