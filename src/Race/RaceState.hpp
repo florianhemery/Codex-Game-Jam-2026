@@ -57,9 +57,6 @@ public:
     int playerIndex() const { return playerIndex_; }
 
 private:
-    static float normalizeAngle(float angle);
-    static float sign(float value);
-
     void initPlayer(int totalCars);
     void initAiRacer(int aiIndex, int totalCars);
     void updateCountdown(float dt);
@@ -71,18 +68,8 @@ private:
         RacerEntry& racer, const Track::Progress& prog, int numSegments);
     void updateLapCount(
         RacerEntry& racer, const Track::Progress& prog, int numSegments);
+    void finalizePlayerIfDone(const RacerEntry& racer);
     float raceProgress(const RacerEntry& racer) const;
-    void resolveCarContacts();
-    void resolveContactPair(size_t i, size_t j);
-    bool tryPrepareContact(
-        size_t i, size_t j, float& nx, float& nz, float& overlap);
-    void applyContactSeparation(
-        Car& a, Car& b, float nx, float nz, float overlap);
-    void applyContactDamping(Car& a, Car& b, float nx, float nz);
-    void applyContactDeflection(
-        Car& a, Car& b, float nx, float nz, float overlap);
-    void nudgeLateral(
-        Car& car, float fwdX, float fwdZ, float push, float sideSign);
 
     Track track_;
     std::vector<RacerEntry> racers_;

@@ -7,34 +7,13 @@
 
 #include "Race/RaceState.hpp"
 
+#include "Race/RaceContactResolver.hpp"
+
 #include <algorithm>
 #include <cmath>
-#include <cstdlib>
 #include <numeric>
 
 namespace racer {
-
-float RaceState::normalizeAngle(float angle)
-{
-    while (angle > PI) {
-        angle -= 2.0f * PI;
-    }
-    while (angle < -PI) {
-        angle += 2.0f * PI;
-    }
-    return angle;
-}
-
-float RaceState::sign(float value)
-{
-    if (value > 0.0f) {
-        return 1.0f;
-    }
-    if (value < 0.0f) {
-        return -1.0f;
-    }
-    return 0.0f;
-}
 
 RaceState::RaceState(Track track, int lapsToWin, int aiCount)
     : track_(std::move(track))
@@ -111,7 +90,14 @@ void RaceState::updateRacers(float dt, const CarInput& playerInput)
     for (size_t i = 0; i < racers_.size(); ++i) {
         updateSingleRacer(i, dt, playerInput, numSegments);
     }
-    resolveCarContacts();
+    RaceContactResolver::resolveAll(racers_);
+}
+
+void RaceState::finalizePlayerIfDone(const RacerEntry& racer)
+{
+    if (racer.isPlayer && racer.finished) {
+        phase_ = RacePhase::FINISHED;
+    }
 }
 
 void RaceState::updateSingleRacer(
@@ -131,9 +117,7 @@ void RaceState::updateSingleRacer(
     updateMidpointFlag(racer, prog, numSegments);
     updateLapCount(racer, prog, numSegments);
     racer.lastSegment = prog.segmentIndex;
-    if (racer.isPlayer && racer.finished) {
-        phase_ = RacePhase::FINISHED;
-    }
+    finalizePlayerIfDone(racer);
 }
 
 void RaceState::applySurfaceGrip(
@@ -181,135 +165,6 @@ void RaceState::updateLapCount(
     if (racer.lap >= lapsToWin_) {
         racer.finished = true;
         racer.finishTime = elapsedTime_;
-    }
-}
-
-// Collisions voiture-voiture : spheres de rayon 1.5 sur les positions.
-// Resolution purement positionnelle + amortissement leger, pensee pour rester
-// stable a 60 Hz meme en peloton serre (corrections bornees, relaxation 50 %,
-// jamais de NaN si deux positions sont confondues).
-void RaceState::resolveCarContacts()
-{
-    for (size_t i = 0; i < racers_.size(); ++i) {
-        if (racers_[i].finished) {
-            continue;
-        }
-        for (size_t j = i + 1; j < racers_.size(); ++j) {
-            if (racers_[j].finished) {
-                continue;
-            }
-            resolveContactPair(i, j);
-        }
-    }
-}
-
-bool RaceState::tryPrepareContact(
-    size_t i, size_t j, float& nx, float& nz, float& overlap)
-{
-    constexpr float kContactDist = 3.0f;
-    const Car& a = racers_[i].car;
-    const Car& b = racers_[j].car;
-    float dx = b.position().x - a.position().x;
-    float dz = b.position().z - a.position().z;
-    float distSq = dx * dx + dz * dz;
-
-    if (distSq >= kContactDist * kContactDist) {
-        return false;
-    }
-    float dist = std::sqrt(distSq);
-    if (dist > 1e-4f) {
-        nx = dx / dist;
-        nz = dz / dist;
-    } else {
-        Vector3 fwd = a.forward();
-        nx = fwd.x;
-        nz = fwd.z;
-        dist = 0.0f;
-    }
-    overlap = kContactDist - dist;
-    return true;
-}
-
-void RaceState::resolveContactPair(size_t i, size_t j)
-{
-    float nx = 0.0f;
-    float nz = 0.0f;
-    float overlap = 0.0f;
-
-    if (!tryPrepareContact(i, j, nx, nz, overlap)) {
-        return;
-    }
-    Car& a = racers_[i].car;
-    Car& b = racers_[j].car;
-    applyContactSeparation(a, b, nx, nz, overlap);
-    applyContactDamping(a, b, nx, nz);
-    applyContactDeflection(a, b, nx, nz, overlap);
-}
-
-void RaceState::applyContactSeparation(
-    Car& a, Car& b, float nx, float nz, float overlap)
-{
-    constexpr float kMaxPush = 0.25f;
-    float push = std::min(overlap * 0.25f, kMaxPush);
-
-    a.position().x -= nx * push;
-    a.position().z -= nz * push;
-    b.position().x += nx * push;
-    b.position().z += nz * push;
-}
-
-void RaceState::applyContactDamping(Car& a, Car& b, float nx, float nz)
-{
-    constexpr float kSpeedDamping = 0.96f;
-    Vector3 va = a.velocity();
-    Vector3 vb = b.velocity();
-    float closing = (va.x - vb.x) * nx + (va.z - vb.z) * nz;
-    float t = std::clamp(closing / 6.0f, 0.0f, 1.0f);
-    float damping = 1.0f - (1.0f - kSpeedDamping) * t;
-    bool aRams = va.x * nx + va.z * nz > 0.0f;
-    bool bRams = vb.x * nx + vb.z * nz < 0.0f;
-
-    if (aRams) {
-        a.speed() *= damping;
-    }
-    if (bRams) {
-        b.speed() *= damping;
-    }
-}
-
-void RaceState::nudgeLateral(
-    Car& car, float fwdX, float fwdZ, float push, float sideSign)
-{
-    car.position().x += sideSign * fwdZ * push * 0.6f;
-    car.position().z += sideSign * (-fwdX) * push * 0.6f;
-}
-
-void RaceState::applyContactDeflection(
-    Car& a, Car& b, float nx, float nz, float overlap)
-{
-    constexpr float kMaxPush = 0.25f;
-    constexpr float kMaxDeflect = 0.06f;
-    float push = std::min(overlap * 0.25f, kMaxPush);
-    float deflect = std::min(kMaxDeflect, overlap * 0.04f);
-    float ax = std::sin(a.velocityHeading());
-    float az = std::cos(a.velocityHeading());
-    float bx = std::sin(b.velocityHeading());
-    float bz = std::cos(b.velocityHeading());
-    float sideA = sign(ax * nz - az * nx);
-    float sideB = sign(bx * (-nz) - bz * (-nx));
-
-    a.velocityHeading() = normalizeAngle(
-        a.velocityHeading() + sideA * deflect);
-    b.velocityHeading() = normalizeAngle(
-        b.velocityHeading() + sideB * deflect);
-
-    Vector3 va = a.velocity();
-    Vector3 vb = b.velocity();
-    if (va.x * nx + va.z * nz > 0.0f) {
-        nudgeLateral(a, ax, az, push, sideA);
-    }
-    if (vb.x * nx + vb.z * nz < 0.0f) {
-        nudgeLateral(b, bx, bz, push, sideB);
     }
 }
 

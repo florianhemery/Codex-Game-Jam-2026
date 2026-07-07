@@ -38,10 +38,16 @@ add_subdirectory(src/Engine/Render)
 
 add_executable(racer
     src/main.cpp
+    src/App/MainApp.cpp
+    src/App/GameLoop.cpp
+    src/App/CameraController.cpp
+    src/App/LapTimer.cpp
+    src/App/RacerColors.cpp
     src/Vehicle/Car.cpp
     src/Track/Track.cpp
     src/Ai/AiDriver.cpp
     src/Race/RaceState.cpp
+    src/Race/RaceContactResolver.cpp
     src/Render/TrackRenderer.cpp
     src/Render/CarRenderer.cpp
     src/Render/Hud.cpp
@@ -60,6 +66,7 @@ add_executable(race_sim_debug
     src/Track/Track.cpp
     src/Ai/AiDriver.cpp
     src/Race/RaceState.cpp
+    src/Race/RaceContactResolver.cpp
 )
 target_include_directories(race_sim_debug PRIVATE src)
 target_link_libraries(race_sim_debug PRIVATE raylib)
@@ -93,6 +100,7 @@ racer_add_demo(hud_demo
     src/Render/HudDemo.cpp
     src/Render/Hud.cpp
     src/Race/RaceState.cpp
+    src/Race/RaceContactResolver.cpp
     src/Ai/AiDriver.cpp
     src/Vehicle/Car.cpp
     src/Track/Track.cpp
