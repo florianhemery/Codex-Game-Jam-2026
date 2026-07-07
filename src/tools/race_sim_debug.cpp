@@ -8,7 +8,7 @@
 #include "track/track.h"
 
 int main() {
-    racer::RaceState race(racer::Track::MakeStadiumTrack(), /*lapsToWin=*/2, /*aiCount=*/3);
+    racer::RaceState race(racer::Track::Make(racer::Track::Presets()[0]), /*lapsToWin=*/2, /*aiCount=*/3);
     racer::AIDriver playerAsAI(1.0f);
 
     constexpr float dt = 1.0f / 60.0f;
