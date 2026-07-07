@@ -18,9 +18,9 @@
 namespace racer {
 
 enum class RacePhase {
-    Countdown,
-    Racing,
-    Finished,
+    COUNTDOWN,
+    RACING,
+    FINISHED,
 };
 
 struct RacerEntry {
@@ -42,46 +42,46 @@ class RaceState {
 public:
     RaceState(Track track, int lapsToWin, int aiCount);
 
-    void Update(float dt, const CarInput& playerInput);
+    void update(float dt, const CarInput& playerInput);
 
-    RacePhase Phase() const { return phase_; }
-    float CountdownRemaining() const { return countdownRemaining_; }
-    float ElapsedTime() const { return elapsedTime_; }
-    int LapsToWin() const { return lapsToWin_; }
+    RacePhase phase() const { return phase_; }
+    float countdownRemaining() const { return countdownRemaining_; }
+    float elapsedTime() const { return elapsedTime_; }
+    int lapsToWin() const { return lapsToWin_; }
 
-    const std::vector<RacerEntry>& Racers() const { return racers_; }
-    const Track& GetTrack() const { return track_; }
+    const std::vector<RacerEntry>& racers() const { return racers_; }
+    const Track& getTrack() const { return track_; }
 
-    std::vector<int> Standings() const;
-    int PlayerPosition() const;
-    int PlayerIndex() const { return playerIndex_; }
+    std::vector<int> standings() const;
+    int playerPosition() const;
+    int playerIndex() const { return playerIndex_; }
 
 private:
-    static float NormalizeAngle(float angle);
-    static float Sign(float value);
+    static float normalizeAngle(float angle);
+    static float sign(float value);
 
-    void InitPlayer(int totalCars);
-    void InitAiRacer(int aiIndex, int totalCars);
-    void UpdateCountdown(float dt);
-    void UpdateRacers(float dt, const CarInput& playerInput);
-    void UpdateSingleRacer(
+    void initPlayer(int totalCars);
+    void initAiRacer(int aiIndex, int totalCars);
+    void updateCountdown(float dt);
+    void updateRacers(float dt, const CarInput& playerInput);
+    void updateSingleRacer(
         size_t index, float dt, const CarInput& playerInput, int numSegments);
-    void ApplySurfaceGrip(RacerEntry& racer, const Track::Progress& prog);
-    void UpdateMidpointFlag(
+    void applySurfaceGrip(RacerEntry& racer, const Track::Progress& prog);
+    void updateMidpointFlag(
         RacerEntry& racer, const Track::Progress& prog, int numSegments);
-    void UpdateLapCount(
+    void updateLapCount(
         RacerEntry& racer, const Track::Progress& prog, int numSegments);
-    float RaceProgress(const RacerEntry& racer) const;
-    void ResolveCarContacts();
-    void ResolveContactPair(size_t i, size_t j);
-    bool TryPrepareContact(
+    float raceProgress(const RacerEntry& racer) const;
+    void resolveCarContacts();
+    void resolveContactPair(size_t i, size_t j);
+    bool tryPrepareContact(
         size_t i, size_t j, float& nx, float& nz, float& overlap);
-    void ApplyContactSeparation(
+    void applyContactSeparation(
         Car& a, Car& b, float nx, float nz, float overlap);
-    void ApplyContactDamping(Car& a, Car& b, float nx, float nz);
-    void ApplyContactDeflection(
+    void applyContactDamping(Car& a, Car& b, float nx, float nz);
+    void applyContactDeflection(
         Car& a, Car& b, float nx, float nz, float overlap);
-    void NudgeLateral(
+    void nudgeLateral(
         Car& car, float fwdX, float fwdZ, float push, float sideSign);
 
     Track track_;
@@ -89,7 +89,7 @@ private:
     std::vector<AIDriver> aiDrivers_;
     int playerIndex_ = 0;
     int lapsToWin_;
-    RacePhase phase_ = RacePhase::Countdown;
+    RacePhase phase_ = RacePhase::COUNTDOWN;
     float countdownRemaining_ = 3.0f;
     float elapsedTime_ = 0.0f;
 };

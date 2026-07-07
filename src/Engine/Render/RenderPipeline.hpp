@@ -20,7 +20,7 @@
 
 namespace racer::engine {
 
-enum class Ambiance { Midi, AubeDoree, Crepuscule, Orage };
+enum class Ambiance { MIDI, AUBE_DOREE, CREPUSCULE, ORAGE };
 
 struct AmbianceParams {
     Vector3 sunDir;
@@ -50,23 +50,23 @@ public:
     RenderPipeline(const RenderPipeline &) = delete;
     RenderPipeline &operator=(const RenderPipeline &) = delete;
 
-    static const AmbianceParams &ParamsFor(Ambiance a);
+    static const AmbianceParams &paramsFor(Ambiance a);
 
-    void SetAmbiance(Ambiance a);
-    const AmbianceParams &Params() const { return params_; }
+    void setAmbiance(Ambiance a);
+    const AmbianceParams &params() const { return params_; }
 
-    Shader LitShader() const;
+    Shader litShader() const;
 
-    void ClearLights();
-    void AddLight(Vector3 position, Vector3 colorIntensity);
-    void PollShaderReload();
+    void clearLights();
+    void addLight(Vector3 position, Vector3 colorIntensity);
+    void pollShaderReload();
 
     struct PostParams {
         float speedRatio = 0.0f;
         bool nitro = false;
     };
 
-    void Frame(const Camera3D &camera,
+    void frame(const Camera3D &camera,
                const std::function<void()> &drawShadowCasters,
                const std::function<void()> &drawLitScene,
                const std::function<void()> &drawUnlitInScene,
@@ -157,7 +157,7 @@ private:
     int width_ = 0;
     int height_ = 0;
 
-    Ambiance ambiance_ = Ambiance::Midi;
+    Ambiance ambiance_ = Ambiance::MIDI;
     AmbianceParams params_{};
 
     Vector3 lightsPos_[kMaxLights]{};

@@ -193,7 +193,7 @@ Device::~Device()
     shaders_.clear();
 }
 
-RenderTargetHandle Device::CreateRenderTarget(const RenderTargetDesc &desc)
+RenderTargetHandle Device::createRenderTarget(const RenderTargetDesc &desc)
 {
     if (desc.width <= 0 || desc.height <= 0) {
         TraceLog(LOG_WARNING,
@@ -211,7 +211,7 @@ RenderTargetHandle Device::CreateRenderTarget(const RenderTargetDesc &desc)
     return RenderTargetHandle{id};
 }
 
-void Device::DestroyRenderTarget(RenderTargetHandle handle)
+void Device::destroyRenderTarget(RenderTargetHandle handle)
 {
     const auto it = renderTargets_.find(handle.id);
     if (it == renderTargets_.end())
@@ -220,7 +220,7 @@ void Device::DestroyRenderTarget(RenderTargetHandle handle)
     renderTargets_.erase(it);
 }
 
-const RenderTexture2D *Device::GetRenderTexture(
+const RenderTexture2D *Device::getRenderTexture(
     RenderTargetHandle handle) const
 {
     const auto it = renderTargets_.find(handle.id);
@@ -229,7 +229,7 @@ const RenderTexture2D *Device::GetRenderTexture(
     return &it->second.target;
 }
 
-const RenderTargetDesc *Device::GetRenderTargetDesc(
+const RenderTargetDesc *Device::getRenderTargetDesc(
     RenderTargetHandle handle) const
 {
     const auto it = renderTargets_.find(handle.id);
@@ -238,7 +238,7 @@ const RenderTargetDesc *Device::GetRenderTargetDesc(
     return &it->second.desc;
 }
 
-void Device::BeginRenderTarget(RenderTargetHandle handle)
+void Device::beginRenderTarget(RenderTargetHandle handle)
 {
     const auto it = renderTargets_.find(handle.id);
     if (it == renderTargets_.end()) {
@@ -249,12 +249,12 @@ void Device::BeginRenderTarget(RenderTargetHandle handle)
     BeginTextureMode(it->second.target);
 }
 
-void Device::EndRenderTarget()
+void Device::endRenderTarget()
 {
     EndTextureMode();
 }
 
-ShaderRhiHandle Device::CreateShaderFromMemory(
+ShaderRhiHandle Device::createShaderFromMemory(
     const char *vsSource, const char *fsSource)
 {
     const Shader shader = LoadShaderFromMemory(vsSource, fsSource);
@@ -267,7 +267,7 @@ ShaderRhiHandle Device::CreateShaderFromMemory(
     return ShaderRhiHandle{id};
 }
 
-void Device::DestroyShader(ShaderRhiHandle handle)
+void Device::destroyShader(ShaderRhiHandle handle)
 {
     const auto it = shaders_.find(handle.id);
     if (it == shaders_.end())
@@ -276,7 +276,7 @@ void Device::DestroyShader(ShaderRhiHandle handle)
     shaders_.erase(it);
 }
 
-const Shader *Device::GetShader(ShaderRhiHandle handle) const
+const Shader *Device::getShader(ShaderRhiHandle handle) const
 {
     const auto it = shaders_.find(handle.id);
     if (it == shaders_.end())

@@ -84,13 +84,13 @@ racer::CarVisual BuildGreenVisual(const racer::Car& car, float t)
     return vis;
 }
 
-void DrawCars(const racer::Car& red, const racer::CarVisual& redVis,
+void drawCars(const racer::Car& red, const racer::CarVisual& redVis,
               const racer::Car& blue, const racer::CarVisual& blueVis,
               const racer::Car& green, const racer::CarVisual& greenVis)
 {
-    racer::DrawCarEx(red, redVis, Color{214, 48, 44, 255});
-    racer::DrawCarEx(blue, blueVis, Color{38, 96, 220, 255});
-    racer::DrawCarEx(green, greenVis, Color{40, 168, 76, 255});
+    racer::drawCarEx(red, redVis, Color{214, 48, 44, 255});
+    racer::drawCarEx(blue, blueVis, Color{38, 96, 220, 255});
+    racer::drawCarEx(green, greenVis, Color{40, 168, 76, 255});
 }
 
 void RenderScene(RenderTexture2D& target, const Camera3D& camera,
@@ -106,7 +106,7 @@ void RenderScene(RenderTexture2D& target, const Camera3D& camera,
     DrawPlane(Vector3{0.0f, 0.0f, 0.0f}, Vector2{40.0f, 40.0f},
               Color{120, 122, 126, 255});
     DrawGrid(20, 1.0f);
-    DrawCars(red, redVis, blue, blueVis, green, greenVis);
+    drawCars(red, redVis, blue, blueVis, green, greenVis);
     EndMode3D();
 
     DrawText("rouge: frein+braquage | bleue: nitro+phares | verte: drift",

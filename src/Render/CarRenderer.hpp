@@ -24,8 +24,8 @@ struct CarVisual {
     bool drifting = false;
 };
 
-void DrawCar(const Car &car, Color bodyColor);
-void DrawCarEx(const Car &car, const CarVisual &vis, Color bodyColor);
+void drawCar(const Car &car, Color bodyColor);
+void drawCarEx(const Car &car, const CarVisual &vis, Color bodyColor);
 
 struct CarLightPoints {
     Vector3 headL;
@@ -35,7 +35,7 @@ struct CarLightPoints {
     Vector3 exhaust;
 };
 
-CarLightPoints GetCarLightPoints(const Car &car);
+CarLightPoints getCarLightPoints(const Car &car);
 
 } // namespace racer
 

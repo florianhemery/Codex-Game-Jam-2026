@@ -21,17 +21,17 @@ public:
     VfxSystem(const VfxSystem &) = delete;
     VfxSystem &operator=(const VfxSystem &) = delete;
 
-    void Update(float dt, Vector3 focus);
-    void Draw(const Camera3D &camera) const;
+    void update(float dt, Vector3 focus);
+    void draw(const Camera3D &camera) const;
 
-    void EmitDriftSmoke(Vector3 pos, Vector3 carVel);
-    void EmitOffroadDust(Vector3 pos, Vector3 carVel);
-    void EmitNitroFlame(Vector3 pos, Vector3 backDir, Vector3 carVel);
-    void EmitSparks(Vector3 pos, Vector3 dir);
-    void EmitConfetti(Vector3 pos);
-    void SetRain(bool enabled);
-    int ActiveCount() const;
-    void Clear();
+    void emitDriftSmoke(Vector3 pos, Vector3 carVel);
+    void emitOffroadDust(Vector3 pos, Vector3 carVel);
+    void emitNitroFlame(Vector3 pos, Vector3 backDir, Vector3 carVel);
+    void emitSparks(Vector3 pos, Vector3 dir);
+    void emitConfetti(Vector3 pos);
+    void setRain(bool enabled);
+    int activeCount() const;
+    void clear();
 
 private:
     struct Impl;

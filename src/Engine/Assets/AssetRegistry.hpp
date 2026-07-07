@@ -33,48 +33,48 @@ struct PbrMaterialInfo {
 
 class ModelAsset {
 public:
-    Model &Get()
+    Model &get()
     {
         return model_;
     }
 
-    const Model &Get() const
+    const Model &get() const
     {
         return model_;
     }
 
-    int MeshCount() const
+    int meshCount() const
     {
         return model_.meshCount;
     }
 
-    int MaterialCount() const
+    int materialCount() const
     {
         return model_.materialCount;
     }
 
-    const std::vector<PbrMaterialInfo> &PbrInfos() const
+    const std::vector<PbrMaterialInfo> &pbrInfos() const
     {
         return pbrInfos_;
     }
 
-    bool IsPlaceholder() const
+    bool isPlaceholder() const
     {
         return placeholder_;
     }
 
-    const std::string &Path() const
+    const std::string &path() const
     {
         return path_;
     }
 
-    void Acquire()
+    void acquire()
     {
         ++refCount_;
     }
 
-    void Release();
-    int RefCount() const
+    void release();
+    int refCount() const
     {
         return refCount_;
     }
@@ -93,33 +93,33 @@ private:
 
 class TextureAsset {
 public:
-    Texture2D &Get()
+    Texture2D &get()
     {
         return texture_;
     }
 
-    const Texture2D &Get() const
+    const Texture2D &get() const
     {
         return texture_;
     }
 
-    bool IsPlaceholder() const
+    bool isPlaceholder() const
     {
         return placeholder_;
     }
 
-    const std::string &Path() const
+    const std::string &path() const
     {
         return path_;
     }
 
-    void Acquire()
+    void acquire()
     {
         ++refCount_;
     }
 
-    void Release();
-    int RefCount() const
+    void release();
+    int refCount() const
     {
         return refCount_;
     }
@@ -143,17 +143,17 @@ public:
     AssetRegistry(const AssetRegistry &) = delete;
     AssetRegistry &operator=(const AssetRegistry &) = delete;
 
-    ModelAsset &LoadModelAsset(const std::string &path);
-    TextureAsset &LoadTextureAsset(const std::string &path);
-    void UnloadUnused();
-    void UnloadAll();
+    ModelAsset &loadModelAsset(const std::string &path);
+    TextureAsset &loadTextureAsset(const std::string &path);
+    void unloadUnused();
+    void unloadAll();
 
-    int ModelCount() const
+    int modelCount() const
     {
         return static_cast<int>(models_.size());
     }
 
-    int TextureCount() const
+    int textureCount() const
     {
         return static_cast<int>(textures_.size());
     }

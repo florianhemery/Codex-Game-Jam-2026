@@ -13,7 +13,7 @@
 
 namespace racer::engine {
 
-RenderTargetHandle PassContext::ReadTarget(const std::string &passName) const
+RenderTargetHandle PassContext::readTarget(const std::string &passName) const
 {
     const auto it = producedTargets_.find(passName);
 
@@ -26,11 +26,11 @@ RenderGraph::~RenderGraph()
 {
     for (const auto &[desc, bucket] : pool_) {
         for (const RenderTargetHandle handle : bucket.targets)
-            device_.DestroyRenderTarget(handle);
+            device_.destroyRenderTarget(handle);
     }
 }
 
-void RenderGraph::AddPass(std::string name, PassDesc desc)
+void RenderGraph::addPass(std::string name, PassDesc desc)
 {
     passes_.push_back(Pass{std::move(name), std::move(desc)});
 }
@@ -38,22 +38,22 @@ void RenderGraph::AddPass(std::string name, PassDesc desc)
 bool RenderGraph::tryReusePooledTarget(
     PoolBucket &bucket, RenderTargetHandle &out)
 {
-    while (bucket.usedThisFrame < bucket.targets.size()) {
-        const RenderTargetHandle handle = bucket.targets[bucket.usedThisFrame];
+    while (bucket.usedThisFrame_ < bucket.targets.size()) {
+        const RenderTargetHandle handle = bucket.targets[bucket.usedThisFrame_];
 
-        if (device_.GetRenderTexture(handle) != nullptr) {
-            ++bucket.usedThisFrame;
+        if (device_.getRenderTexture(handle) != nullptr) {
+            ++bucket.usedThisFrame_;
             out = handle;
             return true;
         }
         bucket.targets.erase(
             bucket.targets.begin() +
-            static_cast<std::ptrdiff_t>(bucket.usedThisFrame));
+            static_cast<std::ptrdiff_t>(bucket.usedThisFrame_));
     }
     return false;
 }
 
-RenderTargetHandle RenderGraph::AcquireTransientTarget(
+RenderTargetHandle RenderGraph::acquireTransientTarget(
     const RenderTargetDesc &desc)
 {
     PoolBucket &bucket = pool_[desc];
@@ -61,10 +61,10 @@ RenderTargetHandle RenderGraph::AcquireTransientTarget(
 
     if (tryReusePooledTarget(bucket, handle))
         return handle;
-    handle = device_.CreateRenderTarget(desc);
-    if (handle.IsValid()) {
+    handle = device_.createRenderTarget(desc);
+    if (handle.isValid()) {
         bucket.targets.push_back(handle);
-        ++bucket.usedThisFrame;
+        ++bucket.usedThisFrame_;
     }
     return handle;
 }
@@ -74,8 +74,8 @@ void RenderGraph::executePass(const Pass &pass)
     RenderTargetHandle output{};
 
     if (pass.desc.outputDesc.has_value()) {
-        output = AcquireTransientTarget(*pass.desc.outputDesc);
-        if (!output.IsValid()) {
+        output = acquireTransientTarget(*pass.desc.outputDesc);
+        if (!output.isValid()) {
             TraceLog(
                 LOG_WARNING,
                 "RHI: passe '%s' ignoree (cible indisponible)",
@@ -87,24 +87,24 @@ void RenderGraph::executePass(const Pass &pass)
 
     PassContext context(device_, output, producedTargets_);
 
-    if (output.IsValid())
-        device_.BeginRenderTarget(output);
+    if (output.isValid())
+        device_.beginRenderTarget(output);
     if (pass.desc.execute)
         pass.desc.execute(context);
-    if (output.IsValid())
-        device_.EndRenderTarget();
+    if (output.isValid())
+        device_.endRenderTarget();
 }
 
-void RenderGraph::Execute()
+void RenderGraph::execute()
 {
     producedTargets_.clear();
     for (auto &[desc, bucket] : pool_)
-        bucket.usedThisFrame = 0;
+        bucket.usedThisFrame_ = 0;
     for (const Pass &pass : passes_)
         executePass(pass);
 }
 
-void RenderGraph::Reset()
+void RenderGraph::reset()
 {
     passes_.clear();
     producedTargets_.clear();

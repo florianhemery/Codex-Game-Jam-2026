@@ -9,12 +9,12 @@
 
 namespace racer::engine {
 
-entt::entity World::CreateEntity()
+entt::entity World::createEntity()
 {
     return registry_.create();
 }
 
-void World::DestroyEntity(entt::entity entity)
+void World::destroyEntity(entt::entity entity)
 {
     registry_.destroy(entity);
 }

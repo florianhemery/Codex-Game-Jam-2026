@@ -27,7 +27,7 @@ class RhiHandle {
 public:
     std::uint32_t id = 0;
 
-    [[nodiscard]] constexpr bool IsValid() const noexcept
+    [[nodiscard]] constexpr bool isValid() const noexcept
     {
         return id != 0;
     }

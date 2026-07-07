@@ -17,24 +17,24 @@ namespace racer::engine {
 class ParallelBatch {
 public:
     explicit ParallelBatch(std::size_t chunkCount)
-        : remaining(chunkCount)
+        : remaining_(chunkCount)
     {
     }
 
     void recordChunkDone(std::exception_ptr error)
     {
-        std::lock_guard<std::mutex> lock(doneMutex);
+        std::lock_guard<std::mutex> lock(doneMutex_);
 
-        if (error && !firstError)
-            firstError = error;
-        if (--remaining == 0)
-            doneCv.notify_all();
+        if (error && !firstError_)
+            firstError_ = error;
+        if (--remaining_ == 0)
+            doneCv_.notify_all();
     }
 
-    std::size_t remaining;
-    std::exception_ptr firstError;
-    std::mutex doneMutex;
-    std::condition_variable doneCv;
+    std::size_t remaining_;
+    std::exception_ptr firstError_;
+    std::mutex doneMutex_;
+    std::condition_variable doneCv_;
 };
 
 struct ParallelForParams {
@@ -63,7 +63,7 @@ private:
         ParallelBatch &batch);
 };
 
-unsigned int JobSystem::DefaultWorkerCount()
+unsigned int JobSystem::defaultWorkerCount()
 {
     const unsigned int hardware = std::thread::hardware_concurrency();
 
@@ -76,7 +76,7 @@ JobSystem::JobSystem(unsigned int workerCount)
         workerCount = 1u;
     workers_.reserve(workerCount);
     for (unsigned int i = 0; i < workerCount; ++i)
-        workers_.emplace_back([this] { WorkerLoop(); });
+        workers_.emplace_back([this] { workerLoop(); });
 }
 
 JobSystem::~JobSystem()
@@ -90,7 +90,7 @@ JobSystem::~JobSystem()
         worker.join();
 }
 
-void JobSystem::Enqueue(Task task)
+void JobSystem::enqueue(Task task)
 {
     {
         std::lock_guard<std::mutex> lock(queueMutex_);
@@ -99,7 +99,7 @@ void JobSystem::Enqueue(Task task)
     queueCv_.notify_one();
 }
 
-bool JobSystem::TryPop(Task &task)
+bool JobSystem::tryPop(Task &task)
 {
     std::lock_guard<std::mutex> lock(queueMutex_);
 
@@ -110,7 +110,7 @@ bool JobSystem::TryPop(Task &task)
     return true;
 }
 
-void JobSystem::WorkerLoop()
+void JobSystem::workerLoop()
 {
     for (;;) {
         Task task;
@@ -128,13 +128,13 @@ void JobSystem::WorkerLoop()
     }
 }
 
-std::future<void> JobSystem::Submit(std::function<void()> job)
+std::future<void> JobSystem::submit(std::function<void()> job)
 {
     auto task = std::make_shared<std::packaged_task<void()>>(
         std::move(job));
     std::future<void> future = task->get_future();
 
-    Enqueue([task] { (*task)(); });
+    enqueue([task] { (*task)(); });
     return future;
 }
 
@@ -152,7 +152,7 @@ void ParallelForRunner::enqueueChunks(
         const std::size_t chunkEnd = std::min(
             params.end, chunkBegin + params.grainSize);
 
-        jobs.Enqueue([&, chunkBegin, chunkEnd] {
+        jobs.enqueue([&, chunkBegin, chunkEnd] {
             std::exception_ptr error;
             try {
                 for (std::size_t i = chunkBegin; i < chunkEnd; ++i)
@@ -171,17 +171,17 @@ void ParallelForRunner::participateUntilDone(
 {
     for (;;) {
         {
-            std::lock_guard<std::mutex> lock(batch.doneMutex);
-            if (batch.remaining == 0)
+            std::lock_guard<std::mutex> lock(batch.doneMutex_);
+            if (batch.remaining_ == 0)
                 break;
         }
         JobSystem::Task task;
-        if (jobs.TryPop(task)) {
+        if (jobs.tryPop(task)) {
             task();
         } else {
-            std::unique_lock<std::mutex> lock(batch.doneMutex);
-            batch.doneCv.wait(lock, [&batch] {
-                return batch.remaining == 0;
+            std::unique_lock<std::mutex> lock(batch.doneMutex_);
+            batch.doneCv_.wait(lock, [&batch] {
+                return batch.remaining_ == 0;
             });
             break;
         }
@@ -206,11 +206,11 @@ void ParallelForRunner::run(
 
     enqueueChunks(jobs, params, batch);
     participateUntilDone(jobs, batch);
-    if (batch.firstError)
-        std::rethrow_exception(batch.firstError);
+    if (batch.firstError_)
+        std::rethrow_exception(batch.firstError_);
 }
 
-void JobSystem::ParallelFor(
+void JobSystem::parallelFor(
     std::size_t begin,
     std::size_t end,
     std::size_t grainSize,

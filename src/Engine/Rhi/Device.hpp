@@ -25,19 +25,19 @@ public:
     Device(const Device &) = delete;
     Device &operator=(const Device &) = delete;
 
-    RenderTargetHandle CreateRenderTarget(const RenderTargetDesc &desc);
-    void DestroyRenderTarget(RenderTargetHandle handle);
-    const RenderTexture2D *GetRenderTexture(
+    RenderTargetHandle createRenderTarget(const RenderTargetDesc &desc);
+    void destroyRenderTarget(RenderTargetHandle handle);
+    const RenderTexture2D *getRenderTexture(
         RenderTargetHandle handle) const;
-    const RenderTargetDesc *GetRenderTargetDesc(
+    const RenderTargetDesc *getRenderTargetDesc(
         RenderTargetHandle handle) const;
-    void BeginRenderTarget(RenderTargetHandle handle);
-    void EndRenderTarget();
+    void beginRenderTarget(RenderTargetHandle handle);
+    void endRenderTarget();
 
-    ShaderRhiHandle CreateShaderFromMemory(
+    ShaderRhiHandle createShaderFromMemory(
         const char *vsSource, const char *fsSource);
-    void DestroyShader(ShaderRhiHandle handle);
-    const Shader *GetShader(ShaderRhiHandle handle) const;
+    void destroyShader(ShaderRhiHandle handle);
+    const Shader *getShader(ShaderRhiHandle handle) const;
 
 private:
     struct RenderTargetEntry {

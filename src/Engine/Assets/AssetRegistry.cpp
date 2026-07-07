@@ -146,13 +146,13 @@ void AssetRegistryDetail::assignTexturePlaceholder(
     asset.placeholder_ = true;
 }
 
-void ModelAsset::Release()
+void ModelAsset::release()
 {
     if (refCount_ > 0)
         --refCount_;
 }
 
-void TextureAsset::Release()
+void TextureAsset::release()
 {
     if (refCount_ > 0)
         --refCount_;
@@ -160,16 +160,16 @@ void TextureAsset::Release()
 
 AssetRegistry::~AssetRegistry()
 {
-    UnloadAll();
+    unloadAll();
 }
 
-ModelAsset &AssetRegistry::LoadModelAsset(const std::string &path)
+ModelAsset &AssetRegistry::loadModelAsset(const std::string &path)
 {
     const std::string key = AssetRegistryDetail::normalizePath(path);
     ModelAsset *result = nullptr;
 
     if (auto it = models_.find(key); it != models_.end()) {
-        it->second->Acquire();
+        it->second->acquire();
         result = it->second.get();
     } else {
         auto asset = std::make_unique<ModelAsset>();
@@ -178,20 +178,20 @@ ModelAsset &AssetRegistry::LoadModelAsset(const std::string &path)
         if (!AssetRegistryDetail::tryLoadModelFromDisk(key, *asset))
             AssetRegistryDetail::assignModelPlaceholder(*asset, key);
         AssetRegistryDetail::populatePbrInfos(*asset);
-        asset->Acquire();
+        asset->acquire();
         result = asset.get();
         models_.emplace(key, std::move(asset));
     }
     return *result;
 }
 
-TextureAsset &AssetRegistry::LoadTextureAsset(const std::string &path)
+TextureAsset &AssetRegistry::loadTextureAsset(const std::string &path)
 {
     const std::string key = AssetRegistryDetail::normalizePath(path);
     TextureAsset *result = nullptr;
 
     if (auto it = textures_.find(key); it != textures_.end()) {
-        it->second->Acquire();
+        it->second->acquire();
         result = it->second.get();
     } else {
         auto asset = std::make_unique<TextureAsset>();
@@ -200,7 +200,7 @@ TextureAsset &AssetRegistry::LoadTextureAsset(const std::string &path)
         if (!AssetRegistryDetail::tryLoadTextureFromDisk(key, *asset))
             AssetRegistryDetail::assignTexturePlaceholder(*asset, key);
         AssetRegistryDetail::applyTextureDefaults(asset->texture_);
-        asset->Acquire();
+        asset->acquire();
         result = asset.get();
         textures_.emplace(key, std::move(asset));
     }
@@ -211,7 +211,7 @@ void AssetRegistryDetail::unloadZeroRefModels(
     std::unordered_map<std::string, std::unique_ptr<ModelAsset>> &models)
 {
     for (auto it = models.begin(); it != models.end();) {
-        if (it->second->RefCount() <= 0) {
+        if (it->second->refCount() <= 0) {
             UnloadModel(it->second->model_);
             TraceLog(
                 LOG_INFO,
@@ -228,7 +228,7 @@ void AssetRegistryDetail::unloadZeroRefTextures(
     std::unordered_map<std::string, std::unique_ptr<TextureAsset>> &textures)
 {
     for (auto it = textures.begin(); it != textures.end();) {
-        if (it->second->RefCount() <= 0) {
+        if (it->second->refCount() <= 0) {
             UnloadTexture(it->second->texture_);
             TraceLog(
                 LOG_INFO,
@@ -241,13 +241,13 @@ void AssetRegistryDetail::unloadZeroRefTextures(
     }
 }
 
-void AssetRegistry::UnloadUnused()
+void AssetRegistry::unloadUnused()
 {
     AssetRegistryDetail::unloadZeroRefModels(models_);
     AssetRegistryDetail::unloadZeroRefTextures(textures_);
 }
 
-void AssetRegistry::UnloadAll()
+void AssetRegistry::unloadAll()
 {
     const bool gpuReady = IsWindowReady();
 

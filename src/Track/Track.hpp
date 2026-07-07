@@ -15,7 +15,7 @@
 
 namespace racer {
 
-enum class SurfaceStyle { Propre, Abimee };
+enum class SurfaceStyle { PROPRE, ABIMEE };
 
 struct TrackDef {
     std::string name;
@@ -26,7 +26,7 @@ struct TrackDef {
     float chicaneAmpEast = 9.0f;
     float chicaneAmpWest = 6.0f;
     float chicaneFreqWest = 2.0f;
-    SurfaceStyle surfaceStyle = SurfaceStyle::Propre;
+    SurfaceStyle surfaceStyle = SurfaceStyle::PROPRE;
 };
 
 class Track {
@@ -37,20 +37,20 @@ public:
         float lateralOffset = 0.0f;
     };
 
-    static Track Make(const TrackDef& def);
-    static const std::vector<TrackDef>& Presets();
+    static Track make(const TrackDef& def);
+    static const std::vector<TrackDef>& presets();
 
-    Vector3 StartPosition(int laneIndex, int laneCount) const;
-    float StartHeading() const;
+    Vector3 startPosition(int laneIndex, int laneCount) const;
+    float startHeading() const;
 
-    Progress ProjectPosition(Vector3 pos) const;
-    float CumulativeDistance(const Progress& p) const;
-    float TotalLength() const;
-    Vector2 PointAtDistance(float distance) const;
+    Progress projectPosition(Vector3 pos) const;
+    float cumulativeDistance(const Progress& p) const;
+    float totalLength() const;
+    Vector2 pointAtDistance(float distance) const;
 
-    const std::vector<Vector2>& Waypoints() const { return waypoints_; }
-    float Width() const { return width_; }
-    SurfaceStyle Style() const { return style_; }
+    const std::vector<Vector2>& waypoints() const { return waypoints_; }
+    float width() const { return width_; }
+    SurfaceStyle style() const { return style_; }
 
 private:
     struct SegmentSample {
@@ -58,24 +58,24 @@ private:
         float distSq;
     };
 
-    void RecomputeLengths();
+    void recomputeLengths();
 
-    static float SegmentLength(Vector2 a, Vector2 b);
-    static void AppendEastStraight(
+    static float segmentLength(Vector2 a, Vector2 b);
+    static void appendEastStraight(
         const TrackDef& def, std::vector<Vector2>& waypoints);
-    static void AppendNorthCurve(
+    static void appendNorthCurve(
         const TrackDef& def, std::vector<Vector2>& waypoints);
-    static void AppendWestStraight(
+    static void appendWestStraight(
         const TrackDef& def, std::vector<Vector2>& waypoints);
-    static void AppendSouthCurve(
+    static void appendSouthCurve(
         const TrackDef& def, std::vector<Vector2>& waypoints);
-    SegmentSample SampleSegment(Vector3 pos, std::size_t index) const;
+    SegmentSample sampleSegment(Vector3 pos, std::size_t index) const;
 
     std::vector<Vector2> waypoints_;
     std::vector<float> cumulativeLengths_;
     float totalLength_ = 0.0f;
     float width_ = 12.0f;
-    SurfaceStyle style_ = SurfaceStyle::Propre;
+    SurfaceStyle style_ = SurfaceStyle::PROPRE;
 };
 
 } // namespace racer

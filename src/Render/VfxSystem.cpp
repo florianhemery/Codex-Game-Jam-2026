@@ -713,7 +713,7 @@ VfxSystem::~VfxSystem()
     UnloadTexture(impl_->texSquare_);
 }
 
-void VfxSystem::Update(float dt, Vector3 focus)
+void VfxSystem::update(float dt, Vector3 focus)
 {
     if (dt <= 0.0f)
         return;
@@ -723,7 +723,7 @@ void VfxSystem::Update(float dt, Vector3 focus)
     impl_->integrateAll(dt);
 }
 
-void VfxSystem::Draw(const Camera3D &camera) const
+void VfxSystem::draw(const Camera3D &camera) const
 {
     const Impl &s = *impl_;
 
@@ -756,7 +756,7 @@ void VfxSystem::Draw(const Camera3D &camera) const
     rlEnableDepthMask();
 }
 
-void VfxSystem::EmitDriftSmoke(Vector3 pos, Vector3 carVel)
+void VfxSystem::emitDriftSmoke(Vector3 pos, Vector3 carVel)
 {
     int n = GetRandomValue(2, 3);
 
@@ -769,7 +769,7 @@ void VfxSystem::EmitDriftSmoke(Vector3 pos, Vector3 carVel)
     }
 }
 
-void VfxSystem::EmitOffroadDust(Vector3 pos, Vector3 carVel)
+void VfxSystem::emitOffroadDust(Vector3 pos, Vector3 carVel)
 {
     int n = GetRandomValue(1, 2);
 
@@ -782,7 +782,7 @@ void VfxSystem::EmitOffroadDust(Vector3 pos, Vector3 carVel)
     }
 }
 
-void VfxSystem::EmitNitroFlame(Vector3 pos, Vector3 backDir, Vector3 carVel)
+void VfxSystem::emitNitroFlame(Vector3 pos, Vector3 backDir, Vector3 carVel)
 {
     int n = GetRandomValue(4, 5);
 
@@ -795,7 +795,7 @@ void VfxSystem::EmitNitroFlame(Vector3 pos, Vector3 backDir, Vector3 carVel)
     }
 }
 
-void VfxSystem::EmitSparks(Vector3 pos, Vector3 dir)
+void VfxSystem::emitSparks(Vector3 pos, Vector3 dir)
 {
     float dl = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
     Vector3 d = (dl > 0.001f)
@@ -812,7 +812,7 @@ void VfxSystem::EmitSparks(Vector3 pos, Vector3 dir)
     }
 }
 
-void VfxSystem::EmitConfetti(Vector3 pos)
+void VfxSystem::emitConfetti(Vector3 pos)
 {
     int n = GetRandomValue(45, 70);
 
@@ -825,17 +825,17 @@ void VfxSystem::EmitConfetti(Vector3 pos)
     }
 }
 
-void VfxSystem::SetRain(bool enabled)
+void VfxSystem::setRain(bool enabled)
 {
     impl_->rainTarget_ = enabled ? 1.0f : 0.0f;
 }
 
-int VfxSystem::ActiveCount() const
+int VfxSystem::activeCount() const
 {
     return impl_->count_;
 }
 
-void VfxSystem::Clear()
+void VfxSystem::clear()
 {
     impl_->count_ = 0;
     impl_->rainAccum_ = 0.0f;

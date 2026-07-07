@@ -16,21 +16,21 @@ constexpr int kCurveSegments = 20;
 constexpr int kStraightSegments = 24;
 } // namespace
 
-Track Track::Make(const TrackDef& def)
+Track Track::make(const TrackDef& def)
 {
     Track t;
     t.width_ = def.width;
     t.style_ = def.surfaceStyle;
 
-    AppendEastStraight(def, t.waypoints_);
-    AppendNorthCurve(def, t.waypoints_);
-    AppendWestStraight(def, t.waypoints_);
-    AppendSouthCurve(def, t.waypoints_);
-    t.RecomputeLengths();
+    appendEastStraight(def, t.waypoints_);
+    appendNorthCurve(def, t.waypoints_);
+    appendWestStraight(def, t.waypoints_);
+    appendSouthCurve(def, t.waypoints_);
+    t.recomputeLengths();
     return t;
 }
 
-const std::vector<TrackDef>& Track::Presets()
+const std::vector<TrackDef>& Track::presets()
 {
     static const std::vector<TrackDef> presets = {
         {
@@ -52,13 +52,13 @@ const std::vector<TrackDef>& Track::Presets()
             "Route Abimee",
             "Chaussee delavee, nids-de-poule et decor aride, grip reduit",
             70.0f, 14.0f, 10.0f, 5.0f, 7.0f, 2.0f,
-            SurfaceStyle::Abimee,
+            SurfaceStyle::ABIMEE,
         },
     };
     return presets;
 }
 
-void Track::RecomputeLengths()
+void Track::recomputeLengths()
 {
     std::size_t n = waypoints_.size();
     cumulativeLengths_.assign(n, 0.0f);
@@ -67,19 +67,19 @@ void Track::RecomputeLengths()
         cumulativeLengths_[i] = acc;
         Vector2 a = waypoints_[i];
         Vector2 b = waypoints_[(i + 1) % n];
-        acc += SegmentLength(a, b);
+        acc += segmentLength(a, b);
     }
     totalLength_ = acc;
 }
 
-float Track::SegmentLength(Vector2 a, Vector2 b)
+float Track::segmentLength(Vector2 a, Vector2 b)
 {
     float dx = b.x - a.x;
     float dy = b.y - a.y;
     return std::sqrt(dx * dx + dy * dy);
 }
 
-void Track::AppendEastStraight(
+void Track::appendEastStraight(
     const TrackDef& def, std::vector<Vector2>& waypoints)
 {
     for (int i = 0; i <= kStraightSegments; ++i) {
@@ -92,7 +92,7 @@ void Track::AppendEastStraight(
     }
 }
 
-void Track::AppendNorthCurve(
+void Track::appendNorthCurve(
     const TrackDef& def, std::vector<Vector2>& waypoints)
 {
     for (int i = 1; i < kCurveSegments; ++i) {
@@ -105,7 +105,7 @@ void Track::AppendNorthCurve(
     }
 }
 
-void Track::AppendWestStraight(
+void Track::appendWestStraight(
     const TrackDef& def, std::vector<Vector2>& waypoints)
 {
     for (int i = 0; i <= kStraightSegments; ++i) {
@@ -119,7 +119,7 @@ void Track::AppendWestStraight(
     }
 }
 
-void Track::AppendSouthCurve(
+void Track::appendSouthCurve(
     const TrackDef& def, std::vector<Vector2>& waypoints)
 {
     for (int i = 1; i < kCurveSegments; ++i) {
@@ -132,7 +132,7 @@ void Track::AppendSouthCurve(
     }
 }
 
-Vector3 Track::StartPosition(int laneIndex, int laneCount) const
+Vector3 Track::startPosition(int laneIndex, int laneCount) const
 {
     Vector2 a = waypoints_[0];
     Vector2 b = waypoints_[1];
@@ -158,14 +158,14 @@ Vector3 Track::StartPosition(int laneIndex, int laneCount) const
     };
 }
 
-float Track::StartHeading() const
+float Track::startHeading() const
 {
     Vector2 a = waypoints_[0];
     Vector2 b = waypoints_[1];
     return std::atan2(b.x - a.x, b.y - a.y);
 }
 
-Track::SegmentSample Track::SampleSegment(Vector3 pos, std::size_t index) const
+Track::SegmentSample Track::sampleSegment(Vector3 pos, std::size_t index) const
 {
     SegmentSample sample{};
     std::size_t n = waypoints_.size();
@@ -198,13 +198,13 @@ Track::SegmentSample Track::SampleSegment(Vector3 pos, std::size_t index) const
     return sample;
 }
 
-Track::Progress Track::ProjectPosition(Vector3 pos) const
+Track::Progress Track::projectPosition(Vector3 pos) const
 {
     Progress best;
     float bestDistSq = 1e30f;
     std::size_t n = waypoints_.size();
     for (std::size_t i = 0; i < n; ++i) {
-        SegmentSample sample = SampleSegment(pos, i);
+        SegmentSample sample = sampleSegment(pos, i);
         if (sample.distSq < bestDistSq) {
             bestDistSq = sample.distSq;
             best = sample.progress;
@@ -213,22 +213,22 @@ Track::Progress Track::ProjectPosition(Vector3 pos) const
     return best;
 }
 
-float Track::CumulativeDistance(const Progress& p) const
+float Track::cumulativeDistance(const Progress& p) const
 {
     std::size_t n = waypoints_.size();
     std::size_t idx = static_cast<std::size_t>(p.segmentIndex);
     Vector2 a = waypoints_[idx];
     Vector2 b = waypoints_[(idx + 1) % n];
-    float segLen = SegmentLength(a, b);
+    float segLen = segmentLength(a, b);
     return cumulativeLengths_[idx] + p.t * segLen;
 }
 
-float Track::TotalLength() const
+float Track::totalLength() const
 {
     return totalLength_;
 }
 
-Vector2 Track::PointAtDistance(float distance) const
+Vector2 Track::pointAtDistance(float distance) const
 {
     std::size_t n = waypoints_.size();
     float d = std::fmod(distance, totalLength_);

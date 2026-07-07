@@ -234,15 +234,15 @@ void RenderDemoScene::setupPipelineLights(
     float pulse,
     bool headlights)
 {
-    pipeline.ClearLights();
-    pipeline.AddLight(
+    pipeline.clearLights();
+    pipeline.addLight(
         lightPos[0], Vector3{6.0f * pulse + 1.0f, 0.7f, 0.5f});
-    pipeline.AddLight(lightPos[1], Vector3{0.7f, 3.6f, 4.4f});
-    pipeline.AddLight(lightPos[2], Vector3{4.2f, 2.6f, 1.1f});
+    pipeline.addLight(lightPos[1], Vector3{0.7f, 3.6f, 4.4f});
+    pipeline.addLight(lightPos[2], Vector3{4.2f, 2.6f, 1.1f});
     if (headlights) {
-        pipeline.AddLight(
+        pipeline.addLight(
             Vector3{-0.65f, 0.7f, 8.6f}, Vector3{7.0f, 6.3f, 4.6f});
-        pipeline.AddLight(
+        pipeline.addLight(
             Vector3{0.65f, 0.7f, 8.6f}, Vector3{7.0f, 6.3f, 4.6f});
     }
 }
@@ -258,10 +258,10 @@ void RenderDemoScene::renderAmbianceFrame(
 {
     const std::array<Vector3, 3> lightPos = makeLightPositions();
 
-    assignLitShaders(models, pipeline.LitShader());
+    assignLitShaders(models, pipeline.litShader());
     setupPipelineLights(pipeline, lightPos, pulse, headlights);
     BeginDrawing();
-    pipeline.Frame(
+    pipeline.frame(
         camera,
         [&]() { drawCasters(models, t); },
         [&]() { drawScene(models, t); },
@@ -284,7 +284,7 @@ void RenderDemoScene::advanceAmbiance(
     frame = 0;
     ++ambianceIndex;
     if (ambianceIndex < 4) {
-        pipeline.SetAmbiance(
+        pipeline.setAmbiance(
             ambiances[static_cast<std::size_t>(ambianceIndex)]);
     }
 }
@@ -302,21 +302,21 @@ int main()
         DemoModels models = RenderDemoScene::loadModels();
         Camera3D camera = RenderDemoScene::makeCamera();
         const std::array<racer::engine::Ambiance, 4> ambiances = {
-            racer::engine::Ambiance::Midi,
-            racer::engine::Ambiance::AubeDoree,
-            racer::engine::Ambiance::Crepuscule,
-            racer::engine::Ambiance::Orage};
+            racer::engine::Ambiance::MIDI,
+            racer::engine::Ambiance::AUBE_DOREE,
+            racer::engine::Ambiance::CREPUSCULE,
+            racer::engine::Ambiance::ORAGE};
         const std::array<const char *, 4> labels = {
             "Midi", "Aube doree", "Crepuscule", "Orage"};
         int ambianceIndex = 0;
         int frame = 0;
 
-        pipeline.SetAmbiance(ambiances[0]);
+        pipeline.setAmbiance(ambiances[0]);
         while (!WindowShouldClose() && ambianceIndex < 4) {
-            pipeline.PollShaderReload();
+            pipeline.pollShaderReload();
             const float t = static_cast<float>(GetTime());
             const float pulse = 0.5f + 0.5f * std::sin(t * 6.0f);
-            const bool headlights = pipeline.Params().headlights;
+            const bool headlights = pipeline.params().headlights;
 
             RenderDemoScene::renderAmbianceFrame(
                 pipeline,

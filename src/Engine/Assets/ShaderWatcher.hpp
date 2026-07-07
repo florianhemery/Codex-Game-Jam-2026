@@ -21,37 +21,37 @@ namespace racer::engine {
 
 class ShaderSlot {
 public:
-    Shader &Get()
+    Shader &get()
     {
         return shader_;
     }
 
-    const Shader &Get() const
+    const Shader &get() const
     {
         return shader_;
     }
 
-    const std::string &Name() const
+    const std::string &name() const
     {
         return name_;
     }
 
-    const std::string &VsPath() const
+    const std::string &vsPath() const
     {
         return vsPath_;
     }
 
-    const std::string &FsPath() const
+    const std::string &fsPath() const
     {
         return fsPath_;
     }
 
-    bool IsValid() const
+    bool isValid() const
     {
         return valid_;
     }
 
-    int ReloadCount() const
+    int reloadCount() const
     {
         return reloadCount_;
     }
@@ -80,30 +80,30 @@ public:
     ShaderWatcher(const ShaderWatcher &) = delete;
     ShaderWatcher &operator=(const ShaderWatcher &) = delete;
 
-    ShaderSlot &RegisterShader(const std::string &name,
+    ShaderSlot &registerShader(const std::string &name,
                                const std::string &vsPath,
                                const std::string &fsPath);
 
-    void Poll();
+    void poll();
 
-    ShaderSlot *Find(const std::string &name);
+    ShaderSlot *find(const std::string &name);
 
-    void SetOnReload(ReloadCallback callback)
+    void setOnReload(ReloadCallback callback)
     {
         onReload_ = std::move(callback);
     }
 
-    void SetPollInterval(double seconds);
+    void setPollInterval(double seconds);
 
-    void UnloadAll();
+    void unloadAll();
 
-    int ShaderCount() const
+    int shaderCount() const
     {
         return static_cast<int>(slots_.size());
     }
 
 private:
-    bool TryReload(ShaderSlot &slot);
+    bool tryReload(ShaderSlot &slot);
 
     void initSlotMtimes(ShaderSlot &slot,
                         const std::string &name,

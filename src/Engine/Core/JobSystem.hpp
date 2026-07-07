@@ -23,17 +23,17 @@ class ParallelForRunner;
 
 class JobSystem {
 public:
-    explicit JobSystem(unsigned int workerCount = DefaultWorkerCount());
+    explicit JobSystem(unsigned int workerCount = defaultWorkerCount());
     ~JobSystem();
 
     JobSystem(const JobSystem &) = delete;
     JobSystem &operator=(const JobSystem &) = delete;
 
-    static unsigned int DefaultWorkerCount();
-    std::size_t WorkerCount() const { return workers_.size(); }
+    static unsigned int defaultWorkerCount();
+    std::size_t workerCount() const { return workers_.size(); }
 
-    std::future<void> Submit(std::function<void()> job);
-    void ParallelFor(
+    std::future<void> submit(std::function<void()> job);
+    void parallelFor(
         std::size_t begin,
         std::size_t end,
         std::size_t grainSize,
@@ -44,9 +44,9 @@ private:
 
     using Task = std::function<void()>;
 
-    void WorkerLoop();
-    void Enqueue(Task task);
-    bool TryPop(Task &task);
+    void workerLoop();
+    void enqueue(Task task);
+    bool tryPop(Task &task);
 
     std::vector<std::thread> workers_;
     std::deque<Task> queue_;

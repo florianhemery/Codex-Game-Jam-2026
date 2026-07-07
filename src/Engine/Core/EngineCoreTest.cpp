@@ -75,31 +75,31 @@ void CoreTestRunner::tagEntity(racer::engine::World &world,
     entt::entity entity, std::size_t index)
 {
     if (index == 0) {
-        world.Add<racer::engine::PlayerTag>(entity);
+        world.add<racer::engine::PlayerTag>(entity);
     }
     else {
-        world.Add<racer::engine::AiTag>(entity);
+        world.add<racer::engine::AiTag>(entity);
     }
 }
 
 void CoreTestRunner::addEntity(racer::engine::World &world,
     std::vector<entt::entity> &entities, std::size_t index)
 {
-    const entt::entity entity = world.CreateEntity();
+    const entt::entity entity = world.createEntity();
     const float fi = static_cast<float>(index);
     const auto meshId = static_cast<std::uint32_t>(index);
     const auto matId = static_cast<std::uint32_t>(index % 4);
     const Color tint{
         static_cast<unsigned char>(index), 64, 128, 255};
 
-    world.Add<racer::engine::TransformComponent>(
+    world.add<racer::engine::TransformComponent>(
         entity, Vector3{fi, 0.0f, -fi}, 0.0f, 0.0f, 0.0f);
-    world.Add<racer::engine::KinematicsComponent>(
+    world.add<racer::engine::KinematicsComponent>(
         entity, fi * 0.5f, 0.0f, false);
-    world.Add<racer::engine::RenderMeshComponent>(
+    world.add<racer::engine::RenderMeshComponent>(
         entity, meshId, matId, tint);
-    world.Add<racer::engine::LapProgressComponent>(entity);
-    world.Add<racer::engine::NameComponent>(
+    world.add<racer::engine::LapProgressComponent>(entity);
+    world.add<racer::engine::NameComponent>(
         entity, "Racer " + std::to_string(index));
     tagEntity(world, entity, index);
     entities.push_back(entity);
@@ -117,40 +117,40 @@ void CoreTestRunner::populateWorld(racer::engine::World &world,
 void CoreTestRunner::verifyWorldTags(const racer::engine::World &world,
     const std::vector<entt::entity> &entities)
 {
-    check(world.Has<racer::engine::PlayerTag>(entities[0]),
-        __LINE__, "world.Has<PlayerTag>(entities[0])");
-    check(!world.Has<racer::engine::AiTag>(entities[0]),
-        __LINE__, "!world.Has<AiTag>(entities[0])");
-    check(world.Has<racer::engine::AiTag>(entities[1]),
-        __LINE__, "world.Has<AiTag>(entities[1])");
-    check(world.Get<racer::engine::NameComponent>(entities[42]).name
+    check(world.has<racer::engine::PlayerTag>(entities[0]),
+        __LINE__, "world.has<PlayerTag>(entities[0])");
+    check(!world.has<racer::engine::AiTag>(entities[0]),
+        __LINE__, "!world.has<AiTag>(entities[0])");
+    check(world.has<racer::engine::AiTag>(entities[1]),
+        __LINE__, "world.has<AiTag>(entities[1])");
+    check(world.get<racer::engine::NameComponent>(entities[42]).name
         == "Racer 42", __LINE__,
-        "world.Get<NameComponent>(entities[42]).name == \"Racer 42\"");
-    check(world.Registry().view<racer::engine::PlayerTag>().size() == 1,
-        __LINE__, "world.Registry().view<PlayerTag>().size() == 1");
-    check(world.Registry().view<racer::engine::AiTag>().size()
+        "world.get<NameComponent>(entities[42]).name == \"Racer 42\"");
+    check(world.registry().view<racer::engine::PlayerTag>().size() == 1,
+        __LINE__, "world.registry().view<PlayerTag>().size() == 1");
+    check(world.registry().view<racer::engine::AiTag>().size()
         == K_ENTITY_COUNT - 1, __LINE__,
-        "world.Registry().view<AiTag>().size() == K_ENTITY_COUNT - 1");
+        "world.registry().view<AiTag>().size() == K_ENTITY_COUNT - 1");
 }
 
 void CoreTestRunner::verifyWorldLifecycle(racer::engine::World &world)
 {
-    const entt::entity temp = world.CreateEntity();
+    const entt::entity temp = world.createEntity();
 
-    check(world.Registry().valid(temp), __LINE__,
-        "world.Registry().valid(temp)");
-    world.DestroyEntity(temp);
-    check(!world.Registry().valid(temp), __LINE__,
-        "!world.Registry().valid(temp)");
+    check(world.registry().valid(temp), __LINE__,
+        "world.registry().valid(temp)");
+    world.destroyEntity(temp);
+    check(!world.registry().valid(temp), __LINE__,
+        "!world.registry().valid(temp)");
 }
 
 void CoreTestRunner::verifyJobSystem()
 {
     racer::engine::JobSystem jobs;
 
-    check(jobs.WorkerCount() >= 1, __LINE__, "jobs.WorkerCount() >= 1");
+    check(jobs.workerCount() >= 1, __LINE__, "jobs.workerCount() >= 1");
     std::atomic<int> counter{0};
-    std::future<void> done = jobs.Submit([&counter] {
+    std::future<void> done = jobs.submit([&counter] {
         counter.fetch_add(1);
     });
     done.get();
@@ -162,7 +162,7 @@ void CoreTestRunner::applyParallelTransform(
     const std::vector<entt::entity> &entities, std::size_t index)
 {
     racer::engine::TransformComponent &transform =
-        world.Get<racer::engine::TransformComponent>(entities[index]);
+        world.get<racer::engine::TransformComponent>(entities[index]);
     const float fi = static_cast<float>(index);
 
     transform.position.y = fi * 2.0f;
@@ -177,7 +177,7 @@ void CoreTestRunner::verifyTransformsAfterParallel(
     for (std::size_t i = 0; i < K_ENTITY_COUNT; ++i) {
         const float expected = static_cast<float>(i) * 2.0f;
         const auto &transform =
-            world.Get<racer::engine::TransformComponent>(entities[i]);
+            world.get<racer::engine::TransformComponent>(entities[i]);
 
         check(transform.position.y == expected, __LINE__,
             "transform.position.y == expected");
@@ -196,12 +196,12 @@ void CoreTestRunner::verifyParallelFor(
 {
     racer::engine::JobSystem jobs;
 
-    jobs.ParallelFor(0, K_ENTITY_COUNT, 7,
+    jobs.parallelFor(0, K_ENTITY_COUNT, 7,
         [this, &world, &entities](std::size_t index) {
             applyParallelTransform(world, entities, index);
         });
     verifyTransformsAfterParallel(world, entities);
-    jobs.ParallelFor(5, 5, 4,
+    jobs.parallelFor(5, 5, 4,
         [this](std::size_t index) {
             failOnParallelIndex(index);
         });
@@ -273,14 +273,14 @@ void CoreTestRunner::verifySnapshotItems(
 racer::engine::FrameSnapshot &CoreTestRunner::verifySnapshot(
     racer::engine::World &world, racer::engine::SnapshotBuffer &buffer)
 {
-    check(buffer.ReadLatest().items.empty(), __LINE__,
-        "buffer.ReadLatest().items.empty()");
-    racer::engine::FrameSnapshot &write = buffer.WriteBegin();
+    check(buffer.readLatest().items.empty(), __LINE__,
+        "buffer.readLatest().items.empty()");
+    racer::engine::FrameSnapshot &write = buffer.writeBegin();
     write.simTime = 1.25;
-    racer::engine::CaptureSnapshot(world, write);
-    buffer.Publish();
+    racer::engine::SnapshotBuffer::capture(world, write);
+    buffer.publish();
 
-    const racer::engine::FrameSnapshot &read = buffer.ReadLatest();
+    const racer::engine::FrameSnapshot &read = buffer.readLatest();
     check(&read == &write, __LINE__, "&read == &write");
     check(read.simTime == 1.25, __LINE__, "read.simTime == 1.25");
     check(read.items.size() == K_ENTITY_COUNT, __LINE__,
@@ -295,15 +295,15 @@ void CoreTestRunner::verifySecondFrame(
     racer::engine::SnapshotBuffer &buffer,
     const racer::engine::FrameSnapshot &firstWrite)
 {
-    world.Get<racer::engine::TransformComponent>(entities[0]).position.y =
+    world.get<racer::engine::TransformComponent>(entities[0]).position.y =
         999.0f;
-    racer::engine::FrameSnapshot &write2 = buffer.WriteBegin();
+    racer::engine::FrameSnapshot &write2 = buffer.writeBegin();
     check(&write2 != &firstWrite, __LINE__, "&write2 != &firstWrite");
     write2.simTime = 2.5;
-    racer::engine::CaptureSnapshot(world, write2);
-    buffer.Publish();
+    racer::engine::SnapshotBuffer::capture(world, write2);
+    buffer.publish();
 
-    const racer::engine::FrameSnapshot &read2 = buffer.ReadLatest();
+    const racer::engine::FrameSnapshot &read2 = buffer.readLatest();
     check(&read2 == &write2, __LINE__, "&read2 == &write2");
     check(read2.simTime == 2.5, __LINE__, "read2.simTime == 2.5");
     check(read2.items.size() == K_ENTITY_COUNT, __LINE__,

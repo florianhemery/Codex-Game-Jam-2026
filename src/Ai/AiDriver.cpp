@@ -54,10 +54,10 @@ AIDriver::CornerLimits AIDriver::anticipateCorners(
     CornerLimits limits;
     limits.vLimit = 1e9f;
     float chord = 4.0f + speedAbs * 0.12f;
-    Vector2 prev = track.PointAtDistance(currentDist);
-    Vector2 cur = track.PointAtDistance(currentDist + chord);
+    Vector2 prev = track.pointAtDistance(currentDist);
+    Vector2 cur = track.pointAtDistance(currentDist + chord);
     for (int s = 1; s <= 5; ++s) {
-        Vector2 next = track.PointAtDistance(
+        Vector2 next = track.pointAtDistance(
             currentDist + chord * static_cast<float>(s + 1));
         float h1 = std::atan2(cur.x - prev.x, cur.y - prev.y);
         float h2 = std::atan2(next.x - cur.x, next.y - cur.y);
@@ -95,10 +95,10 @@ Vector2 AIDriver::computeTarget(
 {
     float lookahead = 10.0f + speedAbs * 0.6f;
     float targetDist = currentDist + lookahead;
-    Vector2 target = track.PointAtDistance(targetDist);
+    Vector2 target = track.pointAtDistance(targetDist);
     float offsetScale = std::clamp(1.0f - maxTurnPerU / 0.06f, 0.4f, 1.0f);
-    Vector2 ta = track.PointAtDistance(targetDist - 2.0f);
-    Vector2 tb = track.PointAtDistance(targetDist + 2.0f);
+    Vector2 ta = track.pointAtDistance(targetDist - 2.0f);
+    Vector2 tb = track.pointAtDistance(targetDist + 2.0f);
     float dxT = tb.x - ta.x;
     float dzT = tb.y - ta.y;
     float len = std::sqrt(dxT * dxT + dzT * dzT);
@@ -164,10 +164,10 @@ void AIDriver::applyDriveInput(
     input.nitro = wantNitro && input.throttle >= 1.0f;
 }
 
-CarInput AIDriver::ComputeInput(const Car &car, const Track &track) const
+CarInput AIDriver::computeInput(const Car &car, const Track &track) const
 {
-    Track::Progress prog = track.ProjectPosition(car.position);
-    float currentDist = track.CumulativeDistance(prog);
+    Track::Progress prog = track.projectPosition(car.position);
+    float currentDist = track.cumulativeDistance(prog);
     float speedAbs = std::fabs(car.speed);
     CornerLimits limits = anticipateCorners(car, track, currentDist, speedAbs);
     Vector2 target = computeTarget(

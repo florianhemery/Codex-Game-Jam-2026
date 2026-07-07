@@ -34,22 +34,20 @@ struct FrameSnapshot {
     std::vector<RenderItem> items;
 };
 
-// Double buffering sim/rendu : WriteBegin/Publish cote sim, ReadLatest cote
-// rendu. ReadLatest() reste valable jusqu'au Publish() suivant.
+// Double buffering sim/rendu : writeBegin/publish cote sim, readLatest cote
+// rendu. readLatest() reste valable jusqu'au publish() suivant.
 class SnapshotBuffer {
 public:
-    FrameSnapshot& WriteBegin();
-    void Publish();
-    const FrameSnapshot& ReadLatest() const;
+    FrameSnapshot& writeBegin();
+    void publish();
+    const FrameSnapshot& readLatest() const;
+    static void capture(World& world, FrameSnapshot& snapshot);
 
 private:
     FrameSnapshot buffers_[2];
     int writeIndex_ = 0;
     mutable std::mutex mutex_;
 };
-
-// Remplit snapshot.items depuis Transform+RenderMesh (simTime : appelant).
-void CaptureSnapshot(World& world, FrameSnapshot& snapshot);
 
 } // namespace racer::engine
 

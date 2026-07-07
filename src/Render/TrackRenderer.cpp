@@ -151,7 +151,7 @@ void TrackRendererDetail::normalizeVector2(Vector2 &v)
 std::vector<Vector2> TrackRendererDetail::computePerpendiculars(
     const Track &track)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
     size_t n = wp.size();
     std::vector<Vector2> perp(n);
 
@@ -192,7 +192,7 @@ Color TrackRendererDetail::asphaltColor(uint32_t h, SurfaceStyle style)
 {
     int noise = static_cast<int>(h % 37);
 
-    if (style == SurfaceStyle::Abimee) {
+    if (style == SurfaceStyle::ABIMEE) {
         unsigned char base = static_cast<unsigned char>(95 + noise);
 
         return Color{
@@ -214,7 +214,7 @@ void TrackRendererDetail::fillStripEndpoints(
     float innerOffset, float outerOffset, float yHeight,
     std::vector<Vector3> &inner, std::vector<Vector3> &outer)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
     size_t n = wp.size();
 
     inner.resize(n);
@@ -330,7 +330,7 @@ Mesh TrackRendererDetail::buildStripMesh(
     float innerOffset, float outerOffset, float yHeight,
     const std::function<Color(size_t)> &colorFn)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
     size_t n = wp.size();
     std::vector<Vector3> inner;
     std::vector<Vector3> outer;
@@ -382,7 +382,7 @@ Vector3 TrackRendererDetail::makeDashedQuadPoint(
     size_t idx, float innerOffset, float outerOffset, float yHeight,
     bool outer)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
     float offset = outer ? outerOffset : innerOffset;
 
     return Vector3{
@@ -396,7 +396,7 @@ Mesh TrackRendererDetail::buildDashedStripMesh(
     float innerOffset, float outerOffset, float yHeight,
     Color color, int dashPeriod, int dashOn)
 {
-    size_t n = track.Waypoints().size();
+    size_t n = track.waypoints().size();
     int segmentCount = countDashSegments(n, dashPeriod, dashOn);
     Mesh mesh{};
 
@@ -483,9 +483,9 @@ Mesh TrackRendererDetail::buildCheckerGroundMesh(
     float tileSize = totalSize / static_cast<float>(tilesPerSide);
     float half = totalSize * 0.5f;
     Mesh mesh{};
-    Color greenA = (style == SurfaceStyle::Abimee)
+    Color greenA = (style == SurfaceStyle::ABIMEE)
         ? Color{118, 108, 62, 255} : Color{58, 130, 58, 255};
-    Color greenB = (style == SurfaceStyle::Abimee)
+    Color greenB = (style == SurfaceStyle::ABIMEE)
         ? Color{108, 98, 55, 255} : Color{50, 118, 50, 255};
 
     allocCheckerMesh(mesh, tilesPerSide);
@@ -498,11 +498,11 @@ Mesh TrackRendererDetail::buildFinishLineMesh(
     const Track &track, const std::vector<Vector2> &perp)
 {
     constexpr int kCols = 6;
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
     Vector2 base = wp[0];
     Vector2 p = perp[0];
     Vector2 dir{-p.y, p.x};
-    float halfWidth = track.Width() * 0.5f;
+    float halfWidth = track.width() * 0.5f;
     Mesh mesh{};
 
     allocFinishLineMesh(mesh, kCols);
@@ -1012,9 +1012,9 @@ void TrackRendererBuild::buildCurbMeshes(
     const std::vector<Vector2> &perp, float halfWidth)
 {
     constexpr float kCurbWidth = 1.4f;
-    Color curbA = (renderer.surfaceStyle_ == SurfaceStyle::Abimee)
+    Color curbA = (renderer.surfaceStyle_ == SurfaceStyle::ABIMEE)
         ? Color{180, 170, 150, 255} : RED;
-    Color curbB = (renderer.surfaceStyle_ == SurfaceStyle::Abimee)
+    Color curbB = (renderer.surfaceStyle_ == SurfaceStyle::ABIMEE)
         ? Color{160, 150, 130, 255} : RAYWHITE;
     Mesh curbMeshOuter = TrackRendererDetail::buildStripMesh(
         track, perp, halfWidth - kCurbWidth * 0.5f,
@@ -1058,7 +1058,7 @@ void TrackRendererBuild::initStartGantry(
     TrackRenderer &renderer, const Track &track,
     const std::vector<Vector2> &perp)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
 
     renderer.startGantryBase_ = Vector3{wp[0].x, 0.0f, wp[0].y};
     renderer.startGantryPerp_ = Vector3{perp[0].x, 0.0f, perp[0].y};
@@ -1185,8 +1185,8 @@ void TrackRendererBuild::fillTreeProp(
 void TrackRendererBuild::addWaypointProp(
     TrackRenderer &renderer, Vector3 pos, uint32_t h, SurfaceStyle style)
 {
-    bool isBuilding = (h % 5 == 0) && style != SurfaceStyle::Abimee;
-    bool isDeadTree = style == SurfaceStyle::Abimee && (h % 4 != 0);
+    bool isBuilding = (h % 5 == 0) && style != SurfaceStyle::ABIMEE;
+    bool isDeadTree = style == SurfaceStyle::ABIMEE && (h % 4 != 0);
     TrackRenderer::PropInstance prop;
 
     prop.position = pos;
@@ -1228,7 +1228,7 @@ void TrackRendererBuild::addWaypointTireStack(
     const std::vector<Vector2> &perp, float halfWidth,
     float sideSign, size_t i, uint32_t h)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
     TrackRenderer::TireStackInstance stack;
 
     stack.position = Vector3{
@@ -1260,7 +1260,7 @@ void TrackRendererBuild::populateWaypointDecor(
     TrackRenderer &renderer, const Track &track,
     const std::vector<Vector2> &perp, float halfWidth, size_t i)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
     uint32_t h = TrackRendererDetail::hashIndex(i);
     float sideSign = (h % 2 == 0) ? 1.0f : -1.0f;
     float extraOffset = 4.0f + static_cast<float>(h % 100) * 0.05f;
@@ -1284,7 +1284,7 @@ TrackRenderer::GrandstandInstance TrackRendererBuild::makeGrandstandInstance(
     const Track &track, float halfWidth, size_t mid,
     Vector2 along, Vector2 outward, float alongLen)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
     TrackRenderer::GrandstandInstance gs;
 
     gs.origin = Vector3{
@@ -1301,7 +1301,7 @@ bool TrackRendererBuild::computeStraightAlong(
     const Track &track, size_t runStart, size_t runEnd,
     Vector2 &along, size_t &mid, float &alongLen)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
 
     if (runEnd <= runStart + 8)
         return false;
@@ -1322,7 +1322,7 @@ void TrackRendererBuild::tryAddGrandstand(
     const std::vector<Vector2> &perp, float halfWidth,
     size_t runStart, size_t runEnd)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
     Vector2 along{};
     size_t mid = 0;
     float alongLen = 0.0f;
@@ -1346,7 +1346,7 @@ void TrackRendererBuild::tryAddGrandstand(
 float TrackRendererBuild::straightRunDirectionDot(
     const Track &track, size_t i, size_t n)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
     Vector2 d0{wp[i].x - wp[i - 1].x, wp[i].y - wp[i - 1].y};
     Vector2 d1{wp[i + 1].x - wp[i].x, wp[i + 1].y - wp[i].y};
     float l0 = std::sqrt(d0.x * d0.x + d0.y * d0.y);
@@ -1396,7 +1396,7 @@ void TrackRendererBuild::buildGrandstands(
     TrackRenderer &renderer, const Track &track,
     const std::vector<Vector2> &perp, float halfWidth)
 {
-    size_t n = track.Waypoints().size();
+    size_t n = track.waypoints().size();
     size_t runStart = 0;
 
     for (size_t i = 1; i <= n; ++i) {
@@ -1425,7 +1425,7 @@ void TrackRendererBuild::addAbimeePotholeAt(
     TrackRenderer &renderer, const Track &track,
     const std::vector<Vector2> &perp, size_t i, uint32_t h)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
     float t = static_cast<float>(h % 1000) / 1000.0f;
     size_t j = (i + 1) % wp.size();
     Vector2 p2{
@@ -1433,7 +1433,7 @@ void TrackRendererBuild::addAbimeePotholeAt(
         wp[i].y + (wp[j].y - wp[i].y) * t,
     };
     float lateral = (static_cast<float>((h >> 10) % 100) / 100.0f - 0.5f)
-        * track.Width() * 0.7f;
+        * track.width() * 0.7f;
     TrackRenderer::PotholeInstance hole;
 
     hole.position = Vector3{
@@ -1450,9 +1450,9 @@ void TrackRendererBuild::buildAbimeeDamage(
     TrackRenderer &renderer, const Track &track,
     const std::vector<Vector2> &perp)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
 
-    if (renderer.surfaceStyle_ != SurfaceStyle::Abimee)
+    if (renderer.surfaceStyle_ != SurfaceStyle::ABIMEE)
         return;
     for (size_t i = 0; i < wp.size(); i += 2) {
         uint32_t h = TrackRendererDetail::hashIndex(i + 50000);
@@ -1467,7 +1467,7 @@ void TrackRendererBuild::scanWaypointBounds(
     const Track &track, float &minX, float &maxX,
     float &minZ, float &maxZ)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
 
     minX = wp[0].x;
     maxX = wp[0].x;
@@ -1529,7 +1529,7 @@ void TrackRendererBuild::initSkidOverlay(
 bool TrackRendererBuild::isSharpCorner(
     const Track &track, size_t i, size_t n, Vector2 &d0, Vector2 &d1)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
     size_t prev = (i + n - 1) % n;
     size_t next = (i + 1) % n;
     constexpr float kCurveDot = 0.88f;
@@ -1552,9 +1552,9 @@ void TrackRendererBuild::appendBarrierRails(
     TrackRendererDetail::MeshBuffers &barrierBuf, Vector3 pos,
     Vector3 along, Vector3 out, SurfaceStyle style)
 {
-    Color postColor = (style == SurfaceStyle::Abimee)
+    Color postColor = (style == SurfaceStyle::ABIMEE)
         ? Color{120, 80, 55, 255} : Color{150, 150, 158, 255};
-    Color railColor = (style == SurfaceStyle::Abimee)
+    Color railColor = (style == SurfaceStyle::ABIMEE)
         ? Color{140, 100, 70, 255} : Color{210, 210, 218, 255};
 
     TrackRendererDetail::appendBox(
@@ -1574,7 +1574,7 @@ Vector3 TrackRendererBuild::barrierCornerPos(
     const Track &track, const std::vector<Vector2> &perp,
     float halfWidth, size_t i, float side)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
 
     return Vector3{
         wp[i].x + perp[i].x * (halfWidth + 2.5f) * side, 0.0f,
@@ -1592,7 +1592,7 @@ void TrackRendererBuild::addBarrierAtCorner(
 
     if (!isSharpCorner(track, i, n, d0, d1))
         return;
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
     float side = (perp[i].x * wp[i].x + perp[i].y * wp[i].y) > 0.0f
         ? 1.0f : -1.0f;
     Vector3 pos = barrierCornerPos(track, perp, halfWidth, i, side);
@@ -1644,7 +1644,7 @@ void TrackRendererBuild::addSponsorAtWaypoint(
     const Track &track, const std::vector<Vector2> &perp,
     float halfWidth, size_t i)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
     uint32_t h = TrackRendererDetail::hashIndex(i + 30000);
     float sideSign = (h % 2 == 0) ? 1.0f : -1.0f;
     float dist = halfWidth + 6.0f;
@@ -1669,7 +1669,7 @@ void TrackRendererBuild::buildSponsorMeshes(
     TrackRenderer &renderer, const Track &track,
     const std::vector<Vector2> &perp, float halfWidth)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
     TrackRendererDetail::MeshBuffers sponsorBuf;
 
     for (size_t i = 0; i < wp.size(); i += 12)
@@ -1700,7 +1700,7 @@ void TrackRendererBuild::addLampAtWaypoint(
     TrackRenderer &renderer, const Track &track,
     const std::vector<Vector2> &perp, float halfWidth, size_t i)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
     uint32_t h = TrackRendererDetail::hashIndex(i + 40000);
     float sideSign = (static_cast<int>(i / 10) % 2 == 0) ? 1.0f : -1.0f;
     float dist = halfWidth + 5.0f;
@@ -1710,7 +1710,7 @@ void TrackRendererBuild::addLampAtWaypoint(
         wp[i].x + perp[i].x * dist * sideSign, 0.0f,
         wp[i].y + perp[i].y * dist * sideSign,
     };
-    bool broken = renderer.surfaceStyle_ == SurfaceStyle::Abimee
+    bool broken = renderer.surfaceStyle_ == SurfaceStyle::ABIMEE
         && (h % 3 == 0);
 
     setupLampTop(lamp, perp[i], sideSign, broken);
@@ -1721,7 +1721,7 @@ void TrackRendererBuild::buildLampRing(
     TrackRenderer &renderer, const Track &track,
     const std::vector<Vector2> &perp, float halfWidth)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
 
     for (size_t i = 0; i < wp.size(); i += 10)
         addLampAtWaypoint(renderer, track, perp, halfWidth, i);
@@ -1731,7 +1731,7 @@ void TrackRendererBuild::initInflatableArch(
     TrackRenderer &renderer, const Track &track,
     const std::vector<Vector2> &perp, float halfWidth, size_t n)
 {
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
     size_t mid = n / 2;
     float hw = halfWidth + 0.5f;
 
@@ -1873,7 +1873,7 @@ void TrackRendererDraw::drawRoadDamage(const TrackRenderer &renderer)
 
 void TrackRendererDraw::drawAbimeeDebris(const TrackRenderer &renderer)
 {
-    if (renderer.surfaceStyle_ != SurfaceStyle::Abimee)
+    if (renderer.surfaceStyle_ != SurfaceStyle::ABIMEE)
         return;
     for (size_t i = 0; i < renderer.potholes_.size(); i += 2) {
         const auto &h = renderer.potholes_[i];
@@ -2216,7 +2216,7 @@ void TrackRendererDraw::drawNpcs(
         drawOneNpc(npc, timeSeconds);
 }
 
-void DrawSkyGradient(int screenWidth, int screenHeight)
+void drawSkyGradient(int screenWidth, int screenHeight)
 {
     Color horizon{135, 196, 235, 255};
     Color zenith{42, 92, 168, 255};
@@ -2252,7 +2252,7 @@ void TrackRendererBuild::buildSceneDecor(
     buildCloudRing(renderer);
     buildGrandstands(renderer, track, perp, halfWidth);
     constexpr int kStride = 3;
-    const auto &wp = track.Waypoints();
+    const auto &wp = track.waypoints();
 
     for (size_t i = 0; i < wp.size(); i += static_cast<size_t>(kStride))
         populateWaypointDecor(renderer, track, perp, halfWidth, i);
@@ -2266,10 +2266,10 @@ TrackRenderer::TrackRenderer(const Track &track, const TrackDef &def)
 {
     std::vector<Vector2> perp =
         TrackRendererDetail::computePerpendiculars(track);
-    float halfWidth = track.Width() * 0.5f;
+    float halfWidth = track.width() * 0.5f;
 
     trackHalfWidth_ = halfWidth;
-    size_t n = track.Waypoints().size();
+    size_t n = track.waypoints().size();
 
     TrackRendererBuild::buildSceneMeshes(
         *this, track, perp, halfWidth, n);
@@ -2297,7 +2297,7 @@ TrackRenderer::~TrackRenderer()
         UnloadModel(sponsorModel_);
 }
 
-void TrackRenderer::DrawOpaqueGeometry() const
+void TrackRenderer::drawOpaqueGeometry() const
 {
     DrawModel(groundModel_, Vector3{0.0f, -0.05f, 0.0f}, 1.0f, WHITE);
     DrawModel(trackModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
@@ -2317,11 +2317,11 @@ void TrackRenderer::DrawOpaqueGeometry() const
     DrawModel(finishLineModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
 }
 
-void TrackRenderer::Draw(float timeSeconds) const
+void TrackRenderer::draw(float timeSeconds) const
 {
     TrackRendererDetail::drawMountainsRing(220.0f, 2.0f, 48);
     TrackRendererDraw::drawClouds(*this, timeSeconds);
-    DrawOpaqueGeometry();
+    drawOpaqueGeometry();
     TrackRendererDraw::drawLamps(*this);
     TrackRendererDraw::drawArch(*this);
     TrackRendererDraw::drawRoadDamage(*this);
@@ -2335,7 +2335,7 @@ void TrackRenderer::Draw(float timeSeconds) const
     TrackRendererDraw::drawNpcs(*this, timeSeconds);
 }
 
-void TrackRenderer::ApplyShader(Shader shader)
+void TrackRenderer::applyShader(Shader shader)
 {
     TrackRendererDetail::applyShaderToModel(trackModel_, shader);
     TrackRendererDetail::applyShaderToModel(rubberLineModel_, shader);
@@ -2353,7 +2353,7 @@ void TrackRenderer::ApplyShader(Shader shader)
         TrackRendererDetail::applyShaderToModel(sponsorModel_, shader);
 }
 
-void TrackRenderer::QueueSkidMark(
+void TrackRenderer::queueSkidMark(
     Vector3 pos, Vector3 dir, float width, float strength)
 {
     float len = std::sqrt(dir.x * dir.x + dir.z * dir.z);
@@ -2389,7 +2389,7 @@ void TrackRendererDraw::drawOneSkidMark(
         });
 }
 
-void TrackRenderer::FlushSkidMarks()
+void TrackRenderer::flushSkidMarks()
 {
     if (skidQueue_.empty() || skidTexture_.id == 0)
         return;

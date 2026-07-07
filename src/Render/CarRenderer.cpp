@@ -620,7 +620,7 @@ void CarRenderHelpers::drawWindshield()
     rlPopMatrix();
 }
 
-CarLightPoints GetCarLightPoints(const Car &car)
+CarLightPoints getCarLightPoints(const Car &car)
 {
     const float c = std::cos(car.heading);
     const float s = std::sin(car.heading);
@@ -641,12 +641,12 @@ CarLightPoints GetCarLightPoints(const Car &car)
     return points;
 }
 
-void DrawCar(const Car &car, Color bodyColor)
+void drawCar(const Car &car, Color bodyColor)
 {
-    DrawCarEx(car, CarVisual{}, bodyColor);
+    drawCarEx(car, CarVisual{}, bodyColor);
 }
 
-void DrawCarEx(const Car &car, const CarVisual &vis, Color bodyColor)
+void drawCarEx(const Car &car, const CarVisual &vis, Color bodyColor)
 {
     const float time = static_cast<float>(GetTime());
     const BodyPalette palette = CarRenderHelpers::makeBodyPalette(bodyColor);

@@ -32,8 +32,8 @@ void EmitDriftSalvo(racer::VfxSystem& vfx, float tf)
     const float ang = tf * kDt * 1.2f;
     const Vector3 pos{5.5f * std::cos(ang), 0.15f, 5.5f * std::sin(ang)};
     const Vector3 vel{-std::sin(ang) * 6.6f, 0.0f, std::cos(ang) * 6.6f};
-    vfx.EmitDriftSmoke(pos, vel);
-    vfx.EmitOffroadDust(Vector3{pos.x * 1.15f, 0.1f, pos.z * 1.15f}, vel);
+    vfx.emitDriftSmoke(pos, vel);
+    vfx.emitOffroadDust(Vector3{pos.x * 1.15f, 0.1f, pos.z * 1.15f}, vel);
 }
 
 void EmitNitroBurst(racer::VfxSystem& vfx, float tf)
@@ -42,14 +42,14 @@ void EmitNitroBurst(racer::VfxSystem& vfx, float tf)
     Vector3 backDir{std::cos(a), 0.18f, std::sin(a)};
     const float len = std::sqrt(backDir.x * backDir.x + backDir.y * backDir.y +
                                 backDir.z * backDir.z);
-    vfx.EmitNitroFlame(Vector3{-3.5f, 0.7f, 2.5f},
+    vfx.emitNitroFlame(Vector3{-3.5f, 0.7f, 2.5f},
                        Vector3{backDir.x / len, backDir.y / len, backDir.z / len},
                        Vector3{0.0f, 0.0f, 0.0f});
 }
 
 void EmitSparkBurst(racer::VfxSystem& vfx)
 {
-    vfx.EmitSparks(Vector3{3.6f, 0.9f, -2.2f}, Vector3{-0.7f, 0.5f, 0.5f});
+    vfx.emitSparks(Vector3{3.6f, 0.9f, -2.2f}, Vector3{-0.7f, 0.5f, 0.5f});
 }
 
 void DrawSceneMarkers()
@@ -63,7 +63,7 @@ void DrawSceneMarkers()
               Color{62, 68, 80, 255});
 }
 
-void DrawHudOverlay(int frame, int activeCount)
+void drawHudOverlay(int frame, int activeCount)
 {
     DrawText(TextFormat("frame %d", frame), 12, 10, 20, RAYWHITE);
     DrawText(TextFormat("particules actives : %d / 4096", activeCount),
@@ -79,9 +79,9 @@ void UpdateScenario(racer::VfxSystem& vfx, int frame, float tf)
     if (frame >= 90 && frame <= 112 && frame % 4 == 0)
         EmitSparkBurst(vfx);
     if (frame == 90 || frame == 100)
-        vfx.EmitConfetti(Vector3{0.0f, 2.6f, 0.0f});
+        vfx.emitConfetti(Vector3{0.0f, 2.6f, 0.0f});
     if (frame == 120)
-        vfx.SetRain(true);
+        vfx.setRain(true);
 }
 
 void MaybeScreenshot(int frame)
@@ -114,18 +114,18 @@ int main()
     {
         const float tf = static_cast<float>(frame);
         UpdateScenario(vfx, frame, tf);
-        vfx.Update(kDt, Vector3{0.0f, 0.0f, 0.0f});
-        maxActive = std::max(maxActive, vfx.ActiveCount());
+        vfx.update(kDt, Vector3{0.0f, 0.0f, 0.0f});
+        maxActive = std::max(maxActive, vfx.activeCount());
 
         BeginDrawing();
         ClearBackground(Color{36, 42, 54, 255});
 
         BeginMode3D(camera);
         DrawSceneMarkers();
-        vfx.Draw(camera);
+        vfx.draw(camera);
         EndMode3D();
 
-        DrawHudOverlay(frame, vfx.ActiveCount());
+        drawHudOverlay(frame, vfx.activeCount());
         EndDrawing();
 
         MaybeScreenshot(frame);

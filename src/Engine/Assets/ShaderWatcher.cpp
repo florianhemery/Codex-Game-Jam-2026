@@ -81,7 +81,7 @@ bool ShaderLoadUtils::checkPathChanged(const std::string &path,
 
 ShaderWatcher::~ShaderWatcher()
 {
-    UnloadAll();
+    unloadAll();
 }
 
 void ShaderWatcher::initSlotMtimes(ShaderSlot &slot,
@@ -123,7 +123,7 @@ void ShaderWatcher::loadSlotInitial(ShaderSlot &slot,
     }
 }
 
-ShaderSlot &ShaderWatcher::RegisterShader(const std::string &name,
+ShaderSlot &ShaderWatcher::registerShader(const std::string &name,
                                           const std::string &vsPath,
                                           const std::string &fsPath)
 {
@@ -146,7 +146,7 @@ ShaderSlot &ShaderWatcher::RegisterShader(const std::string &name,
     return ref;
 }
 
-void ShaderWatcher::Poll()
+void ShaderWatcher::poll()
 {
     const auto now = std::chrono::steady_clock::now();
 
@@ -163,11 +163,11 @@ void ShaderWatcher::Poll()
         if (ShaderLoadUtils::checkPathChanged(slot.fsPath_, slot.fsTime_))
             changed = true;
         if (changed)
-            TryReload(slot);
+            tryReload(slot);
     }
 }
 
-bool ShaderWatcher::TryReload(ShaderSlot &slot)
+bool ShaderWatcher::tryReload(ShaderSlot &slot)
 {
     const bool wantsCustom = !slot.vsPath_.empty() || !slot.fsPath_.empty();
     Shader fresh = LoadShader(
@@ -195,7 +195,7 @@ bool ShaderWatcher::TryReload(ShaderSlot &slot)
     return true;
 }
 
-ShaderSlot *ShaderWatcher::Find(const std::string &name)
+ShaderSlot *ShaderWatcher::find(const std::string &name)
 {
     auto it = slots_.find(name);
 
@@ -204,7 +204,7 @@ ShaderSlot *ShaderWatcher::Find(const std::string &name)
     return nullptr;
 }
 
-void ShaderWatcher::SetPollInterval(double seconds)
+void ShaderWatcher::setPollInterval(double seconds)
 {
     if (seconds < 0.0)
         seconds = 0.0;
@@ -213,7 +213,7 @@ void ShaderWatcher::SetPollInterval(double seconds)
         std::chrono::duration<double>(seconds));
 }
 
-void ShaderWatcher::UnloadAll()
+void ShaderWatcher::unloadAll()
 {
     const bool gpuReady = IsWindowReady();
 

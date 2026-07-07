@@ -293,7 +293,7 @@ void drawFinishLineTick(const std::vector<Vector2> &points,
 void drawMinimapOpponents(const RaceState &race, const HudExtras &extras,
     const MapProjection &proj, const Rectangle &panel)
 {
-    const std::vector<RacerEntry> &racers = race.Racers();
+    const std::vector<RacerEntry> &racers = race.racers();
 
     for (size_t i = 0; i < racers.size(); ++i) {
         if (racers[i].isPlayer) {
@@ -315,8 +315,8 @@ void drawMinimapOpponents(const RaceState &race, const HudExtras &extras,
 void drawMinimapPlayer(const RaceState &race, const HudExtras &extras,
     const MapProjection &proj, const Rectangle &panel)
 {
-    const std::vector<RacerEntry> &racers = race.Racers();
-    size_t playerIdx = static_cast<size_t>(race.PlayerIndex());
+    const std::vector<RacerEntry> &racers = race.racers();
+    size_t playerIdx = static_cast<size_t>(race.playerIndex());
     Vector2 pos = proj.apply(Vector2{
         racers[playerIdx].car.position.x,
         racers[playerIdx].car.position.z
@@ -340,7 +340,7 @@ void drawMinimap(const RaceState &race, const HudExtras &extras,
 
     drawPanel(panel, 0.45f);
 
-    const std::vector<Vector2> &waypoints = race.GetTrack().Waypoints();
+    const std::vector<Vector2> &waypoints = race.getTrack().waypoints();
 
     if (waypoints.size() < 2) {
         return;
@@ -351,7 +351,7 @@ void drawMinimap(const RaceState &race, const HudExtras &extras,
     };
     MapProjection proj = fitTrackInRect(waypoints, area, false);
 
-    float road = std::clamp(race.GetTrack().Width() * proj.scale, 3.0f, 10.0f);
+    float road = std::clamp(race.getTrack().width() * proj.scale, 3.0f, 10.0f);
 
     drawTrackPolyline(waypoints, proj, road, Fade(WHITE, 0.15f));
     drawTrackPolyline(waypoints, proj, 1.5f, Fade(WHITE, 0.28f));
@@ -531,9 +531,9 @@ void drawStandingsRow(const StandingsRowParams &params)
 
 void drawStandingsPanel(const RaceState &race, const HudExtras &extras)
 {
-    const std::vector<RacerEntry> &racers = race.Racers();
-    const RacerEntry &player = racers[static_cast<size_t>(race.PlayerIndex())];
-    std::vector<int> order = race.Standings();
+    const std::vector<RacerEntry> &racers = race.racers();
+    const RacerEntry &player = racers[static_cast<size_t>(race.playerIndex())];
+    std::vector<int> order = race.standings();
     const float rowH = 28.0f;
     Rectangle panel{
         16.0f, 16.0f, 212.0f,
@@ -545,7 +545,7 @@ void drawStandingsPanel(const RaceState &race, const HudExtras &extras)
     char lapBuf[32];
 
     std::snprintf(lapBuf, sizeof(lapBuf), "TOUR %d/%d",
-        std::min(player.lap + 1, race.LapsToWin()), race.LapsToWin());
+        std::min(player.lap + 1, race.lapsToWin()), race.lapsToWin());
     DrawText(lapBuf, static_cast<int>(panel.x + 14.0f),
         static_cast<int>(panel.y + 12.0f), 20, RAYWHITE);
     DrawLineEx(
@@ -595,7 +595,7 @@ void drawTimersPanel(const RaceState &race, const HudExtras &extras,
 
     char total[32];
 
-    formatTime(race.ElapsedTime(), total, sizeof(total));
+    formatTime(race.elapsedTime(), total, sizeof(total));
     DrawText(total, static_cast<int>(panel.x + 14.0f),
         static_cast<int>(panel.y + 26.0f), 30, RAYWHITE);
     DrawLineEx(
@@ -655,7 +655,7 @@ void drawStartLights(int centerX, int y, int litCount, float alpha)
 
 void drawCountdown(const RaceState &race, int screenWidth, int screenHeight)
 {
-    float remaining = race.CountdownRemaining();
+    float remaining = race.countdownRemaining();
     int digit = std::clamp(static_cast<int>(std::ceil(remaining)), 1, 3);
     int lit = digit >= 3 ? 1 : 2;
 
@@ -682,7 +682,7 @@ void drawCountdown(const RaceState &race, int screenWidth, int screenHeight)
 void drawGoFlash(const RaceState &race, int screenWidth, int screenHeight)
 {
     const float duration = 1.2f;
-    float elapsed = race.ElapsedTime();
+    float elapsed = race.elapsedTime();
 
     if (elapsed >= duration) {
         return;
@@ -707,12 +707,12 @@ void drawGoFlash(const RaceState &race, int screenWidth, int screenHeight)
 bool estimateGapSeconds(const RaceState &race, const RacerEntry &racer,
     float *outSeconds)
 {
-    const Track &track = race.GetTrack();
-    Track::Progress prog = track.ProjectPosition(racer.car.position);
-    float done = static_cast<float>(racer.lap) * track.TotalLength() +
-        track.CumulativeDistance(prog);
-    float remaining = static_cast<float>(race.LapsToWin()) *
-        track.TotalLength() - done;
+    const Track &track = race.getTrack();
+    Track::Progress prog = track.projectPosition(racer.car.position);
+    float done = static_cast<float>(racer.lap) * track.totalLength() +
+        track.cumulativeDistance(prog);
+    float remaining = static_cast<float>(race.lapsToWin()) *
+        track.totalLength() - done;
 
     if (remaining <= 0.0f) {
         *outSeconds = 0.0f;
@@ -783,7 +783,7 @@ void drawFinishScreenHeader(const RaceState &race, const Rectangle &panel,
 {
     char ordinal[16];
 
-    formatOrdinal(race.PlayerPosition(), ordinal, sizeof(ordinal));
+    formatOrdinal(race.playerPosition(), ordinal, sizeof(ordinal));
     char title[64];
 
     std::snprintf(title, sizeof(title), "ARRIVEE -- %s place", ordinal);
@@ -794,11 +794,11 @@ void drawFinishScreenHeader(const RaceState &race, const Rectangle &panel,
 
     drawTextShadowCentered(title, titleShadow);
 
-    const std::vector<RacerEntry> &racers = race.Racers();
-    const RacerEntry &player = racers[static_cast<size_t>(race.PlayerIndex())];
+    const std::vector<RacerEntry> &racers = race.racers();
+    const RacerEntry &player = racers[static_cast<size_t>(race.playerIndex())];
     char timeBuf[32];
 
-    formatTime(player.finished ? player.finishTime : race.ElapsedTime(),
+    formatTime(player.finished ? player.finishTime : race.elapsedTime(),
         timeBuf, sizeof(timeBuf));
     char timeLine[64];
 
@@ -816,8 +816,8 @@ void drawFinishScreen(const RaceState &race, const HudExtras &extras,
 {
     DrawRectangle(0, 0, screenWidth, screenHeight, Fade(BLACK, 0.65f));
 
-    const std::vector<RacerEntry> &racers = race.Racers();
-    std::vector<int> order = race.Standings();
+    const std::vector<RacerEntry> &racers = race.racers();
+    std::vector<int> order = race.standings();
     const float rowH = 30.0f;
     const float panelW = 540.0f;
     const float headerH = 104.0f;
@@ -863,7 +863,7 @@ const TrackPreview &getTrackPreview(const TrackDef &def)
     TrackPreview entry;
 
     entry.key = def.name;
-    entry.points = Track::Make(def).Waypoints();
+    entry.points = Track::make(def).waypoints();
     cache.push_back(std::move(entry));
     return cache.back();
 }
@@ -890,7 +890,7 @@ void drawTrackCardPreview(const TrackDef &def, const TrackPreview &preview,
 
 void drawTrackCardBadge(const TrackDef &def, Rectangle card)
 {
-    if (def.surfaceStyle != SurfaceStyle::Abimee) {
+    if (def.surfaceStyle != SurfaceStyle::ABIMEE) {
         return;
     }
     const Color amber{255, 178, 48, 255};
@@ -1007,36 +1007,36 @@ void drawMenuCards(const std::vector<TrackDef> &presets, int selectedIndex,
 
 }
 
-void DrawHud(const RaceState &race, int screenWidth, int screenHeight)
+void drawHud(const RaceState &race, int screenWidth, int screenHeight)
 {
-    DrawHudEx(race, screenWidth, screenHeight, HudExtras{});
+    drawHudEx(race, screenWidth, screenHeight, HudExtras{});
 }
 
-void DrawHudEx(const RaceState &race, int screenWidth, int screenHeight,
+void drawHudEx(const RaceState &race, int screenWidth, int screenHeight,
     const HudExtras &extras)
 {
-    const std::vector<RacerEntry> &racers = race.Racers();
-    const RacerEntry &player = racers[static_cast<size_t>(race.PlayerIndex())];
+    const std::vector<RacerEntry> &racers = race.racers();
+    const RacerEntry &player = racers[static_cast<size_t>(race.playerIndex())];
 
     drawStandingsPanel(race, extras);
     drawTimersPanel(race, extras, screenWidth);
     drawSpeedGauge(player.car, screenHeight);
     drawMinimap(race, extras, screenWidth, screenHeight);
 
-    switch (race.Phase()) {
-        case RacePhase::Countdown:
+    switch (race.phase()) {
+        case RacePhase::COUNTDOWN:
             drawCountdown(race, screenWidth, screenHeight);
             break;
-        case RacePhase::Racing:
+        case RacePhase::RACING:
             drawGoFlash(race, screenWidth, screenHeight);
             break;
-        case RacePhase::Finished:
+        case RacePhase::FINISHED:
             drawFinishScreen(race, extras, screenWidth, screenHeight);
             break;
     }
 }
 
-void DrawMenu(const std::vector<TrackDef> &presets, int selectedIndex,
+void drawMenu(const std::vector<TrackDef> &presets, int selectedIndex,
     int screenWidth, int screenHeight)
 {
     ClearBackground(Color{15, 17, 26, 255});

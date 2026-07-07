@@ -14,7 +14,7 @@
 
 namespace racer {
 
-float RaceState::NormalizeAngle(float angle)
+float RaceState::normalizeAngle(float angle)
 {
     while (angle > PI) {
         angle -= 2.0f * PI;
@@ -25,7 +25,7 @@ float RaceState::NormalizeAngle(float angle)
     return angle;
 }
 
-float RaceState::Sign(float value)
+float RaceState::sign(float value)
 {
     if (value > 0.0f) {
         return 1.0f;
@@ -42,36 +42,36 @@ RaceState::RaceState(Track track, int lapsToWin, int aiCount)
 {
     int totalCars = aiCount + 1;
 
-    InitPlayer(totalCars);
+    initPlayer(totalCars);
     for (int i = 0; i < aiCount; ++i) {
-        InitAiRacer(i, totalCars);
+        initAiRacer(i, totalCars);
     }
 }
 
-void RaceState::InitPlayer(int totalCars)
+void RaceState::initPlayer(int totalCars)
 {
     RacerEntry player;
 
     player.name = "Joueur";
     player.isPlayer = true;
-    player.car.position = track_.StartPosition(0, totalCars);
-    player.car.heading = track_.StartHeading();
+    player.car.position = track_.startPosition(0, totalCars);
+    player.car.heading = track_.startHeading();
     player.car.velocityHeading = player.car.heading;
-    Track::Progress prog = track_.ProjectPosition(player.car.position);
+    Track::Progress prog = track_.projectPosition(player.car.position);
     player.lastSegment = prog.segmentIndex;
     racers_.push_back(player);
     playerIndex_ = 0;
 }
 
-void RaceState::InitAiRacer(int aiIndex, int totalCars)
+void RaceState::initAiRacer(int aiIndex, int totalCars)
 {
     RacerEntry ai;
 
     ai.name = "IA " + std::to_string(aiIndex + 1);
-    ai.car.position = track_.StartPosition(aiIndex + 1, totalCars);
-    ai.car.heading = track_.StartHeading();
+    ai.car.position = track_.startPosition(aiIndex + 1, totalCars);
+    ai.car.heading = track_.startHeading();
     ai.car.velocityHeading = ai.car.heading;
-    Track::Progress prog = track_.ProjectPosition(ai.car.position);
+    Track::Progress prog = track_.projectPosition(ai.car.position);
     ai.lastSegment = prog.segmentIndex;
     racers_.push_back(ai);
 
@@ -82,39 +82,39 @@ void RaceState::InitAiRacer(int aiIndex, int totalCars)
     aiDrivers_.emplace_back(skill, seed);
 }
 
-void RaceState::Update(float dt, const CarInput& playerInput)
+void RaceState::update(float dt, const CarInput& playerInput)
 {
-    if (phase_ == RacePhase::Countdown) {
-        UpdateCountdown(dt);
+    if (phase_ == RacePhase::COUNTDOWN) {
+        updateCountdown(dt);
         return;
     }
-    if (phase_ == RacePhase::Finished) {
+    if (phase_ == RacePhase::FINISHED) {
         return;
     }
-    UpdateRacers(dt, playerInput);
+    updateRacers(dt, playerInput);
 }
 
-void RaceState::UpdateCountdown(float dt)
+void RaceState::updateCountdown(float dt)
 {
     countdownRemaining_ -= dt;
     if (countdownRemaining_ <= 0.0f) {
         countdownRemaining_ = 0.0f;
-        phase_ = RacePhase::Racing;
+        phase_ = RacePhase::RACING;
     }
 }
 
-void RaceState::UpdateRacers(float dt, const CarInput& playerInput)
+void RaceState::updateRacers(float dt, const CarInput& playerInput)
 {
     elapsedTime_ += dt;
-    int numSegments = static_cast<int>(track_.Waypoints().size());
+    int numSegments = static_cast<int>(track_.waypoints().size());
 
     for (size_t i = 0; i < racers_.size(); ++i) {
-        UpdateSingleRacer(i, dt, playerInput, numSegments);
+        updateSingleRacer(i, dt, playerInput, numSegments);
     }
-    ResolveCarContacts();
+    resolveCarContacts();
 }
 
-void RaceState::UpdateSingleRacer(
+void RaceState::updateSingleRacer(
     size_t index, float dt, const CarInput& playerInput, int numSegments)
 {
     RacerEntry& racer = racers_[index];
@@ -123,28 +123,28 @@ void RaceState::UpdateSingleRacer(
     }
     CarInput input = racer.isPlayer
         ? playerInput
-        : aiDrivers_[index - 1].ComputeInput(racer.car, track_);
+        : aiDrivers_[index - 1].computeInput(racer.car, track_);
     racer.lastInput = input;
-    racer.car.Update(input, dt);
-    Track::Progress prog = track_.ProjectPosition(racer.car.position);
-    ApplySurfaceGrip(racer, prog);
-    UpdateMidpointFlag(racer, prog, numSegments);
-    UpdateLapCount(racer, prog, numSegments);
+    racer.car.update(input, dt);
+    Track::Progress prog = track_.projectPosition(racer.car.position);
+    applySurfaceGrip(racer, prog);
+    updateMidpointFlag(racer, prog, numSegments);
+    updateLapCount(racer, prog, numSegments);
     racer.lastSegment = prog.segmentIndex;
     if (racer.isPlayer && racer.finished) {
-        phase_ = RacePhase::Finished;
+        phase_ = RacePhase::FINISHED;
     }
 }
 
-void RaceState::ApplySurfaceGrip(
+void RaceState::applySurfaceGrip(
     RacerEntry& racer, const Track::Progress& prog)
 {
-    float grassLimit = track_.Width() * 0.5f + 0.6f;
+    float grassLimit = track_.width() * 0.5f + 0.6f;
 
     if (std::fabs(prog.lateralOffset) > grassLimit) {
         racer.car.surfaceGrip = 0.55f;
         racer.car.surfaceDrag = 3.0f;
-    } else if (track_.Style() == SurfaceStyle::Abimee) {
+    } else if (track_.style() == SurfaceStyle::ABIMEE) {
         racer.car.surfaceGrip = 0.85f;
         racer.car.surfaceDrag = 1.15f;
     } else {
@@ -153,7 +153,7 @@ void RaceState::ApplySurfaceGrip(
     }
 }
 
-void RaceState::UpdateMidpointFlag(
+void RaceState::updateMidpointFlag(
     RacerEntry& racer, const Track::Progress& prog, int numSegments)
 {
     int mid = numSegments / 2;
@@ -164,7 +164,7 @@ void RaceState::UpdateMidpointFlag(
     }
 }
 
-void RaceState::UpdateLapCount(
+void RaceState::updateLapCount(
     RacerEntry& racer, const Track::Progress& prog, int numSegments)
 {
     int highSeg = numSegments * 7 / 10;
@@ -188,7 +188,7 @@ void RaceState::UpdateLapCount(
 // Resolution purement positionnelle + amortissement leger, pensee pour rester
 // stable a 60 Hz meme en peloton serre (corrections bornees, relaxation 50 %,
 // jamais de NaN si deux positions sont confondues).
-void RaceState::ResolveCarContacts()
+void RaceState::resolveCarContacts()
 {
     for (size_t i = 0; i < racers_.size(); ++i) {
         if (racers_[i].finished) {
@@ -198,12 +198,12 @@ void RaceState::ResolveCarContacts()
             if (racers_[j].finished) {
                 continue;
             }
-            ResolveContactPair(i, j);
+            resolveContactPair(i, j);
         }
     }
 }
 
-bool RaceState::TryPrepareContact(
+bool RaceState::tryPrepareContact(
     size_t i, size_t j, float& nx, float& nz, float& overlap)
 {
     constexpr float kContactDist = 3.0f;
@@ -221,7 +221,7 @@ bool RaceState::TryPrepareContact(
         nx = dx / dist;
         nz = dz / dist;
     } else {
-        Vector3 fwd = a.Forward();
+        Vector3 fwd = a.forward();
         nx = fwd.x;
         nz = fwd.z;
         dist = 0.0f;
@@ -230,23 +230,23 @@ bool RaceState::TryPrepareContact(
     return true;
 }
 
-void RaceState::ResolveContactPair(size_t i, size_t j)
+void RaceState::resolveContactPair(size_t i, size_t j)
 {
     float nx = 0.0f;
     float nz = 0.0f;
     float overlap = 0.0f;
 
-    if (!TryPrepareContact(i, j, nx, nz, overlap)) {
+    if (!tryPrepareContact(i, j, nx, nz, overlap)) {
         return;
     }
     Car& a = racers_[i].car;
     Car& b = racers_[j].car;
-    ApplyContactSeparation(a, b, nx, nz, overlap);
-    ApplyContactDamping(a, b, nx, nz);
-    ApplyContactDeflection(a, b, nx, nz, overlap);
+    applyContactSeparation(a, b, nx, nz, overlap);
+    applyContactDamping(a, b, nx, nz);
+    applyContactDeflection(a, b, nx, nz, overlap);
 }
 
-void RaceState::ApplyContactSeparation(
+void RaceState::applyContactSeparation(
     Car& a, Car& b, float nx, float nz, float overlap)
 {
     constexpr float kMaxPush = 0.25f;
@@ -258,11 +258,11 @@ void RaceState::ApplyContactSeparation(
     b.position.z += nz * push;
 }
 
-void RaceState::ApplyContactDamping(Car& a, Car& b, float nx, float nz)
+void RaceState::applyContactDamping(Car& a, Car& b, float nx, float nz)
 {
     constexpr float kSpeedDamping = 0.96f;
-    Vector3 va = a.Velocity();
-    Vector3 vb = b.Velocity();
+    Vector3 va = a.velocity();
+    Vector3 vb = b.velocity();
     float closing = (va.x - vb.x) * nx + (va.z - vb.z) * nz;
     float t = std::clamp(closing / 6.0f, 0.0f, 1.0f);
     float damping = 1.0f - (1.0f - kSpeedDamping) * t;
@@ -277,14 +277,14 @@ void RaceState::ApplyContactDamping(Car& a, Car& b, float nx, float nz)
     }
 }
 
-void RaceState::NudgeLateral(
+void RaceState::nudgeLateral(
     Car& car, float fwdX, float fwdZ, float push, float sideSign)
 {
     car.position.x += sideSign * fwdZ * push * 0.6f;
     car.position.z += sideSign * (-fwdX) * push * 0.6f;
 }
 
-void RaceState::ApplyContactDeflection(
+void RaceState::applyContactDeflection(
     Car& a, Car& b, float nx, float nz, float overlap)
 {
     constexpr float kMaxPush = 0.25f;
@@ -295,33 +295,33 @@ void RaceState::ApplyContactDeflection(
     float az = std::cos(a.velocityHeading);
     float bx = std::sin(b.velocityHeading);
     float bz = std::cos(b.velocityHeading);
-    float sideA = Sign(ax * nz - az * nx);
-    float sideB = Sign(bx * (-nz) - bz * (-nx));
+    float sideA = sign(ax * nz - az * nx);
+    float sideB = sign(bx * (-nz) - bz * (-nx));
 
-    a.velocityHeading = NormalizeAngle(
+    a.velocityHeading = normalizeAngle(
         a.velocityHeading + sideA * deflect);
-    b.velocityHeading = NormalizeAngle(
+    b.velocityHeading = normalizeAngle(
         b.velocityHeading + sideB * deflect);
 
-    Vector3 va = a.Velocity();
-    Vector3 vb = b.Velocity();
+    Vector3 va = a.velocity();
+    Vector3 vb = b.velocity();
     if (va.x * nx + va.z * nz > 0.0f) {
-        NudgeLateral(a, ax, az, push, sideA);
+        nudgeLateral(a, ax, az, push, sideA);
     }
     if (vb.x * nx + vb.z * nz < 0.0f) {
-        NudgeLateral(b, bx, bz, push, sideB);
+        nudgeLateral(b, bx, bz, push, sideB);
     }
 }
 
-float RaceState::RaceProgress(const RacerEntry& racer) const
+float RaceState::raceProgress(const RacerEntry& racer) const
 {
-    Track::Progress prog = track_.ProjectPosition(racer.car.position);
-    float lapDist = static_cast<float>(racer.lap) * track_.TotalLength();
+    Track::Progress prog = track_.projectPosition(racer.car.position);
+    float lapDist = static_cast<float>(racer.lap) * track_.totalLength();
 
-    return lapDist + track_.CumulativeDistance(prog);
+    return lapDist + track_.cumulativeDistance(prog);
 }
 
-std::vector<int> RaceState::Standings() const
+std::vector<int> RaceState::standings() const
 {
     std::vector<int> order(racers_.size());
     std::iota(order.begin(), order.end(), 0);
@@ -336,15 +336,15 @@ std::vector<int> RaceState::Standings() const
         if (ra.finished && rb.finished) {
             return ra.finishTime < rb.finishTime;
         }
-        return RaceProgress(ra) > RaceProgress(rb);
+        return raceProgress(ra) > raceProgress(rb);
     });
 
     return order;
 }
 
-int RaceState::PlayerPosition() const
+int RaceState::playerPosition() const
 {
-    std::vector<int> order = Standings();
+    std::vector<int> order = standings();
 
     for (size_t i = 0; i < order.size(); ++i) {
         if (order[i] == playerIndex_) {

@@ -127,20 +127,20 @@ RenderPipeline::RenderPipeline(int screenWidth, int screenHeight,
 
     TraceLog(LOG_INFO, "RENDER: dossier shaders: %s", dir.c_str());
 
-    shadowRT_ = device_.CreateRenderTarget(
+    shadowRT_ = device_.createRenderTarget(
         {kShadowRes, kShadowRes, RhiFormat::DEPTH24, true});
-    sceneRT_ = device_.CreateRenderTarget(
+    sceneRT_ = device_.createRenderTarget(
         {width_, height_, RhiFormat::RGBA16F, true});
 
-    if (const RenderTexture2D *hdr = device_.GetRenderTexture(sceneRT_))
+    if (const RenderTexture2D *hdr = device_.getRenderTexture(sceneRT_))
         SetTextureWrap(hdr->texture, TEXTURE_WRAP_CLAMP);
-    if (const RenderTexture2D *shadow = device_.GetRenderTexture(shadowRT_))
+    if (const RenderTexture2D *shadow = device_.getRenderTexture(shadowRT_))
         SetTextureWrap(shadow->depth, TEXTURE_WRAP_CLAMP);
 
-    lit_ = &watcher_.RegisterShader("lit", dir + "/lit.vs", dir + "/lit.fs");
-    sky_ = &watcher_.RegisterShader("sky", dir + "/sky.vs", dir + "/sky.fs");
-    post_ = &watcher_.RegisterShader("post", "", dir + "/post.fs");
-    watcher_.SetOnReload([this](const std::string &, Shader &) {
+    lit_ = &watcher_.registerShader("lit", dir + "/lit.vs", dir + "/lit.fs");
+    sky_ = &watcher_.registerShader("sky", dir + "/sky.vs", dir + "/sky.fs");
+    post_ = &watcher_.registerShader("post", "", dir + "/post.fs");
+    watcher_.setOnReload([this](const std::string &, Shader &) {
         refreshLocations();
     });
 
@@ -148,7 +148,7 @@ RenderPipeline::RenderPipeline(int screenWidth, int screenHeight,
     skyDomeLoaded_ = true;
 
     refreshLocations();
-    SetAmbiance(Ambiance::Midi);
+    setAmbiance(Ambiance::MIDI);
 }
 
 RenderPipeline::~RenderPipeline()
@@ -161,28 +161,28 @@ RenderPipeline::~RenderPipeline()
     skyDomeLoaded_ = false;
 }
 
-const AmbianceParams &RenderPipeline::ParamsFor(Ambiance a)
+const AmbianceParams &RenderPipeline::paramsFor(Ambiance a)
 {
     return presetTable()[static_cast<std::size_t>(a)];
 }
 
-void RenderPipeline::SetAmbiance(Ambiance a)
+void RenderPipeline::setAmbiance(Ambiance a)
 {
     ambiance_ = a;
-    params_ = ParamsFor(a);
+    params_ = paramsFor(a);
 }
 
-Shader RenderPipeline::LitShader() const
+Shader RenderPipeline::litShader() const
 {
-    return lit_->Get();
+    return lit_->get();
 }
 
-void RenderPipeline::ClearLights()
+void RenderPipeline::clearLights()
 {
     lightCount_ = 0;
 }
 
-void RenderPipeline::AddLight(Vector3 position, Vector3 colorIntensity)
+void RenderPipeline::addLight(Vector3 position, Vector3 colorIntensity)
 {
     if (lightCount_ >= kMaxLights)
         return;
@@ -192,9 +192,9 @@ void RenderPipeline::AddLight(Vector3 position, Vector3 colorIntensity)
     ++lightCount_;
 }
 
-void RenderPipeline::PollShaderReload()
+void RenderPipeline::pollShaderReload()
 {
-    watcher_.Poll();
+    watcher_.poll();
 }
 
 std::string RenderPipeline::resolveShaderDir(const char *shaderDir) const
@@ -223,7 +223,7 @@ std::string RenderPipeline::resolveShaderDir(const char *shaderDir) const
 
 void RenderPipeline::refreshLitLocs()
 {
-    const Shader &lit = lit_->Get();
+    const Shader &lit = lit_->get();
 
     litLocs_.viewPos = GetShaderLocation(lit, "viewPos");
     litLocs_.sunDir = GetShaderLocation(lit, "sunDir");
@@ -242,7 +242,7 @@ void RenderPipeline::refreshLitLocs()
 
 void RenderPipeline::refreshSkyLocs()
 {
-    const Shader &sky = sky_->Get();
+    const Shader &sky = sky_->get();
 
     skyLocs_.sunDir = GetShaderLocation(sky, "sunDir");
     skyLocs_.sunColor = GetShaderLocation(sky, "sunColor");
@@ -257,7 +257,7 @@ void RenderPipeline::refreshSkyLocs()
 
 void RenderPipeline::refreshPostLocs()
 {
-    const Shader &post = post_->Get();
+    const Shader &post = post_->get();
 
     postLocs_.exposure = GetShaderLocation(post, "exposure");
     postLocs_.gradeTint = GetShaderLocation(post, "gradeTint");
@@ -276,7 +276,7 @@ void RenderPipeline::refreshLocations()
     refreshPostLocs();
 
     if (skyDomeLoaded_)
-        skyDome_.materials[0].shader = sky_->Get();
+        skyDome_.materials[0].shader = sky_->get();
 }
 
 void RenderPipeline::bindShadowMapTexture(unsigned int textureId)
@@ -284,7 +284,7 @@ void RenderPipeline::bindShadowMapTexture(unsigned int textureId)
     if (litLocs_.shadowMap == -1)
         return;
 
-    const Shader &lit = lit_->Get();
+    const Shader &lit = lit_->get();
 
     rlEnableShader(lit.id);
     int slot = kShadowSlot;
@@ -297,7 +297,7 @@ void RenderPipeline::bindShadowMapTexture(unsigned int textureId)
 
 void RenderPipeline::uploadLitUniforms(const Camera3D &camera)
 {
-    const Shader &lit = lit_->Get();
+    const Shader &lit = lit_->get();
     const float texel = 1.0f / static_cast<float>(kShadowRes);
 
     SetShaderValue(lit, litLocs_.viewPos, &camera.position,
@@ -326,7 +326,7 @@ void RenderPipeline::uploadLitUniforms(const Camera3D &camera)
 
 void RenderPipeline::uploadSkyUniforms(float time)
 {
-    const Shader &sky = sky_->Get();
+    const Shader &sky = sky_->get();
     const int stars = params_.stars ? 1 : 0;
 
     SetShaderValue(sky, skyLocs_.sunDir, &params_.sunDir, SHADER_UNIFORM_VEC3);
@@ -353,7 +353,7 @@ void RenderPipeline::uploadPostUniforms(float time, const PostParams &post)
     const float aberration = 0.0010f + 0.0035f * speed
         + (post.nitro ? 0.0020f : 0.0f);
     const float grain = 0.028f;
-    const Shader &sh = post_->Get();
+    const Shader &sh = post_->get();
 
     SetShaderValue(sh, postLocs_.exposure, &params_.exposure,
                    SHADER_UNIFORM_FLOAT);
@@ -396,18 +396,18 @@ void RenderPipeline::runShadowPass(
 
     bindShadowMapTexture(rlGetTextureIdDefault());
 
-    device_.BeginRenderTarget(shadowRT_);
+    device_.beginRenderTarget(shadowRT_);
     ClearBackground(WHITE);
     BeginMode3D(lightCam);
     lightVP_ = MatrixMultiply(rlGetMatrixModelview(), rlGetMatrixProjection());
     rlSetCullFace(RL_CULL_FACE_FRONT);
-    BeginShaderMode(lit_->Get());
+    BeginShaderMode(lit_->get());
     if (drawShadowCasters)
         drawShadowCasters();
     EndShaderMode();
     rlSetCullFace(RL_CULL_FACE_BACK);
     EndMode3D();
-    device_.EndRenderTarget();
+    device_.endRenderTarget();
 }
 
 void RenderPipeline::runScenePass(
@@ -419,32 +419,32 @@ void RenderPipeline::runScenePass(
     uploadLitUniforms(camera);
     uploadSkyUniforms(time);
 
-    const RenderTexture2D *shadowTex = device_.GetRenderTexture(shadowRT_);
+    const RenderTexture2D *shadowTex = device_.getRenderTexture(shadowRT_);
     const unsigned int shadowId = shadowTex != nullptr
         ? shadowTex->depth.id
         : rlGetTextureIdDefault();
 
     bindShadowMapTexture(shadowId);
 
-    device_.BeginRenderTarget(sceneRT_);
+    device_.beginRenderTarget(sceneRT_);
     ClearBackground(BLACK);
     BeginMode3D(camera);
     drawSkyDome(camera);
-    BeginShaderMode(lit_->Get());
+    BeginShaderMode(lit_->get());
     if (drawLitScene)
         drawLitScene();
     EndShaderMode();
     if (drawUnlitInScene)
         drawUnlitInScene();
     EndMode3D();
-    device_.EndRenderTarget();
+    device_.endRenderTarget();
 }
 
 void RenderPipeline::runPostPass(const PostParams &post, float time)
 {
     uploadPostUniforms(time, post);
 
-    const RenderTexture2D *hdr = device_.GetRenderTexture(sceneRT_);
+    const RenderTexture2D *hdr = device_.getRenderTexture(sceneRT_);
 
     if (hdr == nullptr)
         return;
@@ -456,12 +456,12 @@ void RenderPipeline::runPostPass(const PostParams &post, float time)
         -static_cast<float>(hdr->texture.height),
     };
 
-    BeginShaderMode(post_->Get());
+    BeginShaderMode(post_->get());
     DrawTextureRec(hdr->texture, src, Vector2{0.0f, 0.0f}, WHITE);
     EndShaderMode();
 }
 
-void RenderPipeline::Frame(const Camera3D &camera,
+void RenderPipeline::frame(const Camera3D &camera,
                            const std::function<void()> &drawShadowCasters,
                            const std::function<void()> &drawLitScene,
                            const std::function<void()> &drawUnlitInScene,

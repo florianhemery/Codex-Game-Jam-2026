@@ -23,7 +23,7 @@
 
 namespace {
 
-enum class AppState { Menu, Racing };
+enum class AppState { MENU, RACING };
 
 using racer::engine::Ambiance;
 using racer::engine::RenderPipeline;
@@ -46,7 +46,7 @@ private:
         const int screenHeight = 720;
         const std::vector<racer::TrackDef> &presets;
         int selectedTrack = 0;
-        AppState appState = AppState::Menu;
+        AppState appState = AppState::MENU;
         std::unique_ptr<racer::RaceState> race;
         std::unique_ptr<racer::TrackRenderer> trackRenderer;
         std::unique_ptr<RenderPipeline> pipeline;
@@ -54,7 +54,7 @@ private:
         float steerSmoothed = 0.0f;
         float wheelSpin = 0.0f;
         LapTimerState lapTimer;
-        Ambiance currentAmbiance = Ambiance::Midi;
+        Ambiance currentAmbiance = Ambiance::MIDI;
         bool confettiEmitted = false;
         Camera3D camera{};
 
@@ -141,15 +141,15 @@ Color MainApp::colorForRacerIndex(size_t index, bool isPlayer)
 
 Ambiance MainApp::ambianceForTrack(int trackIndex, const racer::TrackDef &def)
 {
-    if (def.surfaceStyle == racer::SurfaceStyle::Abimee)
-        return Ambiance::Orage;
+    if (def.surfaceStyle == racer::SurfaceStyle::ABIMEE)
+        return Ambiance::ORAGE;
     switch (trackIndex % 3) {
     case 0:
-        return Ambiance::Midi;
+        return Ambiance::MIDI;
     case 1:
-        return Ambiance::AubeDoree;
+        return Ambiance::AUBE_DOREE;
     default:
-        return Ambiance::Crepuscule;
+        return Ambiance::CREPUSCULE;
     }
 }
 
@@ -157,7 +157,7 @@ void MainApp::updateLapTimer(
     LapTimerState &timer, const racer::RacerEntry &player, float dt,
     racer::RacePhase phase)
 {
-    if (phase != racer::RacePhase::Racing)
+    if (phase != racer::RacePhase::RACING)
         return;
     timer.currentLapTime += dt;
     if (player.lap > timer.lastLapCount) {
@@ -185,27 +185,27 @@ void MainApp::startRace(Context &ctx, int trackIndex)
     const racer::TrackDef &def = ctx.presets[static_cast<size_t>(trackIndex)];
 
     ctx.race = std::make_unique<racer::RaceState>(
-        racer::Track::Make(def), 3, 3);
+        racer::Track::make(def), 3, 3);
     ctx.currentAmbiance = ambianceForTrack(trackIndex, def);
     if (ctx.pipeline)
-        ctx.pipeline->SetAmbiance(ctx.currentAmbiance);
+        ctx.pipeline->setAmbiance(ctx.currentAmbiance);
     ctx.trackRenderer = std::make_unique<racer::TrackRenderer>(
-        ctx.race->GetTrack(), def);
+        ctx.race->getTrack(), def);
     if (ctx.pipeline)
-        ctx.trackRenderer->ApplyShader(ctx.pipeline->LitShader());
+        ctx.trackRenderer->applyShader(ctx.pipeline->litShader());
     ctx.steerSmoothed = 0.0f;
     ctx.wheelSpin = 0.0f;
     ctx.lapTimer = {};
     ctx.confettiEmitted = false;
-    ctx.vfx.Clear();
-    ctx.vfx.SetRain(ctx.currentAmbiance == Ambiance::Orage);
+    ctx.vfx.clear();
+    ctx.vfx.setRain(ctx.currentAmbiance == Ambiance::ORAGE);
 }
 
 void MainApp::pollShaders(Context &ctx)
 {
-    ctx.pipeline->PollShaderReload();
+    ctx.pipeline->pollShaderReload();
     if (ctx.trackRenderer)
-        ctx.trackRenderer->ApplyShader(ctx.pipeline->LitShader());
+        ctx.trackRenderer->applyShader(ctx.pipeline->litShader());
 }
 
 bool MainApp::handleMenuFrame(Context &ctx)
@@ -218,11 +218,11 @@ bool MainApp::handleMenuFrame(Context &ctx)
         ctx.selectedTrack = (ctx.selectedTrack + 1) % count;
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
         startRace(ctx, ctx.selectedTrack);
-        ctx.appState = AppState::Racing;
+        ctx.appState = AppState::RACING;
     }
     BeginDrawing();
     ClearBackground(Color{20, 24, 36, 255});
-    racer::DrawMenu(ctx.presets, ctx.selectedTrack, ctx.screenWidth,
+    racer::drawMenu(ctx.presets, ctx.selectedTrack, ctx.screenWidth,
         ctx.screenHeight);
     EndDrawing();
     return true;
@@ -230,11 +230,11 @@ bool MainApp::handleMenuFrame(Context &ctx)
 
 bool MainApp::shouldReturnToMenu(Context &ctx)
 {
-    if (ctx.race->Phase() != racer::RacePhase::Finished)
+    if (ctx.race->phase() != racer::RacePhase::FINISHED)
         return false;
     if (!IsKeyPressed(KEY_M))
         return false;
-    ctx.appState = AppState::Menu;
+    ctx.appState = AppState::MENU;
     return true;
 }
 
@@ -262,13 +262,13 @@ void MainApp::readPlayerInput(Context &ctx, float dt)
     input.steer = ctx.steerSmoothed;
     input.handbrake = IsKeyDown(KEY_SPACE);
     input.nitro = IsKeyDown(KEY_LEFT_SHIFT);
-    ctx.race->Update(dt, input);
+    ctx.race->update(dt, input);
 }
 
 void MainApp::updateWheelSpin(Context &ctx, float dt)
 {
     const racer::RacerEntry &player =
-        ctx.race->Racers()[static_cast<size_t>(ctx.race->PlayerIndex())];
+        ctx.race->racers()[static_cast<size_t>(ctx.race->playerIndex())];
 
     ctx.wheelSpin += player.car.speed * dt / racer::kWheelRadius;
 }
@@ -278,22 +278,22 @@ void MainApp::updateDriftVfx(Context &ctx, const racer::RacerEntry &entry,
 {
     Vector3 smokePos{entry.car.position.x, 0.12f, entry.car.position.z};
 
-    ctx.vfx.EmitDriftSmoke(smokePos, vel);
+    ctx.vfx.emitDriftSmoke(smokePos, vel);
     if (speed <= 0.1f || !ctx.trackRenderer)
         return;
     Vector3 markPos{
         entry.car.position.x - vel.x / speed * 1.0f, 0.05f,
         entry.car.position.z - vel.z / speed * 1.0f};
 
-    ctx.trackRenderer->QueueSkidMark(markPos, vel, 0.32f, 0.7f);
+    ctx.trackRenderer->queueSkidMark(markPos, vel, 0.32f, 0.7f);
 }
 
 void MainApp::updateNitroVfx(Context &ctx, const racer::RacerEntry &entry,
     Vector3 backDir, Vector3 vel)
 {
-    auto lights = racer::GetCarLightPoints(entry.car);
+    auto lights = racer::getCarLightPoints(entry.car);
 
-    ctx.vfx.EmitNitroFlame(lights.exhaust, backDir, vel);
+    ctx.vfx.emitNitroFlame(lights.exhaust, backDir, vel);
 }
 
 void MainApp::updateOffroadVfx(Context &ctx, const racer::RacerEntry &entry,
@@ -301,14 +301,14 @@ void MainApp::updateOffroadVfx(Context &ctx, const racer::RacerEntry &entry,
 {
     Vector3 dustPos{entry.car.position.x, 0.1f, entry.car.position.z};
 
-    ctx.vfx.EmitOffroadDust(dustPos, vel);
+    ctx.vfx.emitOffroadDust(dustPos, vel);
 }
 
 void MainApp::updateRacerVfx(Context &ctx, const racer::RacerEntry &entry)
 {
-    Vector3 vel = entry.car.Velocity();
+    Vector3 vel = entry.car.velocity();
     float speed = std::sqrt(vel.x * vel.x + vel.z * vel.z);
-    Vector3 backDir = entry.car.Forward();
+    Vector3 backDir = entry.car.forward();
 
     if (speed > 0.1f)
         backDir = Vector3{-vel.x / speed, 0.0f, -vel.z / speed};
@@ -337,20 +337,20 @@ racer::CarVisual MainApp::buildCarVisual(Context &ctx,
 
 void MainApp::updateConfetti(Context &ctx, const racer::Car &playerCar)
 {
-    if (ctx.race->Phase() != racer::RacePhase::Finished)
+    if (ctx.race->phase() != racer::RacePhase::FINISHED)
         return;
     if (ctx.confettiEmitted)
         return;
     Vector3 pos{playerCar.position.x, 3.0f, playerCar.position.z};
 
-    ctx.vfx.EmitConfetti(pos);
+    ctx.vfx.emitConfetti(pos);
     ctx.confettiEmitted = true;
 }
 
 void MainApp::updateCamera(
     Context &ctx, const racer::Car &playerCar, float dt)
 {
-    Vector3 forward = playerCar.Forward();
+    Vector3 forward = playerCar.forward();
     Vector3 desiredCamPos{
         playerCar.position.x - forward.x * 9.0f,
         playerCar.position.y + 4.5f,
@@ -376,24 +376,24 @@ void MainApp::updateCamera(
 
 void MainApp::setupHeadlights(Context &ctx)
 {
-    const auto &racers = ctx.race->Racers();
-    const auto &pipeParams = ctx.pipeline->Params();
+    const auto &racers = ctx.race->racers();
+    const auto &pipeParams = ctx.pipeline->params();
 
-    ctx.pipeline->ClearLights();
+    ctx.pipeline->clearLights();
     if (!pipeParams.headlights)
         return;
     for (size_t i = 0; i < racers.size(); ++i) {
-        auto lp = racer::GetCarLightPoints(racers[i].car);
+        auto lp = racer::getCarLightPoints(racers[i].car);
 
-        ctx.pipeline->AddLight(lp.headL, Vector3{2.5f, 2.4f, 2.0f});
-        ctx.pipeline->AddLight(lp.headR, Vector3{2.5f, 2.4f, 2.0f});
+        ctx.pipeline->addLight(lp.headL, Vector3{2.5f, 2.4f, 2.0f});
+        ctx.pipeline->addLight(lp.headR, Vector3{2.5f, 2.4f, 2.0f});
     }
 }
 
 RenderPipeline::PostParams MainApp::buildPostParams(Context &ctx)
 {
     const racer::RacerEntry &player =
-        ctx.race->Racers()[static_cast<size_t>(ctx.race->PlayerIndex())];
+        ctx.race->racers()[static_cast<size_t>(ctx.race->playerIndex())];
     float speedRatio = std::clamp(
         std::fabs(player.car.speed) / player.car.tuning.maxSpeed, 0.0f, 1.0f);
     bool nitroActive = player.lastInput.nitro
@@ -406,11 +406,11 @@ void MainApp::OpaquePass::operator()() const
 {
     if (!ctx_.trackRenderer)
         return;
-    ctx_.trackRenderer->DrawOpaqueGeometry();
-    const auto &racers = ctx_.race->Racers();
+    ctx_.trackRenderer->drawOpaqueGeometry();
+    const auto &racers = ctx_.race->racers();
 
     for (size_t i = 0; i < racers.size(); ++i) {
-        racer::DrawCarEx(
+        racer::drawCarEx(
             racers[i].car, {},
             colorForRacerIndex(i, racers[i].isPlayer));
     }
@@ -420,31 +420,31 @@ void MainApp::LitPass::operator()() const
 {
     if (!ctx_.trackRenderer)
         return;
-    ctx_.trackRenderer->Draw(static_cast<float>(GetTime()));
-    const auto &racers = ctx_.race->Racers();
-    const auto &pipeParams = ctx_.pipeline->Params();
+    ctx_.trackRenderer->draw(static_cast<float>(GetTime()));
+    const auto &racers = ctx_.race->racers();
+    const auto &pipeParams = ctx_.pipeline->params();
 
     for (size_t i = 0; i < racers.size(); ++i) {
         const auto &r = racers[i];
         racer::CarVisual vis = buildCarVisual(
             ctx_, r, pipeParams.headlights);
 
-        racer::DrawCarEx(
+        racer::drawCarEx(
             r.car, vis, colorForRacerIndex(i, racers[i].isPlayer));
     }
 }
 
 void MainApp::VfxPass::operator()() const
 {
-    ctx_.vfx.Draw(ctx_.camera);
+    ctx_.vfx.draw(ctx_.camera);
 }
 
 void MainApp::renderWorld(Context &ctx)
 {
     if (ctx.trackRenderer)
-        ctx.trackRenderer->FlushSkidMarks();
+        ctx.trackRenderer->flushSkidMarks();
     setupHeadlights(ctx);
-    ctx.pipeline->Frame(
+    ctx.pipeline->frame(
         ctx.camera, OpaquePass(ctx), LitPass(ctx), VfxPass(ctx),
         buildPostParams(ctx));
 }
@@ -455,9 +455,9 @@ void MainApp::buildHudExtras(Context &ctx, racer::HudExtras &extras)
     extras.lastLapTime = ctx.lapTimer.lastLapFlash > 0.0f
         ? ctx.lapTimer.lastLapTime : 0.0f;
     extras.bestLapTime = ctx.lapTimer.bestLapTime;
-    for (size_t i = 0; i < ctx.race->Racers().size(); ++i) {
+    for (size_t i = 0; i < ctx.race->racers().size(); ++i) {
         extras.racerColors.push_back(
-            colorForRacerIndex(i, ctx.race->Racers()[i].isPlayer));
+            colorForRacerIndex(i, ctx.race->racers()[i].isPlayer));
     }
 }
 
@@ -473,15 +473,15 @@ void MainApp::drawFinishedHint(Context &ctx)
 void MainApp::simulateRace(Context &ctx, float dt)
 {
     const racer::RacerEntry &player =
-        ctx.race->Racers()[static_cast<size_t>(ctx.race->PlayerIndex())];
+        ctx.race->racers()[static_cast<size_t>(ctx.race->playerIndex())];
 
     readPlayerInput(ctx, dt);
-    updateLapTimer(ctx.lapTimer, player, dt, ctx.race->Phase());
+    updateLapTimer(ctx.lapTimer, player, dt, ctx.race->phase());
     updateWheelSpin(ctx, dt);
-    for (const auto &r : ctx.race->Racers())
+    for (const auto &r : ctx.race->racers())
         updateRacerVfx(ctx, r);
     updateConfetti(ctx, player.car);
-    ctx.vfx.Update(dt, player.car.position);
+    ctx.vfx.update(dt, player.car.position);
     updateCamera(ctx, player.car, dt);
 }
 
@@ -492,8 +492,8 @@ void MainApp::drawRaceFrame(Context &ctx)
     BeginDrawing();
     renderWorld(ctx);
     buildHudExtras(ctx, extras);
-    racer::DrawHudEx(*ctx.race, ctx.screenWidth, ctx.screenHeight, extras);
-    if (ctx.race->Phase() == racer::RacePhase::Finished)
+    racer::drawHudEx(*ctx.race, ctx.screenWidth, ctx.screenHeight, extras);
+    if (ctx.race->phase() == racer::RacePhase::FINISHED)
         drawFinishedHint(ctx);
     DrawFPS(ctx.screenWidth - 90, ctx.screenHeight - 30);
     EndDrawing();
@@ -507,7 +507,7 @@ void MainApp::processRaceFrame(Context &ctx, float dt)
 
 int MainApp::run()
 {
-    const std::vector<racer::TrackDef> &presets = racer::Track::Presets();
+    const std::vector<racer::TrackDef> &presets = racer::Track::presets();
     Context ctx(presets);
 
     SetConfigFlags(FLAG_MSAA_4X_HINT);
@@ -520,7 +520,7 @@ int MainApp::run()
         float dt = std::min(GetFrameTime(), 0.1f);
 
         pollShaders(ctx);
-        if (ctx.appState == AppState::Menu) {
+        if (ctx.appState == AppState::MENU) {
             if (handleMenuFrame(ctx))
                 continue;
         }

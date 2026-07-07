@@ -16,39 +16,39 @@ namespace racer::engine {
 
 class World {
 public:
-    entt::entity CreateEntity();
-    void DestroyEntity(entt::entity entity);
+    entt::entity createEntity();
+    void destroyEntity(entt::entity entity);
 
-    entt::registry &Registry()
+    entt::registry &registry()
     {
         return registry_;
     }
 
-    const entt::registry &Registry() const
+    const entt::registry &registry() const
     {
         return registry_;
     }
 
     template <typename T, typename... Args>
-    decltype(auto) Add(entt::entity entity, Args &&...args)
+    decltype(auto) add(entt::entity entity, Args &&...args)
     {
         return registry_.emplace<T>(entity, std::forward<Args>(args)...);
     }
 
     template <typename T>
-    decltype(auto) Get(entt::entity entity)
+    decltype(auto) get(entt::entity entity)
     {
         return registry_.get<T>(entity);
     }
 
     template <typename T>
-    decltype(auto) Get(entt::entity entity) const
+    decltype(auto) get(entt::entity entity) const
     {
         return registry_.get<T>(entity);
     }
 
     template <typename T>
-    bool Has(entt::entity entity) const
+    bool has(entt::entity entity) const
     {
         return registry_.all_of<T>(entity);
     }

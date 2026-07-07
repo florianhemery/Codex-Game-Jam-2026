@@ -61,7 +61,7 @@ void AdvanceRace(racer::RaceState& race, const racer::Car& car,
                  racer::AIDriver& driver, int steps)
 {
     for (int i = 0; i < steps; ++i)
-        race.Update(1.0f / 60.0f, driver.ComputeInput(car, race.GetTrack()));
+        race.update(1.0f / 60.0f, driver.computeInput(car, race.getTrack()));
 }
 
 void CaptureHudScene(racer::RaceState& race, const racer::HudExtras& extras,
@@ -69,7 +69,7 @@ void CaptureHudScene(racer::RaceState& race, const racer::HudExtras& extras,
 {
     RenderAndCapture(file, [&] {
         DrawFakeScene();
-        racer::DrawHudEx(race, kScreenWidth, kScreenHeight, extras);
+        racer::drawHudEx(race, kScreenWidth, kScreenHeight, extras);
     });
 }
 
@@ -81,27 +81,27 @@ int main()
     InitWindow(kScreenWidth, kScreenHeight, "hud_demo");
     SetTargetFPS(60);
 
-    const std::vector<racer::TrackDef>& presets = racer::Track::Presets();
+    const std::vector<racer::TrackDef>& presets = racer::Track::presets();
 
     racer::HudExtras extras;
     extras.racerColors = {RED, BLUE, DARKGREEN, ORANGE};
 
     RenderAndCapture("hud_demo_menu.png", [&] {
-        racer::DrawMenu(presets, 1, kScreenWidth, kScreenHeight);
+        racer::drawMenu(presets, 1, kScreenWidth, kScreenHeight);
     });
 
-    racer::RaceState race(racer::Track::Make(presets[1]), /*lapsToWin=*/3,
+    racer::RaceState race(racer::Track::make(presets[1]), /*lapsToWin=*/3,
                           /*aiCount=*/3);
     racer::CarInput input;
     input.throttle = 1.0f;
     for (int i = 0; i < 75; ++i)
-        race.Update(1.0f / 60.0f, input);
+        race.update(1.0f / 60.0f, input);
 
     CaptureHudScene(race, extras, "hud_demo_countdown.png");
 
     racer::AIDriver raceDriver(1.0f);
     const racer::Car& raceCar =
-        race.Racers()[static_cast<size_t>(race.PlayerIndex())].car;
+        race.racers()[static_cast<size_t>(race.playerIndex())].car;
     AdvanceRace(race, raceCar, raceDriver, 200 - 75);
     CaptureHudScene(race, extras, "hud_demo_go.png");
 
@@ -114,16 +114,16 @@ int main()
     extras.currentLapTime = 1.2f;
     CaptureHudScene(race, extras, "hud_demo_race_lastlap.png");
 
-    racer::RaceState finishRace(racer::Track::Make(presets[1]), /*lapsToWin=*/3,
+    racer::RaceState finishRace(racer::Track::make(presets[1]), /*lapsToWin=*/3,
                                 /*aiCount=*/3);
     racer::AIDriver playerDriver(1.0f);
     const racer::Car& playerCar =
-        finishRace.Racers()[static_cast<size_t>(finishRace.PlayerIndex())].car;
-    for (int i = 0; i < 60000 && finishRace.Phase() != racer::RacePhase::Finished;
+        finishRace.racers()[static_cast<size_t>(finishRace.playerIndex())].car;
+    for (int i = 0; i < 60000 && finishRace.phase() != racer::RacePhase::FINISHED;
          ++i)
     {
-        finishRace.Update(1.0f / 60.0f,
-                          playerDriver.ComputeInput(playerCar, finishRace.GetTrack()));
+        finishRace.update(1.0f / 60.0f,
+                          playerDriver.computeInput(playerCar, finishRace.getTrack()));
     }
 
     extras.currentLapTime = 1.2f;

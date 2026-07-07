@@ -15,7 +15,7 @@
 
 namespace racer {
 
-void DrawSkyGradient(int screenWidth, int screenHeight);
+void drawSkyGradient(int screenWidth, int screenHeight);
 
 class TrackRenderer {
 public:
@@ -24,11 +24,11 @@ public:
     TrackRenderer(const TrackRenderer &) = delete;
     TrackRenderer &operator=(const TrackRenderer &) = delete;
 
-    void Draw(float timeSeconds) const;
-    void DrawOpaqueGeometry() const;
-    void ApplyShader(Shader shader);
-    void QueueSkidMark(Vector3 pos, Vector3 dir, float width, float strength);
-    void FlushSkidMarks();
+    void draw(float timeSeconds) const;
+    void drawOpaqueGeometry() const;
+    void applyShader(Shader shader);
+    void queueSkidMark(Vector3 pos, Vector3 dir, float width, float strength);
+    void flushSkidMarks();
 
 private:
     friend struct TrackRendererBuild;
@@ -116,7 +116,7 @@ private:
         Color colorB;
     };
 
-    SurfaceStyle surfaceStyle_ = SurfaceStyle::Propre;
+    SurfaceStyle surfaceStyle_ = SurfaceStyle::PROPRE;
     Vector3 startGantryBase_{};
     Vector3 startGantryAlong_{};
     Vector3 startGantryPerp_{};

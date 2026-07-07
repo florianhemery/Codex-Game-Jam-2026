@@ -45,9 +45,9 @@ public:
     float surfaceDrag = 1.0f;
     CarTuning tuning{};
 
-    void Update(const CarInput &input, float dt);
-    Vector3 Forward() const;
-    Vector3 Velocity() const;
+    void update(const CarInput &input, float dt);
+    Vector3 forward() const;
+    Vector3 velocity() const;
 };
 
 } // namespace racer

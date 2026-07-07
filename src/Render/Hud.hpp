@@ -24,10 +24,10 @@ struct HudExtras {
     std::vector<Color> racerColors;
 };
 
-void DrawHud(const RaceState &race, int screenWidth, int screenHeight);
-void DrawHudEx(const RaceState &race, int screenWidth, int screenHeight,
+void drawHud(const RaceState &race, int screenWidth, int screenHeight);
+void drawHudEx(const RaceState &race, int screenWidth, int screenHeight,
     const HudExtras &extras);
-void DrawMenu(const std::vector<TrackDef> &presets, int selectedIndex,
+void drawMenu(const std::vector<TrackDef> &presets, int selectedIndex,
     int screenWidth, int screenHeight);
 
 }

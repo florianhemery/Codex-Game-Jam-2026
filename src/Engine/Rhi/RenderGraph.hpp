@@ -23,17 +23,17 @@ class RenderGraph;
 
 class PassContext {
 public:
-    Device &GetDevice() const
+    Device &getDevice() const
     {
         return device_;
     }
 
-    RenderTargetHandle GetOutput() const
+    RenderTargetHandle getOutput() const
     {
         return output_;
     }
 
-    RenderTargetHandle ReadTarget(const std::string &passName) const;
+    RenderTargetHandle readTarget(const std::string &passName) const;
 
 private:
     friend class RenderGraph;
@@ -70,9 +70,9 @@ public:
     RenderGraph(const RenderGraph &) = delete;
     RenderGraph &operator=(const RenderGraph &) = delete;
 
-    void AddPass(std::string name, PassDesc desc);
-    void Execute();
-    void Reset();
+    void addPass(std::string name, PassDesc desc);
+    void execute();
+    void reset();
 
 private:
     struct Pass {
@@ -82,10 +82,10 @@ private:
 
     struct PoolBucket {
         std::vector<RenderTargetHandle> targets;
-        std::size_t usedThisFrame = 0;
+        std::size_t usedThisFrame_ = 0;
     };
 
-    RenderTargetHandle AcquireTransientTarget(const RenderTargetDesc &desc);
+    RenderTargetHandle acquireTransientTarget(const RenderTargetDesc &desc);
     bool tryReusePooledTarget(
         PoolBucket &bucket, RenderTargetHandle &out);
     void executePass(const Pass &pass);

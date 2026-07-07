@@ -108,18 +108,18 @@ void CarPhysics::updateVelocityHeading(Car &car, float dt)
 
 void CarPhysics::integratePosition(Car &car, float dt)
 {
-    Vector3 vel = car.Velocity();
+    Vector3 vel = car.velocity();
 
     car.position.x += vel.x * dt;
     car.position.z += vel.z * dt;
 }
 
-Vector3 Car::Forward() const
+Vector3 Car::forward() const
 {
     return Vector3{std::sin(heading), 0.0f, std::cos(heading)};
 }
 
-Vector3 Car::Velocity() const
+Vector3 Car::velocity() const
 {
     return Vector3{
         std::sin(velocityHeading) * speed,
@@ -127,7 +127,7 @@ Vector3 Car::Velocity() const
         std::cos(velocityHeading) * speed};
 }
 
-void Car::Update(const CarInput &input, float dt)
+void Car::update(const CarInput &input, float dt)
 {
     bool nitroActive = CarPhysics::updateNitro(*this, input, dt);
 

@@ -24,7 +24,7 @@ public:
     // explicite donne des personnalites distinctes meme a skill egal.
     explicit AIDriver(float skill = 1.0f, unsigned int seed = 0);
 
-    CarInput ComputeInput(const Car &car, const Track &track) const;
+    CarInput computeInput(const Car &car, const Track &track) const;
 
 private:
     struct CornerLimits {
