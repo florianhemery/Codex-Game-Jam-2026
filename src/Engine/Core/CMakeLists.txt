@@ -30,6 +30,10 @@ target_compile_features(engine_core PUBLIC cxx_std_20)
 # Test headless (aucune fenetre) : valide World + JobSystem + SnapshotBuffer.
 add_executable(engine_core_test
     EngineCoreTest.cpp
+    CoreTestRunner.cpp
+    CoreTestWorldHelpers.cpp
+    CoreTestJobHelpers.cpp
+    CoreTestSnapshotHelpers.cpp
 )
 target_link_libraries(engine_core_test PRIVATE engine_core)
 # Sortie dans build-core/<config>/ (chemin attendu par la verification).

@@ -58,6 +58,15 @@ private:
         JobSystem &jobs,
         const ParallelForParams &params,
         ParallelBatch &batch);
+    static void enqueueOneChunk(
+        JobSystem &jobs,
+        const ParallelForParams &params,
+        ParallelBatch &batch,
+        std::size_t chunkBegin,
+        std::size_t chunkEnd);
+    static bool isBatchDone(ParallelBatch &batch);
+    static void waitForBatch(ParallelBatch &batch);
+    static void rethrowBatchError(const ParallelBatch &batch);
     static void participateUntilDone(
         JobSystem &jobs,
         ParallelBatch &batch);
@@ -138,6 +147,25 @@ std::future<void> JobSystem::submit(std::function<void()> job)
     return future;
 }
 
+void ParallelForRunner::enqueueOneChunk(
+    JobSystem &jobs,
+    const ParallelForParams &params,
+    ParallelBatch &batch,
+    std::size_t chunkBegin,
+    std::size_t chunkEnd)
+{
+    jobs.enqueue([&, chunkBegin, chunkEnd] {
+        std::exception_ptr error;
+        try {
+            for (std::size_t i = chunkBegin; i < chunkEnd; ++i)
+                params.fn(i);
+        } catch (...) {
+            error = std::current_exception();
+        }
+        batch.recordChunkDone(error);
+    });
+}
+
 void ParallelForRunner::enqueueChunks(
     JobSystem &jobs,
     const ParallelForParams &params,
@@ -152,17 +180,29 @@ void ParallelForRunner::enqueueChunks(
         const std::size_t chunkEnd = std::min(
             params.end, chunkBegin + params.grainSize);
 
-        jobs.enqueue([&, chunkBegin, chunkEnd] {
-            std::exception_ptr error;
-            try {
-                for (std::size_t i = chunkBegin; i < chunkEnd; ++i)
-                    params.fn(i);
-            } catch (...) {
-                error = std::current_exception();
-            }
-            batch.recordChunkDone(error);
-        });
+        enqueueOneChunk(jobs, params, batch, chunkBegin, chunkEnd);
     }
+}
+
+bool ParallelForRunner::isBatchDone(ParallelBatch &batch)
+{
+    std::lock_guard<std::mutex> lock(batch.doneMutex_);
+
+    return batch.remaining_ == 0;
+}
+
+void ParallelForRunner::waitForBatch(ParallelBatch &batch)
+{
+    std::unique_lock<std::mutex> lock(batch.doneMutex_);
+    batch.doneCv_.wait(lock, [&batch] {
+        return batch.remaining_ == 0;
+    });
+}
+
+void ParallelForRunner::rethrowBatchError(const ParallelBatch &batch)
+{
+    if (batch.firstError_)
+        std::rethrow_exception(batch.firstError_);
 }
 
 void ParallelForRunner::participateUntilDone(
@@ -170,19 +210,13 @@ void ParallelForRunner::participateUntilDone(
     ParallelBatch &batch)
 {
     for (;;) {
-        {
-            std::lock_guard<std::mutex> lock(batch.doneMutex_);
-            if (batch.remaining_ == 0)
-                break;
-        }
+        if (isBatchDone(batch))
+            break;
         JobSystem::Task task;
         if (jobs.tryPop(task)) {
             task();
         } else {
-            std::unique_lock<std::mutex> lock(batch.doneMutex_);
-            batch.doneCv_.wait(lock, [&batch] {
-                return batch.remaining_ == 0;
-            });
+            waitForBatch(batch);
             break;
         }
     }
@@ -206,8 +240,7 @@ void ParallelForRunner::run(
 
     enqueueChunks(jobs, params, batch);
     participateUntilDone(jobs, batch);
-    if (batch.firstError_)
-        std::rethrow_exception(batch.firstError_);
+    rethrowBatchError(batch);
 }
 
 void JobSystem::parallelFor(
