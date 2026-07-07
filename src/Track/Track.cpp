@@ -12,8 +12,145 @@
 namespace racer {
 
 namespace {
+
 constexpr int kCurveSegments = 20;
 constexpr int kStraightSegments = 24;
+constexpr float kHalf = 0.5f;
+constexpr float kChicaneCycles = 2.0f;
+constexpr float kMinSegmentLength = 1e-6f;
+constexpr float kLaneSpreadFactor = 0.6f;
+constexpr float kLaneCenter = 0.5f;
+constexpr float kLaneBackSpacing = 4.0f;
+constexpr float kMaxDistSq = 1e30f;
+
+constexpr float kAnneauStraight = 120.0f;
+constexpr float kAnneauRadius = 22.0f;
+constexpr float kAnneauWidth = 13.0f;
+constexpr float kAnneauChicaneEast = 0.0f;
+constexpr float kAnneauChicaneWest = 0.0f;
+constexpr float kAnneauChicaneFreq = 1.0f;
+
+constexpr float kSinueuxStraight = 90.0f;
+constexpr float kSinueuxRadius = 16.0f;
+constexpr float kSinueuxWidth = 11.0f;
+constexpr float kSinueuxChicaneEast = 9.0f;
+constexpr float kSinueuxChicaneWest = 6.0f;
+constexpr float kSinueuxChicaneFreq = 2.0f;
+
+constexpr float kTechniqueStraight = 55.0f;
+constexpr float kTechniqueRadius = 11.0f;
+constexpr float kTechniqueWidth = 10.0f;
+constexpr float kTechniqueChicaneEast = 8.0f;
+constexpr float kTechniqueChicaneWest = 9.0f;
+constexpr float kTechniqueChicaneFreq = 3.0f;
+
+constexpr float kAbimeeStraight = 70.0f;
+constexpr float kAbimeeRadius = 14.0f;
+constexpr float kAbimeeWidth = 10.0f;
+constexpr float kAbimeeChicaneEast = 5.0f;
+constexpr float kAbimeeChicaneWest = 7.0f;
+constexpr float kAbimeeChicaneFreq = 2.0f;
+
+TrackDef makeAnneauVitessePreset()
+{
+    return {
+        "Anneau Vitesse",
+        "Grand ovale rapide, longues lignes droites, pas de chicane",
+        kAnneauStraight, kAnneauRadius, kAnneauWidth,
+        kAnneauChicaneEast, kAnneauChicaneWest, kAnneauChicaneFreq,
+    };
+}
+
+TrackDef makeCircuitSinueuxPreset()
+{
+    return {
+        "Circuit Sinueux",
+        "Un peu de tout : virages serres et deux chicanes",
+        kSinueuxStraight, kSinueuxRadius, kSinueuxWidth,
+        kSinueuxChicaneEast, kSinueuxChicaneWest, kSinueuxChicaneFreq,
+    };
+}
+
+TrackDef makeCircuitTechniquePreset()
+{
+    return {
+        "Circuit Technique",
+        "Court, tres serre, chicanes prononcees, ideal pour driver",
+        kTechniqueStraight, kTechniqueRadius, kTechniqueWidth,
+        kTechniqueChicaneEast, kTechniqueChicaneWest, kTechniqueChicaneFreq,
+    };
+}
+
+TrackDef makeRouteAbimeePreset()
+{
+    return {
+        "Route Abimee",
+        "Chaussee delavee, nids-de-poule et decor aride, grip reduit",
+        kAbimeeStraight, kAbimeeRadius, kAbimeeWidth,
+        kAbimeeChicaneEast, kAbimeeChicaneWest, kAbimeeChicaneFreq,
+        SurfaceStyle::ABIMEE,
+    };
+}
+
+std::vector<TrackDef> buildTrackPresets()
+{
+    return {
+        makeAnneauVitessePreset(),
+        makeCircuitSinueuxPreset(),
+        makeCircuitTechniquePreset(),
+        makeRouteAbimeePreset(),
+    };
+}
+
+float wrapTrackDistance(float distance, float totalLength)
+{
+    float d = std::fmod(distance, totalLength);
+    if (d < 0.0f)
+        d += totalLength;
+    return d;
+}
+
+float segmentEndAt(
+    std::size_t index, std::size_t count,
+    const std::vector<float>& cumulativeLengths, float totalLength)
+{
+    if (index + 1 < count)
+        return cumulativeLengths[index + 1];
+    return totalLength;
+}
+
+bool containsDistance(
+    float distance, std::size_t index, std::size_t count,
+    const std::vector<float>& cumulativeLengths, float totalLength)
+{
+    float segEnd = segmentEndAt(index, count, cumulativeLengths, totalLength);
+    return distance <= segEnd || index == count - 1;
+}
+
+Vector2 interpolateWaypoints(Vector2 a, Vector2 b, float t)
+{
+    return Vector2{
+        a.x + (b.x - a.x) * t,
+        a.y + (b.y - a.y) * t,
+    };
+}
+
+Vector2 pointOnSegmentAtDistance(
+    float distance, std::size_t index, std::size_t count,
+    const std::vector<Vector2>& waypoints,
+    const std::vector<float>& cumulativeLengths, float totalLength)
+{
+    float segStart = cumulativeLengths[index];
+    float segEnd = segmentEndAt(index, count, cumulativeLengths, totalLength);
+    float segLen = segEnd - segStart;
+    float t = 0.0f;
+    if (segLen > kMinSegmentLength)
+        t = (distance - segStart) / segLen;
+    Vector2 a = waypoints[index];
+    Vector2 b = waypoints[(index + 1) % count];
+    return interpolateWaypoints(a, b, t);
+}
+
 } // namespace
 
 Track Track::make(const TrackDef& def)
@@ -32,29 +169,7 @@ Track Track::make(const TrackDef& def)
 
 const std::vector<TrackDef>& Track::presets()
 {
-    static const std::vector<TrackDef> presets = {
-        {
-            "Anneau Vitesse",
-            "Grand ovale rapide, longues lignes droites, pas de chicane",
-            120.0f, 22.0f, 13.0f, 0.0f, 0.0f, 1.0f,
-        },
-        {
-            "Circuit Sinueux",
-            "Un peu de tout : virages serres et deux chicanes",
-            90.0f, 16.0f, 11.0f, 9.0f, 6.0f, 2.0f,
-        },
-        {
-            "Circuit Technique",
-            "Court, tres serre, chicanes prononcees, ideal pour driver",
-            55.0f, 11.0f, 10.0f, 8.0f, 9.0f, 3.0f,
-        },
-        {
-            "Route Abimee",
-            "Chaussee delavee, nids-de-poule et decor aride, grip reduit",
-            70.0f, 14.0f, 10.0f, 5.0f, 7.0f, 2.0f,
-            SurfaceStyle::ABIMEE,
-        },
-    };
+    static const std::vector<TrackDef> presets = buildTrackPresets();
     return presets;
 }
 
@@ -86,8 +201,8 @@ void Track::appendEastStraight(
         float iF = static_cast<float>(i);
         float segF = static_cast<float>(kStraightSegments);
         float lt = iF / segF;
-        float z = -def.straightLength / 2.0f + lt * def.straightLength;
-        float chicane = def.chicaneAmpEast * std::sin(2.0f * PI * lt);
+        float z = -def.straightLength * kHalf + lt * def.straightLength;
+        float chicane = def.chicaneAmpEast * std::sin(kChicaneCycles * PI * lt);
         waypoints.push_back({def.radius + chicane, z});
     }
 }
@@ -100,7 +215,7 @@ void Track::appendNorthCurve(
         float segF = static_cast<float>(kCurveSegments);
         float a = (iF / segF) * PI;
         float x = def.radius * std::cos(a);
-        float y = def.straightLength / 2.0f + def.radius * std::sin(a);
+        float y = def.straightLength * kHalf + def.radius * std::sin(a);
         waypoints.push_back({x, y});
     }
 }
@@ -112,8 +227,8 @@ void Track::appendWestStraight(
         float iF = static_cast<float>(i);
         float segF = static_cast<float>(kStraightSegments);
         float lt = iF / segF;
-        float z = def.straightLength / 2.0f - lt * def.straightLength;
-        float phase = def.chicaneFreqWest * 2.0f * PI * lt;
+        float z = def.straightLength * kHalf - lt * def.straightLength;
+        float phase = def.chicaneFreqWest * kChicaneCycles * PI * lt;
         float chicane = def.chicaneAmpWest * std::sin(phase);
         waypoints.push_back({-def.radius + chicane, z});
     }
@@ -127,7 +242,7 @@ void Track::appendSouthCurve(
         float segF = static_cast<float>(kCurveSegments);
         float a = PI + (iF / segF) * PI;
         float x = def.radius * std::cos(a);
-        float y = -def.straightLength / 2.0f + def.radius * std::sin(a);
+        float y = -def.straightLength * kHalf + def.radius * std::sin(a);
         waypoints.push_back({x, y});
     }
 }
@@ -142,14 +257,14 @@ Vector3 Track::startPosition(int laneIndex, int laneCount) const
     dir.y /= len;
     Vector2 perp{-dir.y, dir.x};
 
-    float spread = width_ * 0.6f;
-    float lane01 = 0.5f;
+    float spread = width_ * kLaneSpreadFactor;
+    float lane01 = kLaneCenter;
     if (laneCount > 1) {
         lane01 = static_cast<float>(laneIndex)
             / static_cast<float>(laneCount - 1);
     }
-    float offset = (lane01 - 0.5f) * spread;
-    float back = static_cast<float>(laneIndex) * 4.0f;
+    float offset = (lane01 - kLaneCenter) * spread;
+    float back = static_cast<float>(laneIndex) * kLaneBackSpacing;
 
     return Vector3{
         a.x + perp.x * offset - dir.x * back,
@@ -176,7 +291,7 @@ Track::SegmentSample Track::sampleSegment(Vector3 pos, std::size_t index) const
     Vector2 ap{pos.x - a.x, pos.z - a.y};
 
     float t = 0.0f;
-    if (segLenSq > 1e-6f)
+    if (segLenSq > kMinSegmentLength)
         t = (ap.x * ab.x + ap.y * ab.y) / segLenSq;
     float tc = t;
     if (tc < 0.0f)
@@ -193,7 +308,7 @@ Track::SegmentSample Track::sampleSegment(Vector3 pos, std::size_t index) const
 
     float cross = ab.x * ap.y - ab.y * ap.x;
     float segLen = std::sqrt(segLenSq);
-    if (segLen > 1e-6f)
+    if (segLen > kMinSegmentLength)
         sample.progress.lateralOffset = cross / segLen;
     return sample;
 }
@@ -201,7 +316,7 @@ Track::SegmentSample Track::sampleSegment(Vector3 pos, std::size_t index) const
 Track::Progress Track::projectPosition(Vector3 pos) const
 {
     Progress best;
-    float bestDistSq = 1e30f;
+    float bestDistSq = kMaxDistSq;
     std::size_t n = waypoints_.size();
     for (std::size_t i = 0; i < n; ++i) {
         SegmentSample sample = sampleSegment(pos, i);
@@ -231,29 +346,14 @@ float Track::totalLength() const
 Vector2 Track::pointAtDistance(float distance) const
 {
     std::size_t n = waypoints_.size();
-    float d = std::fmod(distance, totalLength_);
-    if (d < 0.0f)
-        d += totalLength_;
-
+    float d = wrapTrackDistance(distance, totalLength_);
     Vector2 result = waypoints_[0];
     for (std::size_t i = 0; i < n; ++i) {
-        float segStart = cumulativeLengths_[i];
-        float segEnd = totalLength_;
-        if (i + 1 < n)
-            segEnd = cumulativeLengths_[i + 1];
-        if (d <= segEnd || i == n - 1) {
-            float segLen = segEnd - segStart;
-            float t = 0.0f;
-            if (segLen > 1e-6f)
-                t = (d - segStart) / segLen;
-            Vector2 a = waypoints_[i];
-            Vector2 b = waypoints_[(i + 1) % n];
-            result = Vector2{
-                a.x + (b.x - a.x) * t,
-                a.y + (b.y - a.y) * t,
-            };
-            break;
-        }
+        if (!containsDistance(d, i, n, cumulativeLengths_, totalLength_))
+            continue;
+        result = pointOnSegmentAtDistance(
+            d, i, n, waypoints_, cumulativeLengths_, totalLength_);
+        break;
     }
     return result;
 }
