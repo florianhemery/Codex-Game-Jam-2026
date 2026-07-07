@@ -10,12 +10,10 @@ float Length(Vector2 a, Vector2 b) {
 }
 } // namespace
 
-Track Track::MakeStadiumTrack() {
+Track Track::Make(const TrackDef& def) {
     Track t;
-    t.width_ = 11.0f;
+    t.width_ = def.width;
 
-    constexpr float kStraightLength = 90.0f;
-    constexpr float kRadius = 16.0f;      // virages plus serres -> plus propices au drift
     constexpr int kCurveSegments = 20;
     constexpr int kStraightSegments = 24; // subdivise pour que les chicanes soient lisses
 
@@ -25,34 +23,55 @@ Track Track::MakeStadiumTrack() {
     // complet, nul aux deux extremites -- ne casse jamais la fermeture de la boucle).
     for (int i = 0; i <= kStraightSegments; ++i) {
         float lt = static_cast<float>(i) / kStraightSegments;
-        float z = -kStraightLength / 2.0f + lt * kStraightLength;
-        float chicane = 9.0f * std::sin(2.0f * PI * lt);
-        wp.push_back({kRadius + chicane, z});
+        float z = -def.straightLength / 2.0f + lt * def.straightLength;
+        float chicane = def.chicaneAmpEast * std::sin(2.0f * PI * lt);
+        wp.push_back({def.radius + chicane, z});
     }
 
     // Virage nord (centre (0, +straight/2)), angle 0 -> pi.
     for (int i = 1; i < kCurveSegments; ++i) {
         float a = (static_cast<float>(i) / kCurveSegments) * PI;
-        wp.push_back({kRadius * std::cos(a), kStraightLength / 2.0f + kRadius * std::sin(a)});
+        wp.push_back({def.radius * std::cos(a), def.straightLength / 2.0f + def.radius * std::sin(a)});
     }
 
-    // Ligne droite "ouest" (x=-radius) avec une double chicane (esses), plus
-    // resserree, pour varier la sensation par rapport au cote est.
+    // Ligne droite "ouest" (x=-radius), chicane independante (frequence/amplitude
+    // propres) pour varier la sensation par rapport au cote est.
     for (int i = 0; i <= kStraightSegments; ++i) {
         float lt = static_cast<float>(i) / kStraightSegments;
-        float z = kStraightLength / 2.0f - lt * kStraightLength;
-        float chicane = 6.0f * std::sin(4.0f * PI * lt);
-        wp.push_back({-kRadius + chicane, z});
+        float z = def.straightLength / 2.0f - lt * def.straightLength;
+        float chicane = def.chicaneAmpWest * std::sin(def.chicaneFreqWest * 2.0f * PI * lt);
+        wp.push_back({-def.radius + chicane, z});
     }
 
     // Virage sud (centre (0, -straight/2)), angle pi -> 2pi.
     for (int i = 1; i < kCurveSegments; ++i) {
         float a = PI + (static_cast<float>(i) / kCurveSegments) * PI;
-        wp.push_back({kRadius * std::cos(a), -kStraightLength / 2.0f + kRadius * std::sin(a)});
+        wp.push_back({def.radius * std::cos(a), -def.straightLength / 2.0f + def.radius * std::sin(a)});
     }
 
     t.RecomputeLengths();
     return t;
+}
+
+const std::vector<TrackDef>& Track::Presets() {
+    static const std::vector<TrackDef> presets = {
+        {
+            "Anneau Vitesse",
+            "Grand ovale rapide, longues lignes droites, pas de chicane",
+            120.0f, 22.0f, 13.0f, 0.0f, 0.0f, 1.0f,
+        },
+        {
+            "Circuit Sinueux",
+            "Un peu de tout : virages serres et deux chicanes",
+            90.0f, 16.0f, 11.0f, 9.0f, 6.0f, 2.0f,
+        },
+        {
+            "Circuit Technique",
+            "Court, tres serre, chicanes prononcees -- ideal pour driver",
+            55.0f, 11.0f, 10.0f, 8.0f, 9.0f, 3.0f,
+        },
+    };
+    return presets;
 }
 
 void Track::RecomputeLengths() {

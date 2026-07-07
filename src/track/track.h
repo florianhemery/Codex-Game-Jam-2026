@@ -1,10 +1,26 @@
 #pragma once
 
+#include <string>
 #include <vector>
 
 #include "raylib.h"
 
 namespace racer {
+
+// Parametres d'un circuit "stade" (2 lignes droites + 2 virages en demi-cercle,
+// topologie toujours garantie fermee quels que soient les parametres --
+// les chicanes sont des perturbations laterales qui reviennent a zero aux
+// extremites de la ligne droite, donc ne cassent jamais la fermeture).
+struct TrackDef {
+    std::string name;
+    std::string description;
+    float straightLength = 90.0f;
+    float radius = 16.0f;
+    float width = 11.0f;
+    float chicaneAmpEast = 9.0f;   // 0 = pas de chicane sur la ligne est
+    float chicaneAmpWest = 6.0f;
+    float chicaneFreqWest = 2.0f;  // 1 = un seul virage en S, 2 = deux (esses)
+};
 
 // Piste = boucle fermee de waypoints (plan XZ, Y=0). Segment i relie
 // waypoints[i] a waypoints[(i+1)%N]. Pas de hauteur/relief en V1.
@@ -16,7 +32,8 @@ public:
         float lateralOffset = 0.0f; // signe ; hors piste si |offset| > width/2
     };
 
-    static Track MakeStadiumTrack();
+    static Track Make(const TrackDef& def);
+    static const std::vector<TrackDef>& Presets();
 
     Vector3 StartPosition(int laneIndex, int laneCount) const;
     float StartHeading() const;
