@@ -12,6 +12,39 @@
 
 namespace racer {
 
+namespace {
+
+float computeEngineAccel(Car &car, const CarInput &input, bool nitroActive)
+{
+    float engineAccel = 0.0f;
+
+    if (input.throttle > 0.0f) {
+        engineAccel = input.throttle * car.tuning().acceleration;
+        if (nitroActive)
+            engineAccel += car.tuning().nitroBoost;
+        engineAccel *= 0.55f + 0.45f * car.surfaceGrip();
+    } else if (input.throttle < 0.0f) {
+        if (car.speed() > 0.5f) {
+            engineAccel = input.throttle * car.tuning().braking;
+        } else {
+            engineAccel = input.throttle * car.tuning().acceleration * 0.6f;
+        }
+    }
+    return engineAccel;
+}
+
+void applyDragAndClamp(Car &car, float currentMaxSpeed, float dt)
+{
+    float maxReverseSpeed = car.tuning().maxSpeed * 0.4f;
+
+    car.speed() -= car.tuning().dragCoeff * car.surfaceDrag() * car.speed()
+        * dt;
+    car.speed() = std::clamp(
+        car.speed(), -maxReverseSpeed, currentMaxSpeed);
+}
+
+} // namespace
+
 float Car::normalizeAngle(float angle)
 {
     while (angle > PI)
@@ -44,27 +77,12 @@ void Car::applyEngineAndDrag(
     Car &car, const CarInput &input, float dt, bool nitroActive)
 {
     float currentMaxSpeed = car.tuning().maxSpeed;
-    float maxReverseSpeed = car.tuning().maxSpeed * 0.4f;
-    float engineAccel = 0.0f;
+    float engineAccel = computeEngineAccel(car, input, nitroActive);
 
     if (nitroActive)
         currentMaxSpeed += car.tuning().nitroMaxSpeedBonus;
-    if (input.throttle > 0.0f) {
-        engineAccel = input.throttle * car.tuning().acceleration;
-        if (nitroActive)
-            engineAccel += car.tuning().nitroBoost;
-        engineAccel *= 0.55f + 0.45f * car.surfaceGrip();
-    } else if (input.throttle < 0.0f) {
-        if (car.speed() > 0.5f) {
-            engineAccel = input.throttle * car.tuning().braking;
-        } else {
-            engineAccel = input.throttle * car.tuning().acceleration * 0.6f;
-        }
-    }
     car.speed() += engineAccel * dt;
-    car.speed() -= car.tuning().dragCoeff * car.surfaceDrag() * car.speed()
-        * dt;
-    car.speed() = std::clamp(car.speed(), -maxReverseSpeed, currentMaxSpeed);
+    applyDragAndClamp(car, currentMaxSpeed, dt);
 }
 
 void Car::updateHeading(Car &car, const CarInput &input, float dt)
@@ -105,15 +123,16 @@ void Car::integratePosition(Car &car, float dt)
 
 Vector3 Car::forward() const
 {
-    return Vector3{std::sin(heading_), 0.0f, std::cos(heading_)};
+    return Vector3{
+        std::sin(heading()), 0.0f, std::cos(heading())};
 }
 
 Vector3 Car::velocity() const
 {
     return Vector3{
-        std::sin(velocityHeading_) * speed_,
+        std::sin(velocityHeading()) * speed(),
         0.0f,
-        std::cos(velocityHeading_) * speed_};
+        std::cos(velocityHeading()) * speed()};
 }
 
 void Car::update(const CarInput &input, float dt)
