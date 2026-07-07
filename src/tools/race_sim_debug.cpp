@@ -1,11 +1,10 @@
-// Simulation headless de courses completes (le "joueur" est pilote par une
-// IA comme les autres) : verifie la logique de jeu (tours, classement,
-// arrivee, surfaces, collisions) sans fenetre ni pilotage manuel.
-//
-// Usage : race_sim_debug [indexPreset]
-//   - sans argument : boucle sur TOUS les presets de Track::Presets()
-//   - avec un index : ne simule que ce preset
-// Code retour 0 si toutes les courses simulees sont saines.
+/*
+** EPITECH PROJECT, 2026
+** racer
+** File description:
+** Headless race simulation for game logic validation
+*/
+
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -17,156 +16,300 @@
 
 namespace {
 
-// Progression totale d'une voiture en unites monde (tours + distance dans le tour).
-float TotalProgress(const racer::Track& track, const racer::RacerEntry& r) {
-    racer::Track::Progress prog = track.ProjectPosition(r.car.position);
-    return static_cast<float>(r.lap) * track.TotalLength() + track.CumulativeDistance(prog);
+constexpr int kAiCount = 4;
+constexpr int kLaps = 3;
+constexpr float kDt = 1.0f / 60.0f;
+constexpr int kMaxSteps = 60 * 180;
+constexpr float kEarlyLapWindow = 5.0f;
+constexpr float kContactDist = 3.0f;
+constexpr float kOverlapDist = 2.7f;
+constexpr int kProgressLogInterval = 300;
+
+class RaceSimDebug {
+public:
+    static bool runRace(int presetIndex);
+
+private:
+    struct SimContext {
+        racer::RaceState race;
+        racer::AIDriver playerAsAi;
+        size_t carCount = 0;
+        std::vector<int> offTrackExits;
+        std::vector<bool> wasOffTrack;
+        float minPairDist = 1e9f;
+        int contactPairFrames = 0;
+        int overlapPairFrames = 0;
+        bool sawNaN = false;
+        bool earlyFalseLap = false;
+        float offTrackHalfWidth = 0.0f;
+        int step = 0;
+
+        SimContext(const racer::TrackDef &def, int laps, int aiCount)
+            : race(racer::Track::Make(def), laps, aiCount), playerAsAi(1.0f)
+        {
+            carCount = race.Racers().size();
+            offTrackExits.assign(carCount, 0);
+            wasOffTrack.assign(carCount, false);
+            offTrackHalfWidth = race.GetTrack().Width() * 0.5f + 0.6f;
+        }
+    };
+
+    static float totalProgress(
+        const racer::Track &track, const racer::RacerEntry &entry);
+    static bool isFiniteCar(const racer::Car &car);
+    static void printPresetHeader(
+        int presetIndex, const racer::TrackDef &def, const SimContext &ctx);
+    static void checkEarlyLaps(SimContext &ctx);
+    static void updateCarMetrics(SimContext &ctx, size_t carIndex);
+    static void updatePairMetrics(
+        SimContext &ctx, const racer::Car &a, const racer::Car &b);
+    static void printProgressLog(const SimContext &ctx);
+    static bool simulateSteps(SimContext &ctx);
+    struct StandingRow {
+        size_t rank = 0;
+        int racerIndex = 0;
+        float progress = 0.0f;
+        float leaderProgress = 0.0f;
+    };
+
+    static void printStandingLine(
+        const SimContext &ctx, const racer::RacerEntry &entry,
+        const StandingRow &row);
+    static void printStandingRows(
+        SimContext &ctx, const std::vector<int> &order, float leaderProgress);
+    static void printStabilityStats(const SimContext &ctx, float minGap,
+        float maxGap);
+    static void printStandings(SimContext &ctx);
+    static bool evaluateHealth(const SimContext &ctx);
+};
+
+float RaceSimDebug::totalProgress(
+    const racer::Track &track, const racer::RacerEntry &entry)
+{
+    racer::Track::Progress prog = track.ProjectPosition(entry.car.position);
+
+    return static_cast<float>(entry.lap) * track.TotalLength()
+        + track.CumulativeDistance(prog);
 }
 
-bool IsFiniteCar(const racer::Car& c) {
-    return std::isfinite(c.position.x) && std::isfinite(c.position.z) && std::isfinite(c.speed) &&
-           std::isfinite(c.velocityHeading) && std::isfinite(c.heading);
+bool RaceSimDebug::isFiniteCar(const racer::Car &car)
+{
+    return std::isfinite(car.position.x) && std::isfinite(car.position.z)
+        && std::isfinite(car.speed) && std::isfinite(car.velocityHeading)
+        && std::isfinite(car.heading);
 }
 
-// Simule une course complete sur un preset ; retourne true si tout est sain.
-bool RunRace(int presetIndex) {
-    const racer::TrackDef& def = racer::Track::Presets()[static_cast<size_t>(presetIndex)];
-    constexpr int kAiCount = 4; // 5 voitures au depart : eprouve la stabilite des collisions en peloton
-    constexpr int kLaps = 3;    // comme le vrai jeu (main.cpp) : laisse le temps au skill de s'exprimer
-    racer::RaceState race(racer::Track::Make(def), kLaps, kAiCount);
-    racer::AIDriver playerAsAI(1.0f);
+void RaceSimDebug::printPresetHeader(
+    int presetIndex, const racer::TrackDef &def, const SimContext &ctx)
+{
+    const char *surface = def.surfaceStyle == racer::SurfaceStyle::Abimee
+        ? "abimee" : "propre";
 
-    std::printf("=== Preset %d : %s (surface %s, longueur %.0f u) ===\n", presetIndex, def.name.c_str(),
-                def.surfaceStyle == racer::SurfaceStyle::Abimee ? "abimee" : "propre",
-                race.GetTrack().TotalLength());
+    std::printf(
+        "=== Preset %d : %s (surface %s, longueur %.0f u) ===\n",
+        presetIndex, def.name.c_str(), surface,
+        ctx.race.GetTrack().TotalLength());
+}
 
-    constexpr float dt = 1.0f / 60.0f;
-    constexpr int kMaxSteps = 60 * 180; // 3 min max, garde-fou anti-boucle infinie
-
-    size_t carCount = race.Racers().size();
-    std::vector<int> offTrackExits(carCount, 0);   // transitions piste -> herbe
-    std::vector<bool> wasOffTrack(carCount, false);
-    float minPairDist = 1e9f;   // distance min entre deux voitures sur toute la course
-    int contactPairFrames = 0;  // (paire, frame) en contact (< 3.0 u) -- mesure la frequence des frottements
-    int overlapPairFrames = 0;  // (paire, frame) interpenetrees (< 2.7 u) : resolution en retard = instabilite
-    bool sawNaN = false;
-    bool earlyFalseLap = false;
-    float offTrackHalfWidth = race.GetTrack().Width() * 0.5f + 0.6f; // meme tolerance vibreur que RaceState
-
-    int step = 0;
-    for (; step < kMaxSteps; ++step) {
-        racer::CarInput playerInput =
-            playerAsAI.ComputeInput(race.Racers()[static_cast<size_t>(race.PlayerIndex())].car, race.GetTrack());
-        race.Update(dt, playerInput);
-
-        // Garde-fou de non-regression : un tour compte dans les 5 premieres
-        // secondes serait un faux positif (bug de grille corrige le 2026-07-06).
-        if (race.ElapsedTime() < 5.0f) {
-            for (const auto& r : race.Racers()) {
-                if (r.lap > 0) earlyFalseLap = true;
-            }
-        }
-
-        for (size_t i = 0; i < carCount; ++i) {
-            const racer::RacerEntry& r = race.Racers()[i];
-            if (!IsFiniteCar(r.car)) sawNaN = true;
-
-            bool off = std::fabs(race.GetTrack().ProjectPosition(r.car.position).lateralOffset) > offTrackHalfWidth;
-            if (off && !wasOffTrack[i]) offTrackExits[i]++;
-            wasOffTrack[i] = off;
-
-            for (size_t j = i + 1; j < carCount; ++j) {
-                const racer::Car& a = r.car;
-                const racer::Car& b = race.Racers()[j].car;
-                float dx = b.position.x - a.position.x;
-                float dz = b.position.z - a.position.z;
-                float d = std::sqrt(dx * dx + dz * dz);
-                minPairDist = std::min(minPairDist, d);
-                if (d < 3.0f) contactPairFrames++;
-                if (d < 2.7f) overlapPairFrames++;
-            }
-        }
-
-        if (step % 300 == 0) { // ~1 ligne toutes les 5 s simulees
-            std::printf("t=%5.1fs  ", static_cast<float>(step) * dt);
-            for (const auto& r : race.Racers()) {
-                std::printf("%s[lap=%d,v=%4.1f] ", r.name.c_str(), r.lap, r.car.speed);
-            }
-            std::printf("pos_joueur=%d\n", race.PlayerPosition());
-        }
-
-        if (race.Phase() == racer::RacePhase::Finished) break;
+void RaceSimDebug::checkEarlyLaps(SimContext &ctx)
+{
+    if (ctx.race.ElapsedTime() >= kEarlyLapWindow)
+        return;
+    for (const auto &entry : ctx.race.Racers()) {
+        if (entry.lap > 0)
+            ctx.earlyFalseLap = true;
     }
+}
 
-    bool finished = race.Phase() == racer::RacePhase::Finished;
-    std::printf("-- Course terminee : %s apres %.1fs simulees --\n", finished ? "oui" : "NON (cutoff!)",
-                static_cast<float>(step) * dt);
+void RaceSimDebug::updatePairMetrics(
+    SimContext &ctx, const racer::Car &a, const racer::Car &b)
+{
+    float dx = b.position.x - a.position.x;
+    float dz = b.position.z - a.position.z;
+    float dist = std::sqrt(dx * dx + dz * dz);
 
-    // Classement final + ecarts au leader (en s si arrive, sinon en metres de retard).
-    std::vector<int> order = race.Standings();
-    const racer::RacerEntry& leader = race.Racers()[static_cast<size_t>(order[0])];
-    float leaderProgress = TotalProgress(race.GetTrack(), leader);
-    float minGap = 1e9f, maxGap = 0.0f; // ecarts successifs (metres) entre voitures consecutives au classement
+    ctx.minPairDist = std::min(ctx.minPairDist, dist);
+    if (dist < kContactDist)
+        ctx.contactPairFrames++;
+    if (dist < kOverlapDist)
+        ctx.overlapPairFrames++;
+}
+
+void RaceSimDebug::updateCarMetrics(SimContext &ctx, size_t carIndex)
+{
+    const racer::RacerEntry &entry = ctx.race.Racers()[carIndex];
+
+    if (!isFiniteCar(entry.car))
+        ctx.sawNaN = true;
+    bool off = std::fabs(
+        ctx.race.GetTrack().ProjectPosition(entry.car.position).lateralOffset)
+        > ctx.offTrackHalfWidth;
+
+    if (off && !ctx.wasOffTrack[carIndex])
+        ctx.offTrackExits[carIndex]++;
+    ctx.wasOffTrack[carIndex] = off;
+    for (size_t j = carIndex + 1; j < ctx.carCount; ++j)
+        updatePairMetrics(ctx, entry.car, ctx.race.Racers()[j].car);
+}
+
+void RaceSimDebug::printProgressLog(const SimContext &ctx)
+{
+    std::printf("t=%5.1fs  ", static_cast<float>(ctx.step) * kDt);
+    for (const auto &entry : ctx.race.Racers()) {
+        std::printf(
+            "%s[lap=%d,v=%4.1f] ", entry.name.c_str(), entry.lap,
+            entry.car.speed);
+    }
+    std::printf("pos_joueur=%d\n", ctx.race.PlayerPosition());
+}
+
+bool RaceSimDebug::simulateSteps(SimContext &ctx)
+{
+    for (; ctx.step < kMaxSteps; ++ctx.step) {
+        racer::CarInput playerInput = ctx.playerAsAi.ComputeInput(
+            ctx.race.Racers()[static_cast<size_t>(ctx.race.PlayerIndex())].car,
+            ctx.race.GetTrack());
+
+        ctx.race.Update(kDt, playerInput);
+        checkEarlyLaps(ctx);
+        for (size_t i = 0; i < ctx.carCount; ++i)
+            updateCarMetrics(ctx, i);
+        if (ctx.step % kProgressLogInterval == 0)
+            printProgressLog(ctx);
+        if (ctx.race.Phase() == racer::RacePhase::Finished)
+            return true;
+    }
+    return false;
+}
+
+void RaceSimDebug::printStandingLine(
+    const SimContext &ctx, const racer::RacerEntry &entry,
+    const StandingRow &row)
+{
+    std::printf(
+        "  %zu. %-7s tours=%d sorties_piste=%d ",
+        row.rank + 1, entry.name.c_str(), entry.lap,
+        ctx.offTrackExits[static_cast<size_t>(row.racerIndex)]);
+    if (entry.finished) {
+        std::printf("temps=%.2fs", entry.finishTime);
+    } else {
+        std::printf(
+            "retard=%.0fu", row.leaderProgress - row.progress);
+    }
+    std::printf(" v=%.1f\n", entry.car.speed);
+}
+
+void RaceSimDebug::printStandingRows(SimContext &ctx,
+    const std::vector<int> &order, float leaderProgress)
+{
+    float minGap = 1e9f;
+    float maxGap = 0.0f;
     float prevProgress = leaderProgress;
 
     for (size_t p = 0; p < order.size(); ++p) {
-        const racer::RacerEntry& r = race.Racers()[static_cast<size_t>(order[p])];
-        float progress = TotalProgress(race.GetTrack(), r);
+        const racer::RacerEntry &entry =
+            ctx.race.Racers()[static_cast<size_t>(order[p])];
+        float progress = totalProgress(ctx.race.GetTrack(), entry);
+        StandingRow row{p, order[p], progress, leaderProgress};
+
         if (p > 0) {
             float gap = prevProgress - progress;
+
             minGap = std::min(minGap, gap);
             maxGap = std::max(maxGap, gap);
         }
         prevProgress = progress;
-
-        std::printf("  %zu. %-7s tours=%d sorties_piste=%d ", p + 1, r.name.c_str(), r.lap,
-                    offTrackExits[static_cast<size_t>(order[p])]);
-        if (r.finished) {
-            std::printf("temps=%.2fs", r.finishTime);
-        } else {
-            std::printf("retard=%.0fu", leaderProgress - progress);
-        }
-        std::printf(" v=%.1f\n", r.car.speed);
+        printStandingLine(ctx, entry, row);
     }
+    printStabilityStats(ctx, minGap, maxGap);
+}
 
-    std::printf("  Stabilite contacts : dist_min_paires=%.2fu paires_frames_contact=%d paires_frames_interpen=%d\n",
-                minPairDist, contactPairFrames, overlapPairFrames);
-    std::printf("  Ecarts consecutifs au classement : min=%.0fu max=%.0fu\n", minGap, maxGap);
+void RaceSimDebug::printStabilityStats(
+    const SimContext &ctx, float minGap, float maxGap)
+{
+    std::printf(
+        "  Stabilite contacts : dist_min_paires=%.2fu "
+        "paires_frames_contact=%d paires_frames_interpen=%d\n",
+        ctx.minPairDist, ctx.contactPairFrames, ctx.overlapPairFrames);
+    std::printf(
+        "  Ecarts consecutifs au classement : min=%.0fu max=%.0fu\n",
+        minGap, maxGap);
+}
 
-    // Criteres de sante : course finie, pas de NaN, pas de faux tour, le
-    // joueur (skill 1.0) a bien boucle ses tours, et personne n'est fige.
+void RaceSimDebug::printStandings(SimContext &ctx)
+{
+    bool finished = ctx.race.Phase() == racer::RacePhase::Finished;
+    std::vector<int> order = ctx.race.Standings();
+    const racer::RacerEntry &leader =
+        ctx.race.Racers()[static_cast<size_t>(order[0])];
+    float leaderProgress = totalProgress(ctx.race.GetTrack(), leader);
+
+    std::printf(
+        "-- Course terminee : %s apres %.1fs simulees --\n",
+        finished ? "oui" : "NON (cutoff!)",
+        static_cast<float>(ctx.step) * kDt);
+    printStandingRows(ctx, order, leaderProgress);
+}
+
+bool RaceSimDebug::evaluateHealth(const SimContext &ctx)
+{
+    bool finished = ctx.race.Phase() == racer::RacePhase::Finished;
     bool anyFrozen = false;
-    for (const auto& r : race.Racers()) {
-        if (!r.finished && std::fabs(r.car.speed) < 0.5f) anyFrozen = true;
+
+    for (const auto &entry : ctx.race.Racers()) {
+        if (!entry.finished && std::fabs(entry.car.speed) < 0.5f)
+            anyFrozen = true;
     }
-    bool ok = finished && !earlyFalseLap && !sawNaN && !anyFrozen &&
-              race.Racers()[static_cast<size_t>(race.PlayerIndex())].lap >= kLaps;
-    if (sawNaN) std::printf("  ERREUR: NaN detecte dans l'etat d'une voiture\n");
-    if (earlyFalseLap) std::printf("  ERREUR: tour comptabilise dans les 5 premieres secondes\n");
-    if (anyFrozen) std::printf("  ERREUR: voiture figee (v~0) a la fin de la course\n");
+    bool ok = finished && !ctx.earlyFalseLap && !ctx.sawNaN && !anyFrozen
+        && ctx.race.Racers()[static_cast<size_t>(ctx.race.PlayerIndex())].lap
+            >= kLaps;
+
+    if (ctx.sawNaN)
+        std::printf("  ERREUR: NaN detecte dans l'etat d'une voiture\n");
+    if (ctx.earlyFalseLap)
+        std::printf(
+            "  ERREUR: tour comptabilise dans les 5 premieres secondes\n");
+    if (anyFrozen)
+        std::printf("  ERREUR: voiture figee (v~0) a la fin de la course\n");
+    return ok;
+}
+
+bool RaceSimDebug::runRace(int presetIndex)
+{
+    const racer::TrackDef &def =
+        racer::Track::Presets()[static_cast<size_t>(presetIndex)];
+    SimContext ctx(def, kLaps, kAiCount);
+
+    printPresetHeader(presetIndex, def, ctx);
+    simulateSteps(ctx);
+    printStandings(ctx);
+    bool ok = evaluateHealth(ctx);
+
     std::printf("  RACE_SIM[%d]: %s\n\n", presetIndex, ok ? "OK" : "ECHEC");
     return ok;
 }
 
 } // namespace
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv)
+{
     int presetCount = static_cast<int>(racer::Track::Presets().size());
     bool allOk = true;
 
     if (argc > 1) {
         int idx = std::atoi(argv[1]);
+
         if (idx < 0 || idx >= presetCount) {
-            std::printf("Index de preset invalide : %d (0..%d)\n", idx, presetCount - 1);
+            std::printf(
+                "Index de preset invalide : %d (0..%d)\n", idx,
+                presetCount - 1);
             return 1;
         }
-        allOk = RunRace(idx);
+        allOk = RaceSimDebug::runRace(idx);
     } else {
-        for (int i = 0; i < presetCount; ++i) {
-            allOk = RunRace(i) && allOk;
-        }
+        for (int i = 0; i < presetCount; ++i)
+            allOk = RaceSimDebug::runRace(i) && allOk;
     }
-
     std::printf("RACE_SIM_GLOBAL: %s\n", allOk ? "OK" : "ECHEC");
     return allOk ? 0 : 1;
 }
