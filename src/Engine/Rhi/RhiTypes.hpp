@@ -49,7 +49,8 @@ struct RenderTargetDesc {
     RhiFormat format = RhiFormat::RGBA8;
     bool useDepth = true;
 
-    constexpr bool operator==(const RenderTargetDesc &) const noexcept = default;
+    constexpr bool operator==(
+        const RenderTargetDesc &) const noexcept = default;
 };
 
 class RenderTargetDescHash {

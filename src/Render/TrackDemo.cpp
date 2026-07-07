@@ -1,6 +1,9 @@
-/// \file track_demo.cpp
-/// \brief Demo autonome du rendu piste : cycle des presets avec captures
-///        automatiques puis fermeture sans input.
+/*
+** EPITECH PROJECT, 2026
+** racer
+** File description:
+** Standalone track renderer demo with automatic captures
+*/
 
 #include "Render/TrackRenderer.hpp"
 #include "Track/Track.hpp"
@@ -17,18 +20,36 @@ namespace {
 constexpr int kWidth = 960;
 constexpr int kHeight = 540;
 
-void QueueSkidPair(racer::TrackRenderer& renderer, const Vector3& pos,
-                   const Vector3& dir, float perpX, float perpZ)
+class TrackDemoApp {
+public:
+    static int run();
+
+private:
+    static void queueSkidPair(racer::TrackRenderer &renderer,
+        const Vector3 &pos, const Vector3 &dir, float perpX, float perpZ);
+    static void simulateSkidArc(racer::TrackRenderer &renderer,
+        const racer::Track &track);
+    static void centerCameraOnTrack(Camera3D &camera,
+        const racer::Track &track);
+    static void loadPreset(int index,
+        const std::vector<racer::TrackDef> &presets, racer::Track &track,
+        std::unique_ptr<racer::TrackRenderer> &renderer, Camera3D &camera,
+        int &frame, int &presetIndex);
+};
+
+void TrackDemoApp::queueSkidPair(racer::TrackRenderer &renderer,
+    const Vector3 &pos, const Vector3 &dir, float perpX, float perpZ)
 {
-    renderer.queueSkidMark(Vector3{pos.x + perpX * 0.5f, pos.y, pos.z + perpZ * 0.5f},
-                           dir, 0.35f, 0.85f);
-    renderer.queueSkidMark(Vector3{pos.x - perpX * 0.5f, pos.y, pos.z - perpZ * 0.5f},
-                           dir, 0.35f, 0.85f);
+    Vector3 left{pos.x + perpX * 0.5f, pos.y, pos.z + perpZ * 0.5f};
+    Vector3 right{pos.x - perpX * 0.5f, pos.y, pos.z - perpZ * 0.5f};
+    renderer.queueSkidMark(left, dir, 0.35f, 0.85f);
+    renderer.queueSkidMark(right, dir, 0.35f, 0.85f);
 }
 
-void SimulateSkidArc(racer::TrackRenderer& renderer, const racer::Track& track)
+void TrackDemoApp::simulateSkidArc(racer::TrackRenderer &renderer,
+    const racer::Track &track)
 {
-    const auto& wp = track.waypoints();
+    const auto &wp = track.waypoints();
     if (wp.size() < 4)
         return;
 
@@ -56,7 +77,7 @@ void SimulateSkidArc(racer::TrackRenderer& renderer, const racer::Track& track)
                 perpX /= plen;
                 perpZ /= plen;
             }
-            QueueSkidPair(renderer, pos, dir, perpX, perpZ);
+            queueSkidPair(renderer, pos, dir, perpX, perpZ);
             dist += kStep;
         }
         ++idx;
@@ -64,11 +85,12 @@ void SimulateSkidArc(racer::TrackRenderer& renderer, const racer::Track& track)
     renderer.flushSkidMarks();
 }
 
-void CenterCameraOnTrack(Camera3D& camera, const racer::Track& track)
+void TrackDemoApp::centerCameraOnTrack(Camera3D &camera,
+    const racer::Track &track)
 {
-    const auto& wp = track.waypoints();
+    const auto &wp = track.waypoints();
     Vector2 center{0.0f, 0.0f};
-    for (const auto& p : wp)
+    for (const auto &p : wp)
     {
         center.x += p.x;
         center.y += p.y;
@@ -79,23 +101,19 @@ void CenterCameraOnTrack(Camera3D& camera, const racer::Track& track)
     camera.target = Vector3{center.x, 0.0f, center.y};
 }
 
-void LoadPreset(int index, const std::vector<racer::TrackDef>& presets, racer::Track& track,
-                std::unique_ptr<racer::TrackRenderer>& renderer, Camera3D& camera,
-                int& frame, int& presetIndex)
+void TrackDemoApp::loadPreset(int index,
+    const std::vector<racer::TrackDef> &presets, racer::Track &track,
+    std::unique_ptr<racer::TrackRenderer> &renderer, Camera3D &camera,
+    int &frame, int &presetIndex)
 {
     presetIndex = index;
     track = racer::Track::make(presets[static_cast<size_t>(index)]);
     renderer = std::make_unique<racer::TrackRenderer>(
         track, presets[static_cast<size_t>(index)]);
-    SimulateSkidArc(*renderer, track);
+    simulateSkidArc(*renderer, track);
     frame = 0;
-    CenterCameraOnTrack(camera, track);
+    centerCameraOnTrack(camera, track);
 }
-
-class TrackDemoApp {
-public:
-    static int run();
-};
 
 int TrackDemoApp::run()
 {
@@ -103,7 +121,7 @@ int TrackDemoApp::run()
     InitWindow(kWidth, kHeight, "track_demo");
     SetTargetFPS(60);
 
-    const auto& presets = racer::Track::presets();
+    const auto &presets = racer::Track::presets();
 
     Camera3D camera{};
     camera.up = {0.0f, 1.0f, 0.0f};
@@ -115,7 +133,7 @@ int TrackDemoApp::run()
     std::unique_ptr<racer::TrackRenderer> renderer;
     racer::Track track = racer::Track::make(presets[0]);
 
-    LoadPreset(0, presets, track, renderer, camera, frame, presetIndex);
+    loadPreset(0, presets, track, renderer, camera, frame, presetIndex);
 
     const int presetCount = static_cast<int>(presets.size());
     while (!WindowShouldClose() && presetIndex < presetCount)
@@ -135,8 +153,8 @@ int TrackDemoApp::run()
             TakeScreenshot(name.c_str());
             if (presetIndex + 1 < presetCount)
             {
-                LoadPreset(presetIndex + 1, presets, track, renderer, camera, frame,
-                            presetIndex);
+                loadPreset(presetIndex + 1, presets, track, renderer, camera,
+                    frame, presetIndex);
             }
             else
             {

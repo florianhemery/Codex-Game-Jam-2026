@@ -16,56 +16,78 @@
 
 namespace racer {
 
-namespace {
+int Hud::Gfx::measureText(const char *text, int fontSize)
+{
+    return MeasureText(text, fontSize);
+}
 
-struct ShadowTextParams {
-    int centerX;
-    int y;
-    int fontSize;
-    Color color;
-    int offset;
-};
+float Hud::Gfx::time()
+{
+    return static_cast<float>(GetTime());
+}
 
-struct WrappedTextParams {
-    int x;
-    int y;
-    int maxWidth;
-    int fontSize;
-    int lineHeight;
-    Color color;
-};
+Color Hud::Gfx::fade(Color color, float alpha)
+{
+    return Fade(color, alpha);
+}
 
-struct GaugeArcParams {
-    Vector2 center;
-    float ratio;
-    float kmhMax;
-    float angleMin;
-    float angleSpan;
-    float rIn;
-    float rOut;
-};
+void Hud::Gfx::drawText(const char *text, int x, int y, int fontSize,
+    Color color)
+{
+    DrawText(text, x, y, fontSize, color);
+}
 
-struct StandingsRowParams {
-    const RacerEntry &racer;
-    size_t idx;
-    int rank;
-    const HudExtras &extras;
-    const Rectangle &panel;
-    float rowY;
-};
+void Hud::Gfx::drawRectangleRounded(Rectangle rect, float roundness,
+    int segments, Color color)
+{
+    DrawRectangleRounded(rect, roundness, segments, color);
+}
 
-struct FinishRowParams {
-    const RaceState &race;
-    const RacerEntry &racer;
-    size_t idx;
-    int rank;
-    const HudExtras &extras;
-    const Rectangle &panel;
-    float panelW;
-    float rowY;
-};
+void Hud::Gfx::drawRectangleRoundedLinesEx(Rectangle rect, float roundness,
+    int segments, float lineThick, Color color)
+{
+    DrawRectangleRoundedLinesEx(rect, roundness, segments, lineThick, color);
+}
 
-void formatOrdinal(int position, char *buf, size_t bufSize)
+void Hud::Gfx::drawLineEx(Vector2 start, Vector2 end, float thick, Color color)
+{
+    DrawLineEx(start, end, thick, color);
+}
+
+void Hud::Gfx::drawCircleV(Vector2 center, float radius, Color color)
+{
+    DrawCircleV(center, radius, color);
+}
+
+void Hud::Gfx::drawCircleLinesV(Vector2 center, float radius, Color color)
+{
+    DrawCircleLinesV(center, radius, color);
+}
+
+void Hud::Gfx::drawRing(Vector2 center, float innerR, float outerR,
+    float startAngle, float endAngle, int segments, Color color)
+{
+    DrawRing(center, innerR, outerR, startAngle, endAngle, segments, color);
+}
+
+void Hud::Gfx::drawRectangle(int x, int y, int w, int h, Color color)
+{
+    DrawRectangle(x, y, w, h, color);
+}
+
+void Hud::Gfx::clearBackground(Color color)
+{
+    ClearBackground(color);
+}
+
+void Hud::Gfx::drawRectangleGradientV(int x, int y, int w, int h,
+    Color color1, Color color2)
+{
+    DrawRectangleGradientV(x, y, w, h, color1, color2);
+}
+
+
+void Hud::formatOrdinal(int position, char *buf, size_t bufSize)
 {
     if (position == 1) {
         std::snprintf(buf, bufSize, "1re");
@@ -74,7 +96,7 @@ void formatOrdinal(int position, char *buf, size_t bufSize)
     }
 }
 
-void formatTime(float seconds, char *buf, size_t bufSize)
+void Hud::formatTime(float seconds, char *buf, size_t bufSize)
 {
     int minutes = static_cast<int>(seconds) / 60;
     float secs = seconds - static_cast<float>(minutes * 60);
@@ -82,7 +104,7 @@ void formatTime(float seconds, char *buf, size_t bufSize)
     std::snprintf(buf, bufSize, "%d:%05.2f", minutes, secs);
 }
 
-void formatLapTime(float seconds, char *buf, size_t bufSize)
+void Hud::formatLapTime(float seconds, char *buf, size_t bufSize)
 {
     if (seconds <= 0.0f) {
         std::snprintf(buf, bufSize, "--");
@@ -91,7 +113,7 @@ void formatLapTime(float seconds, char *buf, size_t bufSize)
     formatTime(seconds, buf, bufSize);
 }
 
-Color lerpColor(Color a, Color b, float t)
+Color Hud::lerpColor(Color a, Color b, float t)
 {
     t = std::clamp(t, 0.0f, 1.0f);
     auto mix = [t](unsigned char x, unsigned char y) {
@@ -104,7 +126,7 @@ Color lerpColor(Color a, Color b, float t)
     return Color{mix(a.r, b.r), mix(a.g, b.g), mix(a.b, b.b), mix(a.a, b.a)};
 }
 
-Color racerColorFor(const HudExtras &extras, size_t index, bool isPlayer)
+Color Hud::racerColorFor(const HudExtras &extras, size_t index, bool isPlayer)
 {
     if (index < extras.racerColors.size()) {
         return extras.racerColors[index];
@@ -119,39 +141,41 @@ Color racerColorFor(const HudExtras &extras, size_t index, bool isPlayer)
     return kFallback[index % (sizeof(kFallback) / sizeof(kFallback[0]))];
 }
 
-void drawPanel(Rectangle rect, float alpha)
+void Hud::drawPanel(Rectangle rect, float alpha)
 {
-    DrawRectangleRounded(rect, 0.12f, 8, Fade(BLACK, alpha));
-    DrawRectangleRoundedLinesEx(rect, 0.12f, 8, 1.0f, Fade(WHITE, 0.10f));
+    Gfx::drawRectangleRounded(rect, 0.12f, 8, Gfx::fade(BLACK, alpha));
+    Gfx::drawRectangleRoundedLinesEx(rect, 0.12f, 8, 1.0f,
+        Gfx::fade(WHITE, 0.10f));
 }
 
-void drawTextCentered(const char *text, int centerX, int y, int fontSize,
+void Hud::drawTextCentered(const char *text, int centerX, int y, int fontSize,
     Color color)
 {
-    int width = MeasureText(text, fontSize);
+    int width = Gfx::measureText(text, fontSize);
 
-    DrawText(text, centerX - width / 2, y, fontSize, color);
+    Gfx::drawText(text, centerX - width / 2, y, fontSize, color);
 }
 
-void drawTextRightAligned(const char *text, int rightX, int y, int fontSize,
-    Color color)
+void Hud::drawTextRightAligned(const char *text, int rightX, int y,
+    int fontSize, Color color)
 {
-    int width = MeasureText(text, fontSize);
+    int width = Gfx::measureText(text, fontSize);
 
-    DrawText(text, rightX - width, y, fontSize, color);
+    Gfx::drawText(text, rightX - width, y, fontSize, color);
 }
 
-void drawTextShadowCentered(const char *text, const ShadowTextParams &params)
+void Hud::drawTextShadowCentered(const char *text,
+    const ShadowTextParams &params)
 {
-    int width = MeasureText(text, params.fontSize);
+    int width = Gfx::measureText(text, params.fontSize);
 
-    DrawText(text, params.centerX - width / 2 + params.offset,
-        params.y + params.offset, params.fontSize, Fade(BLACK, 0.55f));
-    DrawText(text, params.centerX - width / 2, params.y, params.fontSize,
+    Gfx::drawText(text, params.centerX - width / 2 + params.offset,
+        params.y + params.offset, params.fontSize, Gfx::fade(BLACK, 0.55f));
+    Gfx::drawText(text, params.centerX - width / 2, params.y, params.fontSize,
         params.color);
 }
 
-void drawTextWrapped(const char *text, const WrappedTextParams &params)
+void Hud::drawTextWrapped(const char *text, const WrappedTextParams &params)
 {
     char line[192] = {0};
     int lineLen = 0;
@@ -181,9 +205,9 @@ void drawTextWrapped(const char *text, const WrappedTextParams &params)
             std::snprintf(candidate, sizeof(candidate), "%s %s", line, word);
         }
 
-        if (lineLen > 0 && MeasureText(candidate, params.fontSize) >
+        if (lineLen > 0 && Gfx::measureText(candidate, params.fontSize) >
             params.maxWidth) {
-            DrawText(line, params.x, params.y + lines * params.lineHeight,
+            Gfx::drawText(line, params.x, params.y + lines * params.lineHeight,
                 params.fontSize, params.color);
             ++lines;
             lineLen = std::snprintf(line, sizeof(line), "%s", word);
@@ -192,36 +216,29 @@ void drawTextWrapped(const char *text, const WrappedTextParams &params)
         }
     }
     if (lineLen > 0) {
-        DrawText(line, params.x, params.y + lines * params.lineHeight,
+        Gfx::drawText(line, params.x, params.y + lines * params.lineHeight,
             params.fontSize, params.color);
     }
 }
 
-struct MapProjection {
-    Vector2 screenCenter{};
-    Vector2 worldCenter{};
-    float scale = 1.0f;
-    bool rotated = false;
+Vector2 Hud::MapProjection::apply(Vector2 world) const
+{
+    float dx = world.x - worldCenter.x;
+    float dz = world.y - worldCenter.y;
 
-    Vector2 apply(Vector2 world) const
-    {
-        float dx = world.x - worldCenter.x;
-        float dz = world.y - worldCenter.y;
-
-        if (rotated) {
-            return Vector2{
-                screenCenter.x + dz * scale,
-                screenCenter.y + dx * scale
-            };
-        }
+    if (rotated) {
         return Vector2{
-            screenCenter.x + dx * scale,
-            screenCenter.y - dz * scale
+            screenCenter.x + dz * scale,
+            screenCenter.y + dx * scale
         };
     }
-};
+    return Vector2{
+        screenCenter.x + dx * scale,
+        screenCenter.y - dz * scale
+    };
+}
 
-MapProjection fitTrackInRect(const std::vector<Vector2> &points,
+Hud::MapProjection Hud::fitTrackInRect(const std::vector<Vector2> &points,
     Rectangle area, bool allowRotate)
 {
     Vector2 minPoint{1e9f, 1e9f};
@@ -236,7 +253,7 @@ MapProjection fitTrackInRect(const std::vector<Vector2> &points,
     float bw = std::max(maxPoint.x - minPoint.x, 0.001f);
     float bh = std::max(maxPoint.y - minPoint.y, 0.001f);
 
-    MapProjection proj;
+    Hud::MapProjection proj;
     proj.worldCenter = Vector2{
         (minPoint.x + maxPoint.x) * 0.5f,
         (minPoint.y + maxPoint.y) * 0.5f
@@ -253,8 +270,8 @@ MapProjection fitTrackInRect(const std::vector<Vector2> &points,
     return proj;
 }
 
-void drawTrackPolyline(const std::vector<Vector2> &points,
-    const MapProjection &proj, float thickness, Color color)
+void Hud::drawTrackPolyline(const std::vector<Vector2> &points,
+    const Hud::MapProjection &proj, float thickness, Color color)
 {
     size_t count = points.size();
 
@@ -262,13 +279,13 @@ void drawTrackPolyline(const std::vector<Vector2> &points,
         Vector2 a = proj.apply(points[i]);
         Vector2 b = proj.apply(points[(i + 1) % count]);
 
-        DrawLineEx(a, b, thickness, color);
-        DrawCircleV(a, thickness * 0.5f, color);
+        Gfx::drawLineEx(a, b, thickness, color);
+        Gfx::drawCircleV(a, thickness * 0.5f, color);
     }
 }
 
-void drawFinishLineTick(const std::vector<Vector2> &points,
-    const MapProjection &proj, float halfLength, Color color)
+void Hud::drawFinishLineTick(const std::vector<Vector2> &points,
+    const Hud::MapProjection &proj, float halfLength, Color color)
 {
     if (points.size() < 2) {
         return;
@@ -284,14 +301,14 @@ void drawFinishLineTick(const std::vector<Vector2> &points,
     }
     Vector2 perp{-dy / len, dx / len};
 
-    DrawLineEx(
+    Gfx::drawLineEx(
         Vector2{a.x + perp.x * halfLength, a.y + perp.y * halfLength},
         Vector2{a.x - perp.x * halfLength, a.y - perp.y * halfLength},
         3.0f, color);
 }
 
-void drawMinimapOpponents(const RaceState &race, const HudExtras &extras,
-    const MapProjection &proj, const Rectangle &panel)
+void Hud::drawMinimapOpponents(const RaceState &race, const HudExtras &extras,
+    const Hud::MapProjection &proj, const Rectangle &panel)
 {
     const std::vector<RacerEntry> &racers = race.racers();
 
@@ -307,13 +324,13 @@ void drawMinimapOpponents(const RaceState &race, const HudExtras &extras,
             panel.x + panel.width - 10.0f);
         pos.y = std::clamp(pos.y, panel.y + 10.0f,
             panel.y + panel.height - 10.0f);
-        DrawCircleV(pos, 4.5f, racerColorFor(extras, i, false));
-        DrawCircleLinesV(pos, 4.5f, Fade(BLACK, 0.55f));
+        Gfx::drawCircleV(pos, 4.5f, racerColorFor(extras, i, false));
+        Gfx::drawCircleLinesV(pos, 4.5f, Gfx::fade(BLACK, 0.55f));
     }
 }
 
-void drawMinimapPlayer(const RaceState &race, const HudExtras &extras,
-    const MapProjection &proj, const Rectangle &panel)
+void Hud::drawMinimapPlayer(const RaceState &race, const HudExtras &extras,
+    const Hud::MapProjection &proj, const Rectangle &panel)
 {
     const std::vector<RacerEntry> &racers = race.racers();
     size_t playerIdx = static_cast<size_t>(race.playerIndex());
@@ -324,11 +341,11 @@ void drawMinimapPlayer(const RaceState &race, const HudExtras &extras,
 
     pos.x = std::clamp(pos.x, panel.x + 10.0f, panel.x + panel.width - 10.0f);
     pos.y = std::clamp(pos.y, panel.y + 10.0f, panel.y + panel.height - 10.0f);
-    DrawCircleV(pos, 6.0f, racerColorFor(extras, playerIdx, true));
-    DrawRing(pos, 7.5f, 9.5f, 0.0f, 360.0f, 24, WHITE);
+    Gfx::drawCircleV(pos, 6.0f, racerColorFor(extras, playerIdx, true));
+    Gfx::drawRing(pos, 7.5f, 9.5f, 0.0f, 360.0f, 24, WHITE);
 }
 
-void drawMinimap(const RaceState &race, const HudExtras &extras,
+void Hud::drawMinimap(const RaceState &race, const HudExtras &extras,
     int screenWidth, int screenHeight)
 {
     const float size = 220.0f;
@@ -349,38 +366,39 @@ void drawMinimap(const RaceState &race, const HudExtras &extras,
         panel.x + 20.0f, panel.y + 20.0f,
         panel.width - 40.0f, panel.height - 40.0f
     };
-    MapProjection proj = fitTrackInRect(waypoints, area, false);
+    Hud::MapProjection proj = fitTrackInRect(waypoints, area, false);
 
     float road = std::clamp(race.getTrack().width() * proj.scale, 3.0f, 10.0f);
 
-    drawTrackPolyline(waypoints, proj, road, Fade(WHITE, 0.15f));
-    drawTrackPolyline(waypoints, proj, 1.5f, Fade(WHITE, 0.28f));
+    drawTrackPolyline(waypoints, proj, road, Gfx::fade(WHITE, 0.15f));
+    drawTrackPolyline(waypoints, proj, 1.5f, Gfx::fade(WHITE, 0.28f));
     drawFinishLineTick(waypoints, proj, road * 0.8f + 2.0f, RAYWHITE);
     drawMinimapOpponents(race, extras, proj, panel);
     drawMinimapPlayer(race, extras, proj, panel);
 }
 
-void drawSpeedGaugeArc(const GaugeArcParams &params)
+void Hud::drawSpeedGaugeArc(const GaugeArcParams &params)
 {
-    DrawRing(params.center, params.rIn, params.rOut, params.angleMin,
-        params.angleMin + params.angleSpan, 64, Fade(WHITE, 0.08f));
+    Gfx::drawRing(params.center, params.rIn, params.rOut, params.angleMin,
+        params.angleMin + params.angleSpan, 64, Gfx::fade(WHITE, 0.08f));
     float redlineStart = params.angleMin + params.angleSpan *
         (200.0f / params.kmhMax);
 
-    DrawRing(params.center, params.rIn, params.rOut, redlineStart,
-        params.angleMin + params.angleSpan, 16, Fade(RED, 0.20f));
+    Gfx::drawRing(params.center, params.rIn, params.rOut, redlineStart,
+        params.angleMin + params.angleSpan, 16, Gfx::fade(RED, 0.20f));
     if (params.ratio > 0.004f) {
         Color fill = lerpColor(
             Color{255, 168, 40, 255},
             Color{255, 66, 40, 255},
             params.ratio);
-        DrawRing(params.center, params.rIn + 1.0f, params.rOut - 1.0f,
+        Gfx::drawRing(params.center, params.rIn + 1.0f, params.rOut - 1.0f,
             params.angleMin, params.angleMin + params.angleSpan * params.ratio,
             64, fill);
     }
 }
 
-void drawSpeedGaugeTicks(const Vector2 &center, float kmhMax, float angleMin,
+void Hud::drawSpeedGaugeTicks(const Vector2 &center, float kmhMax,
+    float angleMin,
     float angleSpan, float rOut)
 {
     for (int speed = 0; speed <= static_cast<int>(kmhMax); speed += 10) {
@@ -391,11 +409,11 @@ void drawSpeedGaugeTicks(const Vector2 &center, float kmhMax, float angleMin,
         float r1 = rOut + 3.0f;
         float r2 = rOut + (major ? 10.0f : 6.0f);
 
-        DrawLineEx(
+        Gfx::drawLineEx(
             Vector2{center.x + dir.x * r1, center.y + dir.y * r1},
             Vector2{center.x + dir.x * r2, center.y + dir.y * r2},
             major ? 2.0f : 1.0f,
-            Fade(WHITE, major ? 0.70f : 0.32f));
+            Gfx::fade(WHITE, major ? 0.70f : 0.32f));
         if (major) {
             char label[8];
 
@@ -404,12 +422,13 @@ void drawSpeedGaugeTicks(const Vector2 &center, float kmhMax, float angleMin,
             drawTextCentered(label,
                 static_cast<int>(center.x + dir.x * labelRadius),
                 static_cast<int>(center.y + dir.y * labelRadius) - 5,
-                10, Fade(WHITE, 0.55f));
+                10, Gfx::fade(WHITE, 0.55f));
         }
     }
 }
 
-void drawSpeedGaugeNeedle(const Vector2 &center, float ratio, float angleMin,
+void Hud::drawSpeedGaugeNeedle(const Vector2 &center, float ratio,
+    float angleMin,
     float angleSpan, float rIn)
 {
     float angle = (angleMin + angleSpan * ratio) * DEG2RAD;
@@ -419,13 +438,13 @@ void drawSpeedGaugeNeedle(const Vector2 &center, float ratio, float angleMin,
         center.y + dir.y * (rIn - 3.0f)
     };
 
-    DrawLineEx(
+    Gfx::drawLineEx(
         Vector2{center.x + dir.x * 30.0f, center.y + dir.y * 30.0f},
         tip, 3.0f, Color{255, 92, 70, 255});
-    DrawCircleV(tip, 2.5f, RAYWHITE);
+    Gfx::drawCircleV(tip, 2.5f, RAYWHITE);
 }
 
-void drawNitroBar(const Car &car, const Rectangle &panel, float panelW,
+void Hud::drawNitroBar(const Car &car, const Rectangle &panel, float panelW,
     float panelH)
 {
     float nitroRatio = std::clamp(
@@ -433,9 +452,9 @@ void drawNitroBar(const Car &car, const Rectangle &panel, float panelW,
     float barY = panel.y + panelH - 30.0f;
     Rectangle barBg{panel.x + 86.0f, barY, panelW - 86.0f - 18.0f, 13.0f};
 
-    DrawText("NITRO", static_cast<int>(panel.x + 20.0f),
-        static_cast<int>(barY), 13, Fade(ORANGE, 0.95f));
-    DrawRectangleRounded(barBg, 0.7f, 6, Fade(WHITE, 0.10f));
+    Gfx::drawText("NITRO", static_cast<int>(panel.x + 20.0f),
+        static_cast<int>(barY), 13, Gfx::fade(ORANGE, 0.95f));
+    Gfx::drawRectangleRounded(barBg, 0.7f, 6, Gfx::fade(WHITE, 0.10f));
     if (nitroRatio <= 0.01f) {
         return;
     }
@@ -443,15 +462,15 @@ void drawNitroBar(const Car &car, const Rectangle &panel, float panelW,
 
     if (nitroRatio >= 0.999f) {
         float pulse = 0.5f + 0.5f * std::sin(
-            static_cast<float>(GetTime()) * 6.0f);
+            static_cast<float>(Gfx::time()) * 6.0f);
         col = lerpColor(ORANGE, Color{255, 236, 120, 255}, pulse * 0.65f);
     }
     Rectangle fill{barBg.x, barBg.y, barBg.width * nitroRatio, barBg.height};
 
-    DrawRectangleRounded(fill, 0.7f, 6, col);
+    Gfx::drawRectangleRounded(fill, 0.7f, 6, col);
 }
 
-void drawSpeedGauge(const Car &car, int screenHeight)
+void Hud::drawSpeedGauge(const Car &car, int screenHeight)
 {
     const float panelW = 272.0f;
     const float panelH = 232.0f;
@@ -484,26 +503,26 @@ void drawSpeedGauge(const Car &car, int screenHeight)
     drawTextCentered(speedBuf, static_cast<int>(center.x),
         static_cast<int>(center.y) - 16, 40, RAYWHITE);
     drawTextCentered("km/h", static_cast<int>(center.x),
-        static_cast<int>(center.y) + 28, 14, Fade(WHITE, 0.60f));
+        static_cast<int>(center.y) + 28, 14, Gfx::fade(WHITE, 0.60f));
     drawNitroBar(car, panel, panelW, panelH);
 }
 
-void drawStandingsFinishFlag(int x, int y)
+void Hud::drawStandingsFinishFlag(int x, int y)
 {
-    DrawRectangle(x, y, 5, 5, RAYWHITE);
-    DrawRectangle(x + 5, y + 5, 5, 5, RAYWHITE);
-    DrawRectangle(x + 5, y, 5, 5, Fade(WHITE, 0.25f));
-    DrawRectangle(x, y + 5, 5, 5, Fade(WHITE, 0.25f));
+    Gfx::drawRectangle(x, y, 5, 5, RAYWHITE);
+    Gfx::drawRectangle(x + 5, y + 5, 5, 5, RAYWHITE);
+    Gfx::drawRectangle(x + 5, y, 5, 5, Gfx::fade(WHITE, 0.25f));
+    Gfx::drawRectangle(x, y + 5, 5, 5, Gfx::fade(WHITE, 0.25f));
 }
 
-void drawStandingsRow(const StandingsRowParams &params)
+void Hud::drawStandingsRow(const StandingsRowParams &params)
 {
     if (params.racer.isPlayer) {
         Rectangle highlight{
             params.panel.x + 8.0f, params.rowY - 3.0f,
             params.panel.width - 16.0f, 28.0f - 2.0f
         };
-        DrawRectangleRounded(highlight, 0.4f, 6, Fade(YELLOW, 0.16f));
+        Gfx::drawRectangleRounded(highlight, 0.4f, 6, Gfx::fade(YELLOW, 0.16f));
     }
 
     char pos[8];
@@ -511,14 +530,14 @@ void drawStandingsRow(const StandingsRowParams &params)
     std::snprintf(pos, sizeof(pos), "%d", params.rank);
     drawTextRightAligned(pos, static_cast<int>(params.panel.x + 34.0f),
         static_cast<int>(params.rowY), 18,
-        params.racer.isPlayer ? YELLOW : Fade(WHITE, 0.80f));
+        params.racer.isPlayer ? YELLOW : Gfx::fade(WHITE, 0.80f));
 
     Vector2 dot{params.panel.x + 50.0f, params.rowY + 9.0f};
 
-    DrawCircleV(dot, 6.0f,
+    Gfx::drawCircleV(dot, 6.0f,
         racerColorFor(params.extras, params.idx, params.racer.isPlayer));
-    DrawCircleLinesV(dot, 6.0f, Fade(WHITE, 0.35f));
-    DrawText(params.racer.name.c_str(),
+    Gfx::drawCircleLinesV(dot, 6.0f, Gfx::fade(WHITE, 0.35f));
+    Gfx::drawText(params.racer.name.c_str(),
         static_cast<int>(params.panel.x + 66.0f),
         static_cast<int>(params.rowY), 18,
         params.racer.isPlayer ? YELLOW : RAYWHITE);
@@ -529,7 +548,7 @@ void drawStandingsRow(const StandingsRowParams &params)
     }
 }
 
-void drawStandingsPanel(const RaceState &race, const HudExtras &extras)
+void Hud::drawStandingsPanel(const RaceState &race, const HudExtras &extras)
 {
     const std::vector<RacerEntry> &racers = race.racers();
     const RacerEntry &player = racers[static_cast<size_t>(race.playerIndex())];
@@ -546,12 +565,12 @@ void drawStandingsPanel(const RaceState &race, const HudExtras &extras)
 
     std::snprintf(lapBuf, sizeof(lapBuf), "TOUR %d/%d",
         std::min(player.lap + 1, race.lapsToWin()), race.lapsToWin());
-    DrawText(lapBuf, static_cast<int>(panel.x + 14.0f),
+    Gfx::drawText(lapBuf, static_cast<int>(panel.x + 14.0f),
         static_cast<int>(panel.y + 12.0f), 20, RAYWHITE);
-    DrawLineEx(
+    Gfx::drawLineEx(
         Vector2{panel.x + 12.0f, panel.y + 42.0f},
         Vector2{panel.x + panel.width - 12.0f, panel.y + 42.0f},
-        1.0f, Fade(WHITE, 0.15f));
+        1.0f, Gfx::fade(WHITE, 0.15f));
 
     for (size_t i = 0; i < order.size(); ++i) {
         size_t idx = static_cast<size_t>(order[i]);
@@ -564,21 +583,23 @@ void drawStandingsPanel(const RaceState &race, const HudExtras &extras)
     }
 }
 
-void drawTimersPanelLastLap(const HudExtras &extras, const Rectangle &panel)
+void Hud::drawTimersPanelLastLap(const HudExtras &extras,
+    const Rectangle &panel)
 {
     char last[32];
 
     formatTime(extras.lastLapTime, last, sizeof(last));
     float blink = 0.65f + 0.35f * std::sin(
-        static_cast<float>(GetTime()) * 8.0f);
-    DrawText("Dernier", static_cast<int>(panel.x + 14.0f),
-        static_cast<int>(panel.y + 120.0f), 16, Fade(YELLOW, blink * 0.8f));
+        static_cast<float>(Gfx::time()) * 8.0f);
+    Color lastColor = Gfx::fade(YELLOW, blink * 0.8f);
+    Gfx::drawText("Dernier", static_cast<int>(panel.x + 14.0f),
+        static_cast<int>(panel.y + 120.0f), 16, lastColor);
     drawTextRightAligned(last,
         static_cast<int>(panel.x + panel.width - 14.0f),
-        static_cast<int>(panel.y + 120.0f), 16, Fade(YELLOW, blink));
+        static_cast<int>(panel.y + 120.0f), 16, Gfx::fade(YELLOW, blink));
 }
 
-void drawTimersPanel(const RaceState &race, const HudExtras &extras,
+void Hud::drawTimersPanel(const RaceState &race, const HudExtras &extras,
     int screenWidth)
 {
     bool showLast = extras.lastLapTime > 0.0f && extras.currentLapTime < 3.0f;
@@ -590,32 +611,32 @@ void drawTimersPanel(const RaceState &race, const HudExtras &extras,
     };
 
     drawPanel(panel, 0.45f);
-    DrawText("TEMPS DE COURSE", static_cast<int>(panel.x + 14.0f),
-        static_cast<int>(panel.y + 10.0f), 12, Fade(WHITE, 0.55f));
+    Gfx::drawText("TEMPS DE COURSE", static_cast<int>(panel.x + 14.0f),
+        static_cast<int>(panel.y + 10.0f), 12, Gfx::fade(WHITE, 0.55f));
 
     char total[32];
 
     formatTime(race.elapsedTime(), total, sizeof(total));
-    DrawText(total, static_cast<int>(panel.x + 14.0f),
+    Gfx::drawText(total, static_cast<int>(panel.x + 14.0f),
         static_cast<int>(panel.y + 26.0f), 30, RAYWHITE);
-    DrawLineEx(
+    Gfx::drawLineEx(
         Vector2{panel.x + 12.0f, panel.y + 64.0f},
         Vector2{panel.x + panel.width - 12.0f, panel.y + 64.0f},
-        1.0f, Fade(WHITE, 0.15f));
+        1.0f, Gfx::fade(WHITE, 0.15f));
 
     char cur[32];
 
     formatLapTime(extras.currentLapTime, cur, sizeof(cur));
-    DrawText("Tour", static_cast<int>(panel.x + 14.0f),
-        static_cast<int>(panel.y + 72.0f), 16, Fade(WHITE, 0.65f));
+    Gfx::drawText("Tour", static_cast<int>(panel.x + 14.0f),
+        static_cast<int>(panel.y + 72.0f), 16, Gfx::fade(WHITE, 0.65f));
     drawTextRightAligned(cur, static_cast<int>(panel.x + panel.width - 14.0f),
         static_cast<int>(panel.y + 72.0f), 16, RAYWHITE);
 
     char best[32];
 
     formatLapTime(extras.bestLapTime, best, sizeof(best));
-    DrawText("Meilleur", static_cast<int>(panel.x + 14.0f),
-        static_cast<int>(panel.y + 96.0f), 16, Fade(WHITE, 0.65f));
+    Gfx::drawText("Meilleur", static_cast<int>(panel.x + 14.0f),
+        static_cast<int>(panel.y + 96.0f), 16, Gfx::fade(WHITE, 0.65f));
     drawTextRightAligned(best, static_cast<int>(panel.x + panel.width - 14.0f),
         static_cast<int>(panel.y + 96.0f), 16, Color{170, 220, 255, 255});
     if (showLast) {
@@ -623,14 +644,14 @@ void drawTimersPanel(const RaceState &race, const HudExtras &extras,
     }
 }
 
-void drawStartLights(int centerX, int y, int litCount, float alpha)
+void Hud::drawStartLights(int centerX, int y, int litCount, float alpha)
 {
     Rectangle band{
         static_cast<float>(centerX) - 96.0f,
         static_cast<float>(y), 192.0f, 56.0f
     };
 
-    DrawRectangleRounded(band, 0.5f, 8, Fade(BLACK, 0.50f * alpha));
+    Gfx::drawRectangleRounded(band, 0.5f, 8, Gfx::fade(BLACK, 0.50f * alpha));
     const Color onColors[3] = {
         Color{235, 64, 52, 255},
         Color{235, 64, 52, 255},
@@ -645,15 +666,17 @@ void drawStartLights(int centerX, int y, int litCount, float alpha)
         bool on = i < litCount;
 
         if (on) {
-            DrawCircleV(pos, 21.0f, Fade(onColors[i], 0.30f * alpha));
+            Gfx::drawCircleV(pos, 21.0f, Gfx::fade(onColors[i], 0.30f * alpha));
         }
-        DrawCircleV(pos, 14.0f,
-            on ? Fade(onColors[i], alpha) : Fade(WHITE, 0.08f * alpha));
-        DrawCircleLinesV(pos, 14.5f, Fade(WHITE, 0.22f * alpha));
+        Color fill = on ? Gfx::fade(onColors[i], alpha)
+            : Gfx::fade(WHITE, 0.08f * alpha);
+        Gfx::drawCircleV(pos, 14.0f, fill);
+        Gfx::drawCircleLinesV(pos, 14.5f, Gfx::fade(WHITE, 0.22f * alpha));
     }
 }
 
-void drawCountdown(const RaceState &race, int screenWidth, int screenHeight)
+void Hud::drawCountdown(const RaceState &race, int screenWidth,
+    int screenHeight)
 {
     float remaining = race.countdownRemaining();
     int digit = std::clamp(static_cast<int>(std::ceil(remaining)), 1, 3);
@@ -679,7 +702,7 @@ void drawCountdown(const RaceState &race, int screenWidth, int screenHeight)
     drawTextShadowCentered(buf, shadow);
 }
 
-void drawGoFlash(const RaceState &race, int screenWidth, int screenHeight)
+void Hud::drawGoFlash(const RaceState &race, int screenWidth, int screenHeight)
 {
     const float duration = 1.2f;
     float elapsed = race.elapsedTime();
@@ -698,13 +721,13 @@ void drawGoFlash(const RaceState &race, int screenWidth, int screenHeight)
         fontSize / 2;
     ShadowTextParams shadow{
         screenWidth / 2, textY, fontSize,
-        Fade(Color{92, 230, 110, 255}, alpha * flash), 5
+        Gfx::fade(Color{92, 230, 110, 255}, alpha * flash), 5
     };
 
     drawTextShadowCentered("GO !", shadow);
 }
 
-bool estimateGapSeconds(const RaceState &race, const RacerEntry &racer,
+bool Hud::estimateGapSeconds(const RaceState &race, const RacerEntry &racer,
     float *outSeconds)
 {
     const Track &track = race.getTrack();
@@ -732,14 +755,14 @@ bool estimateGapSeconds(const RaceState &race, const RacerEntry &racer,
     return true;
 }
 
-void drawFinishScreenRow(const FinishRowParams &params)
+void Hud::drawFinishScreenRow(const FinishRowParams &params)
 {
     if (params.racer.isPlayer) {
         Rectangle highlight{
             params.panel.x + 16.0f, params.rowY - 4.0f,
             params.panelW - 32.0f, 30.0f - 2.0f
         };
-        DrawRectangleRounded(highlight, 0.4f, 6, Fade(YELLOW, 0.14f));
+        Gfx::drawRectangleRounded(highlight, 0.4f, 6, Gfx::fade(YELLOW, 0.14f));
     }
 
     char pos[8];
@@ -747,14 +770,14 @@ void drawFinishScreenRow(const FinishRowParams &params)
     std::snprintf(pos, sizeof(pos), "%d", params.rank);
     drawTextRightAligned(pos, static_cast<int>(params.panel.x + 46.0f),
         static_cast<int>(params.rowY), 20,
-        params.racer.isPlayer ? YELLOW : Fade(WHITE, 0.85f));
+        params.racer.isPlayer ? YELLOW : Gfx::fade(WHITE, 0.85f));
 
     Vector2 dot{params.panel.x + 66.0f, params.rowY + 10.0f};
 
-    DrawCircleV(dot, 6.5f,
+    Gfx::drawCircleV(dot, 6.5f,
         racerColorFor(params.extras, params.idx, params.racer.isPlayer));
-    DrawCircleLinesV(dot, 6.5f, Fade(WHITE, 0.35f));
-    DrawText(params.racer.name.c_str(),
+    Gfx::drawCircleLinesV(dot, 6.5f, Gfx::fade(WHITE, 0.35f));
+    Gfx::drawText(params.racer.name.c_str(),
         static_cast<int>(params.panel.x + 84.0f),
         static_cast<int>(params.rowY), 20,
         params.racer.isPlayer ? YELLOW : RAYWHITE);
@@ -775,10 +798,10 @@ void drawFinishScreenRow(const FinishRowParams &params)
     drawTextRightAligned(right,
         static_cast<int>(params.panel.x + params.panelW - 24.0f),
         static_cast<int>(params.rowY), 20,
-        params.racer.finished ? RAYWHITE : Fade(WHITE, 0.60f));
+        params.racer.finished ? RAYWHITE : Gfx::fade(WHITE, 0.60f));
 }
 
-void drawFinishScreenHeader(const RaceState &race, const Rectangle &panel,
+void Hud::drawFinishScreenHeader(const RaceState &race, const Rectangle &panel,
     float panelW)
 {
     char ordinal[16];
@@ -804,17 +827,18 @@ void drawFinishScreenHeader(const RaceState &race, const Rectangle &panel,
 
     std::snprintf(timeLine, sizeof(timeLine), "Temps de course : %s", timeBuf);
     drawTextCentered(timeLine, static_cast<int>(panel.x + panelW * 0.5f),
-        static_cast<int>(panel.y + 66.0f), 18, Fade(WHITE, 0.85f));
-    DrawLineEx(
+        static_cast<int>(panel.y + 66.0f), 18, Gfx::fade(WHITE, 0.85f));
+    Gfx::drawLineEx(
         Vector2{panel.x + 24.0f, panel.y + 94.0f},
         Vector2{panel.x + panelW - 24.0f, panel.y + 94.0f},
-        1.0f, Fade(WHITE, 0.20f));
+        1.0f, Gfx::fade(WHITE, 0.20f));
 }
 
-void drawFinishScreen(const RaceState &race, const HudExtras &extras,
+void Hud::drawFinishScreen(const RaceState &race, const HudExtras &extras,
     int screenWidth, int screenHeight)
 {
-    DrawRectangle(0, 0, screenWidth, screenHeight, Fade(BLACK, 0.65f));
+    Color scrim = Gfx::fade(BLACK, 0.65f);
+    Gfx::drawRectangle(0, 0, screenWidth, screenHeight, scrim);
 
     const std::vector<RacerEntry> &racers = race.racers();
     std::vector<int> order = race.standings();
@@ -828,8 +852,9 @@ void drawFinishScreen(const RaceState &race, const HudExtras &extras,
         panelW, panelH
     };
 
-    DrawRectangleRounded(panel, 0.08f, 8, Fade(BLACK, 0.55f));
-    DrawRectangleRoundedLinesEx(panel, 0.08f, 8, 2.0f, Fade(YELLOW, 0.35f));
+    Gfx::drawRectangleRounded(panel, 0.08f, 8, Gfx::fade(BLACK, 0.55f));
+    Color panelBorder = Gfx::fade(YELLOW, 0.35f);
+    Gfx::drawRectangleRoundedLinesEx(panel, 0.08f, 8, 2.0f, panelBorder);
     drawFinishScreenHeader(race, panel, panelW);
 
     for (size_t i = 0; i < order.size(); ++i) {
@@ -846,12 +871,7 @@ void drawFinishScreen(const RaceState &race, const HudExtras &extras,
         static_cast<int>(panel.y + panelH - 40.0f), 20, LIGHTGRAY);
 }
 
-struct TrackPreview {
-    std::string key;
-    std::vector<Vector2> points;
-};
-
-const TrackPreview &getTrackPreview(const TrackDef &def)
+const Hud::TrackPreview &Hud::getTrackPreview(const TrackDef &def)
 {
     static std::vector<TrackPreview> cache;
 
@@ -868,7 +888,8 @@ const TrackPreview &getTrackPreview(const TrackDef &def)
     return cache.back();
 }
 
-void drawTrackCardPreview(const TrackDef &def, const TrackPreview &preview,
+void Hud::drawTrackCardPreview(const TrackDef &def,
+    const TrackPreview &preview,
     Rectangle inset, bool selected)
 {
     if (preview.points.size() < 2) {
@@ -878,49 +899,52 @@ void drawTrackCardPreview(const TrackDef &def, const TrackPreview &preview,
         inset.x + 10.0f, inset.y + 10.0f,
         inset.width - 20.0f, inset.height - 20.0f
     };
-    MapProjection proj = fitTrackInRect(preview.points, area, true);
+    Hud::MapProjection proj = fitTrackInRect(preview.points, area, true);
     float road = std::clamp(def.width * proj.scale, 2.0f, 6.0f);
 
-    drawTrackPolyline(preview.points, proj, road, Fade(WHITE, 0.14f));
+    drawTrackPolyline(preview.points, proj, road, Gfx::fade(WHITE, 0.14f));
     drawTrackPolyline(preview.points, proj, 1.5f,
-        Fade(WHITE, selected ? 0.60f : 0.40f));
-    DrawCircleV(proj.apply(preview.points[0]), 3.5f,
+        Gfx::fade(WHITE, selected ? 0.60f : 0.40f));
+    Gfx::drawCircleV(proj.apply(preview.points[0]), 3.5f,
         Color{88, 214, 104, 255});
 }
 
-void drawTrackCardBadge(const TrackDef &def, Rectangle card)
+void Hud::drawTrackCardBadge(const TrackDef &def, Rectangle card)
 {
     if (def.surfaceStyle != SurfaceStyle::ABIMEE) {
         return;
     }
     const Color amber{255, 178, 48, 255};
     const char *tag = "ROUTE ABIMEE";
-    int tagWidth = MeasureText(tag, 13);
+    int tagWidth = Gfx::measureText(tag, 13);
     Rectangle badge{
         card.x + (card.width - static_cast<float>(tagWidth) - 20.0f) * 0.5f,
         card.y + card.height - 40.0f,
         static_cast<float>(tagWidth) + 20.0f, 22.0f
     };
 
-    DrawRectangleRounded(badge, 0.6f, 6, Fade(amber, 0.16f));
-    DrawRectangleRoundedLinesEx(badge, 0.6f, 6, 1.0f, Fade(amber, 0.85f));
-    DrawText(tag, static_cast<int>(badge.x + 10.0f),
+    Gfx::drawRectangleRounded(badge, 0.6f, 6, Gfx::fade(amber, 0.16f));
+    Gfx::drawRectangleRoundedLinesEx(badge, 0.6f, 6, 1.0f,
+        Gfx::fade(amber, 0.85f));
+    Gfx::drawText(tag, static_cast<int>(badge.x + 10.0f),
         static_cast<int>(badge.y + 5.0f), 13, amber);
 }
 
-void drawTrackCard(const TrackDef &def, Rectangle card, bool selected)
+void Hud::drawTrackCard(const TrackDef &def, Rectangle card, bool selected)
 {
-    DrawRectangleRounded(card, 0.10f, 8,
-        Fade(BLACK, selected ? 0.55f : 0.42f));
+    Gfx::drawRectangleRounded(card, 0.10f, 8,
+        Gfx::fade(BLACK, selected ? 0.55f : 0.42f));
     if (selected) {
-        DrawRectangleRoundedLinesEx(card, 0.10f, 8, 3.0f, YELLOW);
+        Gfx::drawRectangleRoundedLinesEx(card, 0.10f, 8, 3.0f, YELLOW);
         Rectangle glow{
             card.x - 4.0f, card.y - 4.0f,
             card.width + 8.0f, card.height + 8.0f
         };
-        DrawRectangleRoundedLinesEx(glow, 0.10f, 8, 1.0f, Fade(YELLOW, 0.30f));
+        Gfx::drawRectangleRoundedLinesEx(glow, 0.10f, 8, 1.0f,
+            Gfx::fade(YELLOW, 0.30f));
     } else {
-        DrawRectangleRoundedLinesEx(card, 0.10f, 8, 1.0f, Fade(WHITE, 0.12f));
+        Gfx::drawRectangleRoundedLinesEx(card, 0.10f, 8, 1.0f,
+            Gfx::fade(WHITE, 0.12f));
     }
 
     float insetW = card.width - 90.0f;
@@ -930,8 +954,9 @@ void drawTrackCard(const TrackDef &def, Rectangle card, bool selected)
         card.y + 16.0f, insetW, insetH
     };
 
-    DrawRectangleRounded(inset, 0.12f, 6, Fade(BLACK, 0.40f));
-    DrawRectangleRoundedLinesEx(inset, 0.12f, 6, 1.0f, Fade(WHITE, 0.10f));
+    Gfx::drawRectangleRounded(inset, 0.12f, 6, Gfx::fade(BLACK, 0.40f));
+    Gfx::drawRectangleRoundedLinesEx(inset, 0.12f, 6, 1.0f,
+        Gfx::fade(WHITE, 0.10f));
 
     const TrackPreview &preview = getTrackPreview(def);
 
@@ -947,31 +972,31 @@ void drawTrackCard(const TrackDef &def, Rectangle card, bool selected)
         static_cast<int>(card.x + 16.0f),
         static_cast<int>(textTop + 46.0f),
         static_cast<int>(card.width - 32.0f),
-        15, 19, Fade(WHITE, 0.62f)
+        15, 19, Gfx::fade(WHITE, 0.62f)
     };
 
     drawTextWrapped(def.description.c_str(), wrapped);
     drawTrackCardBadge(def, card);
 }
 
-void drawMenuTitle(int screenWidth)
+void Hud::drawMenuTitle(int screenWidth)
 {
     const char *title = "RACER";
     const int titleSize = 78;
     int centerX = screenWidth / 2;
-    int titleWidth = MeasureText(title, titleSize);
+    int titleWidth = Gfx::measureText(title, titleSize);
 
-    DrawText(title, centerX - titleWidth / 2 + 6, 46 + 6, titleSize,
+    Gfx::drawText(title, centerX - titleWidth / 2 + 6, 46 + 6, titleSize,
         Color{110, 45, 16, 255});
-    DrawText(title, centerX - titleWidth / 2, 46, titleSize, ORANGE);
-    DrawLineEx(
+    Gfx::drawText(title, centerX - titleWidth / 2, 46, titleSize, ORANGE);
+    Gfx::drawLineEx(
         Vector2{static_cast<float>(centerX - titleWidth / 2), 134.0f},
         Vector2{static_cast<float>(centerX + titleWidth / 2), 134.0f},
-        3.0f, Fade(ORANGE, 0.55f));
+        3.0f, Gfx::fade(ORANGE, 0.55f));
     drawTextCentered("Choisissez un circuit", centerX, 152, 22, LIGHTGRAY);
 }
 
-void drawMenuCards(const std::vector<TrackDef> &presets, int selectedIndex,
+void Hud::drawMenuCards(const std::vector<TrackDef> &presets, int selectedIndex,
     int screenWidth)
 {
     int count = static_cast<int>(presets.size());
@@ -1005,7 +1030,6 @@ void drawMenuCards(const std::vector<TrackDef> &presets, int selectedIndex,
     }
 }
 
-}
 
 void Hud::draw(const RaceState &race, int screenWidth, int screenHeight)
 {
@@ -1039,8 +1063,8 @@ void Hud::drawHudEx(const RaceState &race, int screenWidth, int screenHeight,
 void Hud::drawMenu(const std::vector<TrackDef> &presets, int selectedIndex,
     int screenWidth, int screenHeight)
 {
-    ClearBackground(Color{15, 17, 26, 255});
-    DrawRectangleGradientV(0, 0, screenWidth, screenHeight,
+    Gfx::clearBackground(Color{15, 17, 26, 255});
+    Gfx::drawRectangleGradientV(0, 0, screenWidth, screenHeight,
         Color{22, 26, 40, 255}, Color{10, 11, 18, 255});
 
     int centerX = screenWidth / 2;

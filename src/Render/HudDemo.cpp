@@ -1,7 +1,9 @@
-/// \file hud_demo.cpp
-/// \brief Demo autonome du HUD et du menu : sequence automatique sans input qui
-///        capture plusieurs ecrans (menu, countdown, course, arrivee) puis se
-///        ferme seule.
+/*
+** EPITECH PROJECT, 2026
+** racer
+** File description:
+** Standalone HUD and menu demo with automatic captures
+*/
 
 #include "Ai/AiDriver.hpp"
 #include "Race/RaceState.hpp"
@@ -19,32 +21,66 @@ namespace {
 constexpr int kScreenWidth = 1280;
 constexpr int kScreenHeight = 720;
 
-/// Decor factice (ciel + sol + bande de piste) pour juger la lisibilite du HUD.
-void DrawFakeScene()
+class HudDemoApp {
+public:
+    static int run();
+
+private:
+    struct Gfx {
+        static void drawRectangleGradientV(int x, int y, int w, int h,
+            Color color1, Color color2);
+        static void drawRectangle(int x, int y, int w, int h, Color color);
+    };
+
+    static void drawFakeScene();
+    static void captureFrame(const char *file);
+    template <typename DrawFn>
+    static void renderAndCapture(const char *file, DrawFn &&draw);
+    static void advanceRace(racer::RaceState &race, const racer::Car &car,
+        racer::AIDriver &driver, int steps);
+    static void captureHudScene(racer::RaceState &race,
+        const racer::HudExtras &extras, const char *file);
+    static void runFinishRace(racer::RaceState &finishRace,
+        const racer::Car &playerCar, racer::AIDriver &playerDriver);
+};
+
+void HudDemoApp::Gfx::drawRectangleGradientV(int x, int y, int w, int h,
+    Color color1, Color color2)
 {
-    const int horizon = static_cast<int>(kScreenHeight * 0.42f);
-    DrawRectangleGradientV(0, 0, kScreenWidth, horizon, Color{96, 148, 208, 255},
-                           Color{170, 206, 234, 255});
-    DrawRectangleGradientV(0, horizon, kScreenWidth, kScreenHeight - horizon,
-                           Color{86, 138, 90, 255}, Color{46, 82, 54, 255});
-    DrawRectangle(0, static_cast<int>(kScreenHeight * 0.56f), kScreenWidth,
-                  static_cast<int>(kScreenHeight * 0.20f), Color{70, 72, 78, 255});
+    DrawRectangleGradientV(x, y, w, h, color1, color2);
 }
 
-/// Capture manuelle du back buffer (vide le batch rlgl avant lecture).
-void CaptureFrame(const char* file)
+void HudDemoApp::Gfx::drawRectangle(int x, int y, int w, int h, Color color)
+{
+    DrawRectangle(x, y, w, h, color);
+}
+
+void HudDemoApp::drawFakeScene()
+{
+    const int horizon = static_cast<int>(kScreenHeight * 0.42f);
+    Gfx::drawRectangleGradientV(0, 0, kScreenWidth, horizon,
+        Color{96, 148, 208, 255}, Color{170, 206, 234, 255});
+    Gfx::drawRectangleGradientV(0, horizon, kScreenWidth,
+        kScreenHeight - horizon, Color{86, 138, 90, 255},
+        Color{46, 82, 54, 255});
+    const int roadY = static_cast<int>(kScreenHeight * 0.56f);
+    const int roadH = static_cast<int>(kScreenHeight * 0.20f);
+    Gfx::drawRectangle(0, roadY, kScreenWidth, roadH,
+        Color{70, 72, 78, 255});
+}
+
+void HudDemoApp::captureFrame(const char *file)
 {
     rlDrawRenderBatchActive();
-    unsigned char* data = rlReadScreenPixels(kScreenWidth, kScreenHeight);
+    unsigned char *data = rlReadScreenPixels(kScreenWidth, kScreenHeight);
     Image img{data, kScreenWidth, kScreenHeight, 1,
-              PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
+        PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
     ExportImage(img, file);
     MemFree(data);
 }
 
-/// Dessine le meme contenu quelques frames puis capture la derniere.
 template <typename DrawFn>
-void RenderAndCapture(const char* file, DrawFn&& draw)
+void HudDemoApp::renderAndCapture(const char *file, DrawFn &&draw)
 {
     constexpr int kFrames = 10;
     for (int i = 0; i < kFrames; ++i)
@@ -52,32 +88,40 @@ void RenderAndCapture(const char* file, DrawFn&& draw)
         BeginDrawing();
         draw();
         if (i == kFrames - 1)
-            CaptureFrame(file);
+            captureFrame(file);
         EndDrawing();
     }
 }
 
-void AdvanceRace(racer::RaceState& race, const racer::Car& car,
-                 racer::AIDriver& driver, int steps)
+void HudDemoApp::advanceRace(racer::RaceState &race, const racer::Car &car,
+    racer::AIDriver &driver, int steps)
 {
     for (int i = 0; i < steps; ++i)
         race.update(1.0f / 60.0f, driver.computeInput(car, race.getTrack()));
 }
 
-void CaptureHudScene(racer::RaceState& race, const racer::HudExtras& extras,
-                     const char* file)
+void HudDemoApp::captureHudScene(racer::RaceState &race,
+    const racer::HudExtras &extras, const char *file)
 {
-    RenderAndCapture(file, [&] {
-        DrawFakeScene();
+    renderAndCapture(file, [&] {
+        drawFakeScene();
         racer::Hud hud;
         hud.drawHudEx(race, kScreenWidth, kScreenHeight, extras);
     });
 }
 
-class HudDemoApp {
-public:
-    static int run();
-};
+void HudDemoApp::runFinishRace(racer::RaceState &finishRace,
+    const racer::Car &playerCar, racer::AIDriver &playerDriver)
+{
+    for (int i = 0;
+         i < 60000 && finishRace.phase() != racer::RacePhase::FINISHED;
+         ++i)
+    {
+        racer::CarInput input = playerDriver.computeInput(
+            playerCar, finishRace.getTrack());
+        finishRace.update(1.0f / 60.0f, input);
+    }
+}
 
 int HudDemoApp::run()
 {
@@ -85,56 +129,51 @@ int HudDemoApp::run()
     InitWindow(kScreenWidth, kScreenHeight, "hud_demo");
     SetTargetFPS(60);
 
-    const std::vector<racer::TrackDef>& presets = racer::Track::presets();
+    const std::vector<racer::TrackDef> &presets = racer::Track::presets();
 
     racer::HudExtras extras;
     extras.racerColors = {RED, BLUE, DARKGREEN, ORANGE};
 
-    RenderAndCapture("hud_demo_menu.png", [&] {
+    renderAndCapture("hud_demo_menu.png", [&] {
         racer::Hud hud;
         hud.drawMenu(presets, 1, kScreenWidth, kScreenHeight);
     });
 
     racer::RaceState race(racer::Track::make(presets[1]), /*lapsToWin=*/3,
-                          /*aiCount=*/3);
+        /*aiCount=*/3);
     racer::CarInput input;
     input.throttle = 1.0f;
     for (int i = 0; i < 75; ++i)
         race.update(1.0f / 60.0f, input);
 
-    CaptureHudScene(race, extras, "hud_demo_countdown.png");
+    captureHudScene(race, extras, "hud_demo_countdown.png");
 
     racer::AIDriver raceDriver(1.0f);
-    const racer::Car& raceCar =
+    const racer::Car &raceCar =
         race.racers()[static_cast<size_t>(race.playerIndex())].car;
-    AdvanceRace(race, raceCar, raceDriver, 200 - 75);
-    CaptureHudScene(race, extras, "hud_demo_go.png");
+    advanceRace(race, raceCar, raceDriver, 200 - 75);
+    captureHudScene(race, extras, "hud_demo_go.png");
 
-    AdvanceRace(race, raceCar, raceDriver, 600 - 200);
+    advanceRace(race, raceCar, raceDriver, 600 - 200);
     extras.currentLapTime = 42.3f;
     extras.lastLapTime = 61.2f;
     extras.bestLapTime = 58.9f;
-    CaptureHudScene(race, extras, "hud_demo_race.png");
+    captureHudScene(race, extras, "hud_demo_race.png");
 
     extras.currentLapTime = 1.2f;
-    CaptureHudScene(race, extras, "hud_demo_race_lastlap.png");
+    captureHudScene(race, extras, "hud_demo_race_lastlap.png");
 
     racer::RaceState finishRace(racer::Track::make(presets[1]), /*lapsToWin=*/3,
-                                /*aiCount=*/3);
+        /*aiCount=*/3);
     racer::AIDriver playerDriver(1.0f);
-    const racer::Car& playerCar =
+    const racer::Car &playerCar =
         finishRace.racers()[static_cast<size_t>(finishRace.playerIndex())].car;
-    for (int i = 0; i < 60000 && finishRace.phase() != racer::RacePhase::FINISHED;
-         ++i)
-    {
-        finishRace.update(1.0f / 60.0f,
-                          playerDriver.computeInput(playerCar, finishRace.getTrack()));
-    }
+    runFinishRace(finishRace, playerCar, playerDriver);
 
     extras.currentLapTime = 1.2f;
     extras.lastLapTime = 61.2f;
     extras.bestLapTime = 58.9f;
-    CaptureHudScene(finishRace, extras, "hud_demo_finish.png");
+    captureHudScene(finishRace, extras, "hud_demo_finish.png");
 
     CloseWindow();
     return 0;

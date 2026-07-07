@@ -31,7 +31,8 @@ public:
     static void unloadZeroRefModels(
         std::unordered_map<std::string, std::unique_ptr<ModelAsset>> &models);
     static void unloadZeroRefTextures(
-        std::unordered_map<std::string, std::unique_ptr<TextureAsset>> &textures);
+        std::unordered_map<std::string,
+            std::unique_ptr<TextureAsset>> &textures);
 };
 
 std::string AssetRegistryDetail::normalizePath(const std::string &path)

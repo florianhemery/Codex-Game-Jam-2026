@@ -646,7 +646,8 @@ void CarRenderer::drawCar(const Car &car, Color bodyColor)
     drawCarEx(car, CarVisual{}, bodyColor);
 }
 
-void CarRenderer::drawCarEx(const Car &car, const CarVisual &vis, Color bodyColor)
+void CarRenderer::drawCarEx(const Car &car, const CarVisual &vis,
+    Color bodyColor)
 {
     const float time = static_cast<float>(GetTime());
     const BodyPalette palette = CarRenderHelpers::makeBodyPalette(bodyColor);

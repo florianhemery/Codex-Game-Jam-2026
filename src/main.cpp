@@ -395,8 +395,9 @@ RenderPipeline::PostParams MainApp::buildPostParams(Context &ctx)
 {
     const racer::RacerEntry &player =
         ctx.race->racers()[static_cast<size_t>(ctx.race->playerIndex())];
+    float maxSpeed = player.car.tuning().maxSpeed;
     float speedRatio = std::clamp(
-        std::fabs(player.car.speed()) / player.car.tuning().maxSpeed, 0.0f, 1.0f);
+        std::fabs(player.car.speed()) / maxSpeed, 0.0f, 1.0f);
     bool nitroActive = player.lastInput.nitro
         && player.car.nitroRemaining() > 0.0f;
 
