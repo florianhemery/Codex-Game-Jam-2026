@@ -5,7 +5,7 @@
 ** Standalone track renderer demo with automatic captures
 */
 
-#include "Render/TrackRenderer.hpp"
+#include "Render/Track/TrackRenderer.hpp"
 #include "Track/Track.hpp"
 
 #include "raylib.h"
