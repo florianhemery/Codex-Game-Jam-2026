@@ -1,7 +1,12 @@
-/// \file rhi_types.h
-/// \brief Types de base du RHI : handles opaques types, formats, descripteurs.
+/*
+** EPITECH PROJECT, 2026
+** racer
+** File description:
+** RHI base types, handles, formats, descriptors
+*/
 
-#pragma once
+#ifndef RHI_TYPES_H_
+#define RHI_TYPES_H_
 
 #include <cstddef>
 #include <cstdint>
@@ -9,23 +14,25 @@
 
 namespace racer::engine {
 
-/// Formats de pixels exposes par le RHI.
 enum class RhiFormat : std::uint8_t {
-    RGBA8,    ///< 8 bits par canal, non signe (LDR, defaut).
-    RGBA16F,  ///< Demi-flottant par canal (cibles HDR).
-    DEPTH24,  ///< Profondeur 24 bits echantillonnable (ex. shadow map).
+    RGBA8,
+    RGBA16F,
+    DEPTH24,
 };
 
 namespace detail {
 
-/// Handle opaque discrimine par un tag : id 0 = invalide.
-/// Le parametre Tag empeche de melanger deux categories de handles.
 template <typename Tag>
-struct RhiHandle {
+class RhiHandle {
+public:
     std::uint32_t id = 0;
 
-    [[nodiscard]] constexpr bool IsValid() const noexcept { return id != 0; }
-    constexpr bool operator==(const RhiHandle&) const noexcept = default;
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return id != 0;
+    }
+
+    constexpr bool operator==(const RhiHandle &) const noexcept = default;
 };
 
 } // namespace detail
@@ -33,26 +40,24 @@ struct RhiHandle {
 struct RenderTargetTag {};
 struct ShaderRhiTag {};
 
-/// Handle vers une cible de rendu (framebuffer + textures attachees).
 using RenderTargetHandle = detail::RhiHandle<RenderTargetTag>;
-
-/// Handle vers un programme shader (vertex + fragment).
 using ShaderRhiHandle = detail::RhiHandle<ShaderRhiTag>;
 
-/// Description d'une cible de rendu.
 struct RenderTargetDesc {
     int width = 0;
     int height = 0;
     RhiFormat format = RhiFormat::RGBA8;
-    bool useDepth = true;  ///< Attache un tampon de profondeur (toujours vrai pour DEPTH24).
+    bool useDepth = true;
 
-    constexpr bool operator==(const RenderTargetDesc&) const noexcept = default;
+    constexpr bool operator==(const RenderTargetDesc &) const noexcept = default;
 };
 
-/// Foncteur de hachage pour indexer un pool de cibles par descripteur.
-struct RenderTargetDescHash {
-    std::size_t operator()(const RenderTargetDesc& desc) const noexcept {
-        const auto combine = [](std::size_t seed, std::size_t value) noexcept {
+class RenderTargetDescHash {
+public:
+    std::size_t operator()(const RenderTargetDesc &desc) const noexcept
+    {
+        const auto combine = [](std::size_t seed, std::size_t value) noexcept
+        {
             return seed ^ (value + 0x9e3779b9u + (seed << 6) + (seed >> 2));
         };
         std::size_t seed = std::hash<int>{}(desc.width);
@@ -64,3 +69,5 @@ struct RenderTargetDescHash {
 };
 
 } // namespace racer::engine
+
+#endif /* !RHI_TYPES_H_ */
