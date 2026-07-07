@@ -5,14 +5,14 @@
 ** render pipeline
 */
 
-#ifndef RENDER_PIPELINE_H_
-#define RENDER_PIPELINE_H_
+#ifndef RENDER_PIPELINE_HPP_
+#define RENDER_PIPELINE_HPP_
 
 #include "raylib.h"
 
-#include "engine/assets/shader_watcher.h"
-#include "engine/rhi/device.h"
-#include "engine/rhi/rhi_types.h"
+#include "engine/assets/shader_watcher.hpp"
+#include "engine/rhi/device.hpp"
+#include "engine/rhi/rhi_types.hpp"
 
 #include <array>
 #include <functional>
@@ -173,4 +173,4 @@ private:
 
 } // namespace racer::engine
 
-#endif /* !RENDER_PIPELINE_H_ */
+#endif /* !RENDER_PIPELINE_HPP_ */

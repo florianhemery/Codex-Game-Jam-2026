@@ -3,7 +3,7 @@
 ///        drift, poussiere, nitro, etincelles, confettis, pluie) avec captures
 ///        automatiques et fermeture auto, sans input.
 
-#include "render/vfx.h"
+#include "render/vfx.hpp"
 
 #include "raylib.h"
 

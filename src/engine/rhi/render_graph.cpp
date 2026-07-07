@@ -5,7 +5,7 @@
 ** Linear render graph and transient target pool
 */
 
-#include "engine/rhi/render_graph.h"
+#include "engine/rhi/render_graph.hpp"
 
 #include "raylib.h"
 

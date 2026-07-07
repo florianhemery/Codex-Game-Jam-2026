@@ -1,3 +1,10 @@
+#
+# EPITECH PROJECT, 2026
+# racer
+# File description:
+# Root CMake build configuration
+#
+
 cmake_minimum_required(VERSION 3.24)
 project(racer LANGUAGES CXX)
 

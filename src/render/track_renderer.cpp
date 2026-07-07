@@ -5,7 +5,7 @@
 ** Track mesh building and environment rendering
 */
 
-#include "render/track_renderer.h"
+#include "render/track_renderer.hpp"
 
 #include <algorithm>
 #include <cmath>

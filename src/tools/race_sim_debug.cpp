@@ -10,9 +10,9 @@
 #include <cstdlib>
 #include <vector>
 
-#include "ai/ai_driver.h"
-#include "race/race_state.h"
-#include "track/track.h"
+#include "ai/ai_driver.hpp"
+#include "race/race_state.hpp"
+#include "track/track.hpp"
 
 namespace {
 

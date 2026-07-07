@@ -5,7 +5,7 @@
 ** HUD rendering for race and menu screens
 */
 
-#include "render/hud.h"
+#include "render/hud.hpp"
 
 #include <algorithm>
 #include <cmath>

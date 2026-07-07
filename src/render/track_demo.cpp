@@ -2,8 +2,8 @@
 /// \brief Demo autonome du rendu piste : cycle des presets avec captures
 ///        automatiques puis fermeture sans input.
 
-#include "render/track_renderer.h"
-#include "track/track.h"
+#include "render/track_renderer.hpp"
+#include "track/track.hpp"
 
 #include "raylib.h"
 

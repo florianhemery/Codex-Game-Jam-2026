@@ -1,3 +1,10 @@
+#
+# EPITECH PROJECT, 2026
+# racer
+# File description:
+# Render module — high-level HDR rendering pipeline
+#
+
 # Module rendu haut niveau (pipeline HDR, ombres, ciel, post-process).
 add_library(engine_render STATIC
     render_pipeline.cpp

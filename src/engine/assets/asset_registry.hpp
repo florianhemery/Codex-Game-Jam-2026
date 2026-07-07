@@ -5,8 +5,8 @@
 ** Centralized model and texture asset cache
 */
 
-#ifndef ASSET_REGISTRY_H_
-#define ASSET_REGISTRY_H_
+#ifndef ASSET_REGISTRY_HPP_
+#define ASSET_REGISTRY_HPP_
 
 #include "raylib.h"
 
@@ -165,4 +165,4 @@ private:
 
 } // namespace racer::engine
 
-#endif /* !ASSET_REGISTRY_H_ */
+#endif /* !ASSET_REGISTRY_HPP_ */

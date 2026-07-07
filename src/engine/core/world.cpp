@@ -5,7 +5,7 @@
 ** World class implementation
 */
 
-#include "engine/core/world.h"
+#include "engine/core/world.hpp"
 
 namespace racer::engine {
 

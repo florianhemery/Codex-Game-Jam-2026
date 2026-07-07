@@ -5,8 +5,8 @@
 ** Particle VFX system (smoke, dust, nitro, rain)
 */
 
-#ifndef VFX_H_
-#define VFX_H_
+#ifndef VFX_HPP_
+#define VFX_HPP_
 
 #include <memory>
 
@@ -40,4 +40,4 @@ private:
 
 } // namespace racer
 
-#endif /* !VFX_H_ */
+#endif /* !VFX_HPP_ */

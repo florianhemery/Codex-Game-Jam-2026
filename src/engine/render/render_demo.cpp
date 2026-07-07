@@ -6,7 +6,7 @@
 ** automatic screenshots, closes without user input
 */
 
-#include "engine/render/render_pipeline.h"
+#include "engine/render/render_pipeline.hpp"
 
 #include "raylib.h"
 #include "raymath.h"

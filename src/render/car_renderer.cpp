@@ -5,7 +5,7 @@
 ** Car visual rendering implementation
 */
 
-#include "render/car_renderer.h"
+#include "render/car_renderer.hpp"
 
 #include <algorithm>
 #include <cmath>

@@ -5,7 +5,7 @@
 ** Asset registry implementation
 */
 
-#include "engine/assets/asset_registry.h"
+#include "engine/assets/asset_registry.hpp"
 
 #include <filesystem>
 #include <utility>

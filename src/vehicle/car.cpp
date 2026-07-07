@@ -5,7 +5,7 @@
 ** Arcade vehicle physics implementation
 */
 
-#include "vehicle/car.h"
+#include "vehicle/car.hpp"
 
 #include <algorithm>
 #include <cmath>

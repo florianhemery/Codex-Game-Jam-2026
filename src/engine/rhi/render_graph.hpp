@@ -5,11 +5,11 @@
 ** Declarative render graph: named passes and transient targets
 */
 
-#ifndef RENDER_GRAPH_H_
-#define RENDER_GRAPH_H_
+#ifndef RENDER_GRAPH_HPP_
+#define RENDER_GRAPH_HPP_
 
-#include "engine/rhi/device.h"
-#include "engine/rhi/rhi_types.h"
+#include "engine/rhi/device.hpp"
+#include "engine/rhi/rhi_types.hpp"
 
 #include <functional>
 #include <optional>
@@ -99,4 +99,4 @@ private:
 
 } // namespace racer::engine
 
-#endif /* !RENDER_GRAPH_H_ */
+#endif /* !RENDER_GRAPH_HPP_ */

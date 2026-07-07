@@ -5,8 +5,8 @@
 ** ECS component definitions
 */
 
-#ifndef COMPONENTS_H_
-#define COMPONENTS_H_
+#ifndef COMPONENTS_HPP_
+#define COMPONENTS_HPP_
 
 #include <cstdint>
 #include <string>
@@ -52,4 +52,4 @@ struct AiTag {};
 
 } // namespace racer::engine
 
-#endif /* !COMPONENTS_H_ */
+#endif /* !COMPONENTS_HPP_ */

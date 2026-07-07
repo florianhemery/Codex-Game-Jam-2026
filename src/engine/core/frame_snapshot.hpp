@@ -5,8 +5,8 @@
 ** sim/render frame snapshot types and double-buffer
 */
 
-#ifndef FRAME_SNAPSHOT_H_
-# define FRAME_SNAPSHOT_H_
+#ifndef FRAME_SNAPSHOT_HPP_
+# define FRAME_SNAPSHOT_HPP_
 
 # include <cstdint>
 # include <mutex>
@@ -53,4 +53,4 @@ void CaptureSnapshot(World& world, FrameSnapshot& snapshot);
 
 } // namespace racer::engine
 
-#endif /* !FRAME_SNAPSHOT_H_ */
+#endif /* !FRAME_SNAPSHOT_HPP_ */

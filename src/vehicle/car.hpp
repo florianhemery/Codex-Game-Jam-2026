@@ -5,8 +5,8 @@
 ** Arcade vehicle model, inputs and tuning
 */
 
-#ifndef CAR_H_
-#define CAR_H_
+#ifndef CAR_HPP_
+#define CAR_HPP_
 
 #include "raylib.h"
 
@@ -52,4 +52,4 @@ public:
 
 } // namespace racer
 
-#endif /* !CAR_H_ */
+#endif /* !CAR_HPP_ */

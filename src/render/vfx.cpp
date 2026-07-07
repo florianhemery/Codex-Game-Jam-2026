@@ -5,7 +5,7 @@
 ** Particle VFX system implementation
 */
 
-#include "render/vfx.h"
+#include "render/vfx.hpp"
 
 #include <algorithm>
 #include <array>

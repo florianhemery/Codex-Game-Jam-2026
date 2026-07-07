@@ -5,7 +5,7 @@
 ** ai_driver
 */
 
-#include "ai/ai_driver.h"
+#include "ai/ai_driver.hpp"
 
 #include <algorithm>
 #include <cmath>

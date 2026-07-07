@@ -5,11 +5,11 @@
 ** ai_driver
 */
 
-#ifndef AI_DRIVER_H_
-#define AI_DRIVER_H_
+#ifndef AI_DRIVER_HPP_
+#define AI_DRIVER_HPP_
 
-#include "track/track.h"
-#include "vehicle/car.h"
+#include "track/track.hpp"
+#include "vehicle/car.hpp"
 
 namespace racer {
 
@@ -80,4 +80,4 @@ private:
 
 } // namespace racer
 
-#endif /* !AI_DRIVER_H_ */
+#endif /* !AI_DRIVER_HPP_ */

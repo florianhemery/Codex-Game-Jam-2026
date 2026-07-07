@@ -5,7 +5,7 @@
 ** track layout generation and waypoint queries
 */
 
-#include "track/track.h"
+#include "track/track.hpp"
 
 #include <cmath>
 

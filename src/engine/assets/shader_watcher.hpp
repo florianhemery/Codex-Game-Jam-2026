@@ -5,8 +5,8 @@
 ** Hot-reload shader registry and file watcher
 */
 
-#ifndef SHADER_WATCHER_H_
-#define SHADER_WATCHER_H_
+#ifndef SHADER_WATCHER_HPP_
+#define SHADER_WATCHER_HPP_
 
 #include "raylib.h"
 
@@ -123,4 +123,4 @@ private:
 
 } // namespace racer::engine
 
-#endif /* !SHADER_WATCHER_H_ */
+#endif /* !SHADER_WATCHER_HPP_ */

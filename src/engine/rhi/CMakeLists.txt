@@ -1,3 +1,10 @@
+#
+# EPITECH PROJECT, 2026
+# racer
+# File description:
+# RHI module — GPU abstraction and render graph
+#
+
 # Module RHI : abstraction GPU (Device) + render graph. Voir README.md.
 add_library(engine_rhi STATIC
     device.cpp

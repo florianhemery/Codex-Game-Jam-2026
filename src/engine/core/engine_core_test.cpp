@@ -12,10 +12,10 @@
 #include <string>
 #include <vector>
 
-#include "engine/core/components.h"
-#include "engine/core/frame_snapshot.h"
-#include "engine/core/jobs.h"
-#include "engine/core/world.h"
+#include "engine/core/components.hpp"
+#include "engine/core/frame_snapshot.hpp"
+#include "engine/core/jobs.hpp"
+#include "engine/core/world.hpp"
 
 namespace {
 

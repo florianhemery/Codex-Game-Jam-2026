@@ -1,3 +1,10 @@
+#
+# EPITECH PROJECT, 2026
+# racer
+# File description:
+# Assets module — asset registry and shader hot-reload
+#
+
 # Module assets : registre d'assets (modeles/textures) + hot-reload shaders.
 add_library(engine_assets STATIC
     asset_registry.cpp

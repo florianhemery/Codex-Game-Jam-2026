@@ -1,3 +1,10 @@
+#
+# EPITECH PROJECT, 2026
+# racer
+# File description:
+# Core module — ECS, job system and sim/render snapshot buffering
+#
+
 # Module core : ECS (EnTT), job system et double buffering sim/rendu.
 
 # EnTT (header-only) : recupere ici pour rester local au module core,

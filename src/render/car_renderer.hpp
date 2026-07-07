@@ -5,11 +5,11 @@
 ** Car visual rendering and light anchor points
 */
 
-#ifndef CAR_RENDERER_H_
-#define CAR_RENDERER_H_
+#ifndef CAR_RENDERER_HPP_
+#define CAR_RENDERER_HPP_
 
 #include "raylib.h"
-#include "vehicle/car.h"
+#include "vehicle/car.hpp"
 
 namespace racer {
 
@@ -39,4 +39,4 @@ CarLightPoints GetCarLightPoints(const Car &car);
 
 } // namespace racer
 
-#endif /* !CAR_RENDERER_H_ */
+#endif /* !CAR_RENDERER_HPP_ */

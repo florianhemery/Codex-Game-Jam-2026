@@ -5,7 +5,7 @@
 ** Thread pool worker loop and parallel for implementation
 */
 
-#include "engine/core/jobs.h"
+#include "engine/core/jobs.hpp"
 
 #include <algorithm>
 #include <exception>

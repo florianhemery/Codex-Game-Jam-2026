@@ -5,7 +5,7 @@
 ** Shader hot-reload implementation
 */
 
-#include "engine/assets/shader_watcher.h"
+#include "engine/assets/shader_watcher.hpp"
 
 #include "rlgl.h"
 

@@ -3,8 +3,8 @@
 ///        contrastes, camera turntable lente, captures automatiques puis
 ///        fermeture (aucun input). Rendu hors-ecran en 2x puis reduction.
 
-#include "render/car_renderer.h"
-#include "vehicle/car.h"
+#include "render/car_renderer.hpp"
+#include "vehicle/car.hpp"
 
 #include "raylib.h"
 

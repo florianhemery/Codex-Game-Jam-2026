@@ -5,15 +5,15 @@
 ** HUD rendering for race and menu screens
 */
 
-#ifndef HUD_H_
-#define HUD_H_
+#ifndef HUD_HPP_
+#define HUD_HPP_
 
 #include <vector>
 
 #include "raylib.h"
 
-#include "race/race_state.h"
-#include "track/track.h"
+#include "race/race_state.hpp"
+#include "track/track.hpp"
 
 namespace racer {
 
@@ -32,4 +32,4 @@ void DrawMenu(const std::vector<TrackDef> &presets, int selectedIndex,
 
 }
 
-#endif /* !HUD_H_ */
+#endif /* !HUD_HPP_ */

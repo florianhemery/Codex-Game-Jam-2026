@@ -5,12 +5,12 @@
 ** Peripherique graphique : abstraction GPU (render targets, shaders)
 */
 
-#ifndef DEVICE_H_
-#define DEVICE_H_
+#ifndef DEVICE_HPP_
+#define DEVICE_HPP_
 
 #include "raylib.h"
 
-#include "engine/rhi/rhi_types.h"
+#include "engine/rhi/rhi_types.hpp"
 
 #include <cstdint>
 #include <unordered_map>
@@ -76,4 +76,4 @@ private:
 
 } // namespace racer::engine
 
-#endif /* !DEVICE_H_ */
+#endif /* !DEVICE_HPP_ */

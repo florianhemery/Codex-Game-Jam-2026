@@ -3,11 +3,11 @@
 ///        capture plusieurs ecrans (menu, countdown, course, arrivee) puis se
 ///        ferme seule.
 
-#include "ai/ai_driver.h"
-#include "race/race_state.h"
-#include "render/hud.h"
-#include "track/track.h"
-#include "vehicle/car.h"
+#include "ai/ai_driver.hpp"
+#include "race/race_state.hpp"
+#include "render/hud.hpp"
+#include "track/track.hpp"
+#include "vehicle/car.hpp"
 
 #include "raylib.h"
 #include "rlgl.h"

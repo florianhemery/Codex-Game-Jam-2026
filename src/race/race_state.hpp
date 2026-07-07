@@ -5,15 +5,15 @@
 ** Race state machine (countdown, laps, standings, collisions)
 */
 
-#ifndef RACE_STATE_H
-#define RACE_STATE_H
+#ifndef RACE_STATE_HPP_
+#define RACE_STATE_HPP_
 
 #include <string>
 #include <vector>
 
-#include "ai/ai_driver.h"
-#include "track/track.h"
-#include "vehicle/car.h"
+#include "ai/ai_driver.hpp"
+#include "track/track.hpp"
+#include "vehicle/car.hpp"
 
 namespace racer {
 
@@ -96,4 +96,4 @@ private:
 
 } // namespace racer
 
-#endif /* !RACE_STATE_H */
+#endif /* !RACE_STATE_HPP_ */

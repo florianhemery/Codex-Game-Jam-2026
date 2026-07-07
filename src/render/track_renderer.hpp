@@ -5,13 +5,13 @@
 ** Track mesh building and environment rendering
 */
 
-#ifndef TRACK_RENDERER_H_
-#define TRACK_RENDERER_H_
+#ifndef TRACK_RENDERER_HPP_
+#define TRACK_RENDERER_HPP_
 
 #include <vector>
 
 #include "raylib.h"
-#include "track/track.h"
+#include "track/track.hpp"
 
 namespace racer {
 
@@ -157,4 +157,4 @@ private:
 
 } // namespace racer
 
-#endif /* !TRACK_RENDERER_H_ */
+#endif /* !TRACK_RENDERER_HPP_ */

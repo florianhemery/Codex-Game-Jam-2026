@@ -5,8 +5,8 @@
 ** RHI base types, handles, formats, descriptors
 */
 
-#ifndef RHI_TYPES_H_
-#define RHI_TYPES_H_
+#ifndef RHI_TYPES_HPP_
+#define RHI_TYPES_HPP_
 
 #include <cstddef>
 #include <cstdint>
@@ -70,4 +70,4 @@ public:
 
 } // namespace racer::engine
 
-#endif /* !RHI_TYPES_H_ */
+#endif /* !RHI_TYPES_HPP_ */

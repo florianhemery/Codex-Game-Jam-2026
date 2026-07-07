@@ -5,7 +5,7 @@
 ** Implementation du Device sur backend raylib/rlgl (OpenGL 3.3)
 */
 
-#include "engine/rhi/device.h"
+#include "engine/rhi/device.hpp"
 
 #include "raylib.h"
 #include "rlgl.h"

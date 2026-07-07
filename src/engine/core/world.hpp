@@ -5,8 +5,8 @@
 ** entt registry wrapper for ECS
 */
 
-#ifndef WORLD_H_
-#define WORLD_H_
+#ifndef WORLD_HPP_
+#define WORLD_HPP_
 
 #include <utility>
 
@@ -59,4 +59,4 @@ private:
 
 } // namespace racer::engine
 
-#endif /* !WORLD_H_ */
+#endif /* !WORLD_HPP_ */

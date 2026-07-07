@@ -5,8 +5,8 @@
 ** Thread pool and parallel for job scheduling
 */
 
-#ifndef JOBS_H_
-#define JOBS_H_
+#ifndef JOBS_HPP_
+#define JOBS_HPP_
 
 #include <condition_variable>
 #include <cstddef>
@@ -57,4 +57,4 @@ private:
 
 } // namespace racer::engine
 
-#endif /* !JOBS_H_ */
+#endif /* !JOBS_HPP_ */

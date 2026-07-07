@@ -5,10 +5,10 @@
 ** snapshot buffer implementation and world capture
 */
 
-#include "engine/core/frame_snapshot.h"
+#include "engine/core/frame_snapshot.hpp"
 
-#include "engine/core/components.h"
-#include "engine/core/world.h"
+#include "engine/core/components.hpp"
+#include "engine/core/world.hpp"
 
 namespace racer::engine {
 

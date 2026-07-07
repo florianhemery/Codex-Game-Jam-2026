@@ -5,8 +5,8 @@
 ** track layout generation and waypoint queries
 */
 
-#ifndef TRACK_H_
-#define TRACK_H_
+#ifndef TRACK_HPP_
+#define TRACK_HPP_
 
 #include <string>
 #include <vector>
@@ -80,4 +80,4 @@ private:
 
 } // namespace racer
 
-#endif /* !TRACK_H_ */
+#endif /* !TRACK_HPP_ */

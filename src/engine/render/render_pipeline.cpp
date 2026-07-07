@@ -5,7 +5,7 @@
 ** render pipeline
 */
 
-#include "engine/render/render_pipeline.h"
+#include "engine/render/render_pipeline.hpp"
 
 #include "raymath.h"
 #include "rlgl.h"

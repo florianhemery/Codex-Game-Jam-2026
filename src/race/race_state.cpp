@@ -5,7 +5,7 @@
 ** Race state machine (countdown, laps, standings, collisions)
 */
 
-#include "race/race_state.h"
+#include "race/race_state.hpp"
 
 #include <algorithm>
 #include <cmath>
