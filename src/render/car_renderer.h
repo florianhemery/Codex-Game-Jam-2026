@@ -1,29 +1,42 @@
-#pragma once
+/*
+** EPITECH PROJECT, 2026
+** racer
+** File description:
+** Car visual rendering and light anchor points
+*/
+
+#ifndef CAR_RENDERER_H_
+#define CAR_RENDERER_H_
 
 #include "raylib.h"
 #include "vehicle/car.h"
 
 namespace racer {
 
-inline constexpr float kWheelRadius = 0.35f; // le jeu accumule wheelSpin += speed*dt/kWheelRadius
+inline constexpr float kWheelRadius = 0.35f;
 
-// Etat visuel purement cosmetique, anime par le jeu (aucun impact physique).
 struct CarVisual {
-    float steer = 0.0f;      // -1..1 braquage visuel des roues avant
-    float wheelSpin = 0.0f;  // angle cumule (radians) de rotation des roues
-    bool braking = false;    // feux stop allumes
-    bool nitro = false;      // flammes d'echappement
-    bool headlights = false; // phares allumes (ambiances sombres)
-    bool drifting = false;   // pose plus agressive
+    float steer = 0.0f;
+    float wheelSpin = 0.0f;
+    bool braking = false;
+    bool nitro = false;
+    bool headlights = false;
+    bool drifting = false;
 };
 
-// Voiture de course en primitives raylib (aucun modele externe), esthetique
-// low-poly coloree. ~60-90 draw calls par voiture selon les effets actifs.
-void DrawCar(const Car& car, Color bodyColor); // wrapper compat (CarVisual{} par defaut)
-void DrawCarEx(const Car& car, const CarVisual& vis, Color bodyColor);
+void DrawCar(const Car &car, Color bodyColor);
+void DrawCarEx(const Car &car, const CarVisual &vis, Color bodyColor);
 
-// Points d'ancrage lumineux en coordonnees monde (halos, VFX externes...).
-struct CarLightPoints { Vector3 headL, headR, brakeL, brakeR, exhaust; };
-CarLightPoints GetCarLightPoints(const Car& car);
+struct CarLightPoints {
+    Vector3 headL;
+    Vector3 headR;
+    Vector3 brakeL;
+    Vector3 brakeR;
+    Vector3 exhaust;
+};
+
+CarLightPoints GetCarLightPoints(const Car &car);
 
 } // namespace racer
+
+#endif /* !CAR_RENDERER_H_ */
