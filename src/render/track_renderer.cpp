@@ -58,20 +58,20 @@ Color AsphaltColor(uint32_t h, SurfaceStyle style) {
         unsigned char base = static_cast<unsigned char>(95 + noise);
         return Color{base, static_cast<unsigned char>(base - 4), static_cast<unsigned char>(base - 8), 255};
     }
-    unsigned char base = static_cast<unsigned char>(52 + noise % 18);
-    return Color{base, base, static_cast<unsigned char>(base + 4), 255};
+    // Gris bleute volontairement peu vert pour contraster avec l'herbe.
+    unsigned char r = static_cast<unsigned char>(102 + noise % 18);
+    unsigned char g = static_cast<unsigned char>(98 + noise % 14);
+    unsigned char b = static_cast<unsigned char>(112 + noise % 16);
+    return Color{r, g, b, 255};
 }
 
-Mesh BuildStripMesh(const Track& track, const std::vector<Vector2>& perp, float innerOffset, float outerOffset,
-                    float yHeight, const std::function<Color(size_t)>& colorFn) {
+// Ruban de route segment par segment : une seule perpendiculaire par segment.
+// Avec des chicanes serrees, melanger perp[i] et perp[j] croise les bords
+// interieurs/exterieurs et le ruban se retourne (route invisible).
+Mesh BuildStripMesh(const Track& track, float innerOffset, float outerOffset, float yHeight,
+                    const std::function<Color(size_t)>& colorFn) {
     const auto& wp = track.Waypoints();
     size_t n = wp.size();
-
-    std::vector<Vector3> inner(n), outer(n);
-    for (size_t i = 0; i < n; ++i) {
-        inner[i] = Vector3{wp[i].x + perp[i].x * innerOffset, yHeight, wp[i].y + perp[i].y * innerOffset};
-        outer[i] = Vector3{wp[i].x + perp[i].x * outerOffset, yHeight, wp[i].y + perp[i].y * outerOffset};
-    }
 
     Mesh mesh{};
     mesh.vertexCount = static_cast<int>(n) * 4;
@@ -83,7 +83,20 @@ Mesh BuildStripMesh(const Track& track, const std::vector<Vector2>& perp, float 
 
     for (size_t i = 0; i < n; ++i) {
         size_t j = (i + 1) % n;
-        Vector3 quad[4] = {inner[i], inner[j], outer[j], outer[i]};
+        Vector2 a = wp[i];
+        Vector2 b = wp[j];
+        Vector2 ab{b.x - a.x, b.y - a.y};
+        float segLen = std::sqrt(ab.x * ab.x + ab.y * ab.y);
+        if (segLen < 1e-5f) continue;
+        Vector2 segPerp{-ab.y / segLen, ab.x / segLen};
+        float segY = yHeight + static_cast<float>(i) * 0.004f;
+
+        Vector3 quad[4] = {
+            {a.x + segPerp.x * innerOffset, segY, a.y + segPerp.y * innerOffset},
+            {b.x + segPerp.x * innerOffset, segY, b.y + segPerp.y * innerOffset},
+            {b.x + segPerp.x * outerOffset, segY, b.y + segPerp.y * outerOffset},
+            {a.x + segPerp.x * outerOffset, segY, a.y + segPerp.y * outerOffset},
+        };
         Color c = colorFn(i);
 
         for (int k = 0; k < 4; ++k) {
@@ -114,8 +127,8 @@ Mesh BuildStripMesh(const Track& track, const std::vector<Vector2>& perp, float 
     return mesh;
 }
 
-Mesh BuildDashedStripMesh(const Track& track, const std::vector<Vector2>& perp, float innerOffset, float outerOffset,
-                          float yHeight, Color color, int dashPeriod, int dashOn) {
+Mesh BuildDashedStripMesh(const Track& track, float innerOffset, float outerOffset, float yHeight, Color color,
+                          int dashPeriod, int dashOn) {
     const auto& wp = track.Waypoints();
     size_t n = wp.size();
 
@@ -138,11 +151,19 @@ Mesh BuildDashedStripMesh(const Track& track, const std::vector<Vector2>& perp, 
     for (size_t i = 0; i < n; ++i) {
         if (static_cast<int>(i % static_cast<size_t>(dashPeriod)) >= dashOn) continue;
         size_t j = (i + 1) % n;
-        Vector3 innerI{wp[i].x + perp[i].x * innerOffset, yHeight, wp[i].y + perp[i].y * innerOffset};
-        Vector3 innerJ{wp[j].x + perp[j].x * innerOffset, yHeight, wp[j].y + perp[j].y * innerOffset};
-        Vector3 outerJ{wp[j].x + perp[j].x * outerOffset, yHeight, wp[j].y + perp[j].y * outerOffset};
-        Vector3 outerI{wp[i].x + perp[i].x * outerOffset, yHeight, wp[i].y + perp[i].y * outerOffset};
-        Vector3 quad[4] = {innerI, innerJ, outerJ, outerI};
+        Vector2 a = wp[i];
+        Vector2 b = wp[j];
+        Vector2 ab{b.x - a.x, b.y - a.y};
+        float segLen = std::sqrt(ab.x * ab.x + ab.y * ab.y);
+        if (segLen < 1e-5f) continue;
+        Vector2 segPerp{-ab.y / segLen, ab.x / segLen};
+        float segY = yHeight + static_cast<float>(i) * 0.004f;
+        Vector3 quad[4] = {
+            {a.x + segPerp.x * innerOffset, segY, a.y + segPerp.y * innerOffset},
+            {b.x + segPerp.x * innerOffset, segY, b.y + segPerp.y * innerOffset},
+            {b.x + segPerp.x * outerOffset, segY, b.y + segPerp.y * outerOffset},
+            {a.x + segPerp.x * outerOffset, segY, a.y + segPerp.y * outerOffset},
+        };
 
         for (int k = 0; k < 4; ++k) {
             size_t vIdx = static_cast<size_t>(quadIdx) * 4 + static_cast<size_t>(k);
@@ -184,8 +205,8 @@ Mesh BuildCheckerGroundMesh(float totalSize, int tilesPerSide, SurfaceStyle styl
     mesh.colors = static_cast<unsigned char*>(MemAlloc(static_cast<unsigned int>(mesh.vertexCount) * 4 * sizeof(unsigned char)));
     mesh.indices = static_cast<unsigned short*>(MemAlloc(static_cast<unsigned int>(mesh.triangleCount) * 3 * sizeof(unsigned short)));
 
-    Color greenA = (style == SurfaceStyle::Abimee) ? Color{118, 108, 62, 255} : Color{58, 130, 58, 255};
-    Color greenB = (style == SurfaceStyle::Abimee) ? Color{108, 98, 55, 255} : Color{50, 118, 50, 255};
+    Color greenA = (style == SurfaceStyle::Abimee) ? Color{118, 108, 62, 255} : Color{34, 148, 38, 255};
+    Color greenB = (style == SurfaceStyle::Abimee) ? Color{108, 98, 55, 255} : Color{28, 132, 32, 255};
 
     int quadIdx = 0;
     for (int tz = 0; tz < tilesPerSide; ++tz) {
@@ -425,6 +446,26 @@ Vector2 WorldToSkidTex(float worldX, float worldZ, Vector2 origin, float size) {
     return Vector2{u * static_cast<float>(kSkidTextureSize), v * static_cast<float>(kSkidTextureSize)};
 }
 
+// DrawCube est aligne sur les axes monde : sans rotation, un gradin "le long de la
+// piste" devient un mur de 70+ u sur l'axe X qui barre la route.
+void DrawOrientedBox(Vector3 center, Vector3 along, float sizeAlong, float sizeUp, float sizeOut, Color color) {
+    float heading = std::atan2(along.x, along.z) * RAD2DEG;
+    rlPushMatrix();
+    rlTranslatef(center.x, center.y, center.z);
+    rlRotatef(heading, 0.0f, 1.0f, 0.0f);
+    DrawCube(Vector3{0.0f, 0.0f, 0.0f}, sizeOut, sizeUp, sizeAlong, color);
+    rlPopMatrix();
+}
+
+void DrawOrientedBoxWires(Vector3 center, Vector3 along, float sizeAlong, float sizeUp, float sizeOut, Color color) {
+    float heading = std::atan2(along.x, along.z) * RAD2DEG;
+    rlPushMatrix();
+    rlTranslatef(center.x, center.y, center.z);
+    rlRotatef(heading, 0.0f, 1.0f, 0.0f);
+    DrawCubeWires(Vector3{0.0f, 0.0f, 0.0f}, sizeOut, sizeUp, sizeAlong, color);
+    rlPopMatrix();
+}
+
 } // namespace
 
 void DrawSkyGradient(int screenWidth, int screenHeight) {
@@ -447,40 +488,59 @@ TrackRenderer::TrackRenderer(const Track& track, const TrackDef& def) : surfaceS
 
     const auto& wp = track.Waypoints();
 
-    Mesh trackMesh = BuildStripMesh(track, perp, -halfWidth, halfWidth, 0.02f, [&](size_t i) {
+    constexpr float kRoadY = 0.10f;
+    constexpr float kMarkY = kRoadY + 0.012f;
+    constexpr float kCurbY = kRoadY - 0.015f;
+    constexpr float kShoulderY = kRoadY - 0.025f;
+
+    Mesh trackMesh = BuildStripMesh(track, -halfWidth, halfWidth, kRoadY, [&](size_t i) {
         return AsphaltColor(HashIndex(i), surfaceStyle_);
     });
     trackModel_ = LoadModelFromMesh(trackMesh);
 
-    Mesh rubberMesh = BuildStripMesh(track, perp, -0.35f, 0.35f, 0.021f, [&](size_t) {
-        return Color{28, 28, 32, 255};
+    Mesh rubberMesh = BuildStripMesh(track, -0.35f, 0.35f, kRoadY + 0.001f, [&](size_t) {
+        return Color{42, 42, 48, 255};
     });
     rubberLineModel_ = LoadModelFromMesh(rubberMesh);
 
-    Mesh centerDash = BuildDashedStripMesh(track, perp, -0.12f, 0.12f, 0.035f, WHITE, 4, 2);
+    Mesh centerDash = BuildDashedStripMesh(track, -0.12f, 0.12f, kMarkY, WHITE, 4, 2);
     centerDashModel_ = LoadModelFromMesh(centerDash);
 
-    constexpr float kEdgeWidth = 0.18f;
-    Mesh edgeOuter = BuildStripMesh(track, perp, halfWidth - kEdgeWidth, halfWidth - 0.02f, 0.034f,
-                                    [&](size_t) { return WHITE; });
+    constexpr float kEdgeWidth = 0.30f;
+    Mesh edgeOuter = BuildStripMesh(track, halfWidth - kEdgeWidth, halfWidth - 0.02f, kMarkY,
+                                    [&](size_t) { return Color{245, 245, 250, 255}; });
     edgeLineOuterModel_ = LoadModelFromMesh(edgeOuter);
-    Mesh edgeInner = BuildStripMesh(track, perp, -halfWidth + 0.02f, -halfWidth + kEdgeWidth, 0.034f,
-                                    [&](size_t) { return WHITE; });
+    Mesh edgeInner = BuildStripMesh(track, -halfWidth + 0.02f, -halfWidth + kEdgeWidth, kMarkY,
+                                    [&](size_t) { return Color{245, 245, 250, 255}; });
     edgeLineInnerModel_ = LoadModelFromMesh(edgeInner);
 
     constexpr float kCurbWidth = 1.4f;
     Color curbA = (surfaceStyle_ == SurfaceStyle::Abimee) ? Color{180, 170, 150, 255} : RED;
     Color curbB = (surfaceStyle_ == SurfaceStyle::Abimee) ? Color{160, 150, 130, 255} : RAYWHITE;
-    Mesh curbMeshOuter = BuildStripMesh(track, perp, halfWidth - kCurbWidth * 0.5f, halfWidth + kCurbWidth * 0.5f,
-                                        0.025f, [&](size_t i) {
+    Mesh curbMeshOuter = BuildStripMesh(track, halfWidth - kCurbWidth * 0.5f, halfWidth + kCurbWidth * 0.5f, kCurbY,
+                                        [&](size_t i) {
                                             return (static_cast<int>(i / 3) % 2 == 0) ? curbA : curbB;
                                         });
     curbModelOuter_ = LoadModelFromMesh(curbMeshOuter);
-    Mesh curbMeshInner = BuildStripMesh(track, perp, -halfWidth - kCurbWidth * 0.5f, -halfWidth + kCurbWidth * 0.5f,
-                                        0.025f, [&](size_t i) {
+    Mesh curbMeshInner = BuildStripMesh(track, -halfWidth - kCurbWidth * 0.5f, -halfWidth + kCurbWidth * 0.5f, kCurbY,
+                                        [&](size_t i) {
                                             return (static_cast<int>(i / 3) % 2 == 0) ? curbA : curbB;
                                         });
     curbModelInner_ = LoadModelFromMesh(curbMeshInner);
+
+    constexpr float kShoulderWidth = 2.2f;
+    Color shoulderA = (surfaceStyle_ == SurfaceStyle::Abimee) ? Color{105, 92, 68, 255} : Color{128, 112, 82, 255};
+    Color shoulderB = (surfaceStyle_ == SurfaceStyle::Abimee) ? Color{95, 84, 62, 255} : Color{115, 100, 74, 255};
+    Mesh shoulderOuter = BuildStripMesh(track, halfWidth + kCurbWidth * 0.5f, halfWidth + kCurbWidth * 0.5f + kShoulderWidth,
+                                        kShoulderY, [&](size_t i) {
+                                            return (static_cast<int>(i / 4) % 2 == 0) ? shoulderA : shoulderB;
+                                        });
+    shoulderOuterModel_ = LoadModelFromMesh(shoulderOuter);
+    Mesh shoulderInner = BuildStripMesh(track, -halfWidth - kCurbWidth * 0.5f - kShoulderWidth, -halfWidth - kCurbWidth * 0.5f,
+                                        kShoulderY, [&](size_t i) {
+                                            return (static_cast<int>(i / 4) % 2 == 0) ? shoulderA : shoulderB;
+                                        });
+    shoulderInnerModel_ = LoadModelFromMesh(shoulderInner);
 
     Mesh groundMesh = BuildCheckerGroundMesh(500.0f, 40, surfaceStyle_);
     groundModel_ = LoadModelFromMesh(groundMesh);
@@ -689,7 +749,7 @@ TrackRenderer::TrackRenderer(const Track& track, const TrackDef& def) : surfaceS
     ClearBackground(BLANK);
     EndTextureMode();
 
-    Mesh skidQuad = BuildSkidQuadMesh(skidWorldOrigin_, skidWorldSize_, 0.045f);
+    Mesh skidQuad = BuildSkidQuadMesh(skidWorldOrigin_, skidWorldSize_, 0.115f);
     skidOverlayModel_ = LoadModelFromMesh(skidQuad);
     if (skidOverlayModel_.materialCount > 0) {
         skidOverlayModel_.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = skidTexture_.texture;
@@ -792,6 +852,8 @@ TrackRenderer::~TrackRenderer() {
     UnloadModel(edgeLineInnerModel_);
     UnloadModel(curbModelOuter_);
     UnloadModel(curbModelInner_);
+    UnloadModel(shoulderOuterModel_);
+    UnloadModel(shoulderInnerModel_);
     UnloadModel(groundModel_);
     UnloadModel(finishLineModel_);
     if (skidTexture_.id != 0) UnloadRenderTexture(skidTexture_);
@@ -801,7 +863,9 @@ TrackRenderer::~TrackRenderer() {
 }
 
 void TrackRenderer::DrawOpaqueGeometry() const {
-    DrawModel(groundModel_, Vector3{0.0f, -0.05f, 0.0f}, 1.0f, WHITE);
+    DrawModel(groundModel_, Vector3{0.0f, -0.08f, 0.0f}, 1.0f, WHITE);
+    DrawModel(shoulderOuterModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
+    DrawModel(shoulderInnerModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
     DrawModel(trackModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
     DrawModel(rubberLineModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
     DrawModel(centerDashModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
@@ -811,9 +875,11 @@ void TrackRenderer::DrawOpaqueGeometry() const {
     DrawModel(curbModelInner_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
     if (hasBarriers_) DrawModel(barrierModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
     if (hasSponsors_) DrawModel(sponsorModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
+    rlDisableDepthMask();
     BeginBlendMode(BLEND_ALPHA);
     DrawModel(skidOverlayModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
     EndBlendMode();
+    rlEnableDepthMask();
     DrawModel(finishLineModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
 }
 
@@ -901,13 +967,17 @@ void TrackRenderer::Draw(float timeSeconds) const {
             pillarH,
             (leftBase.z + rightBase.z) * 0.5f,
         };
-        DrawCube(beamMid, hw * 2.0f + 1.0f, 0.4f, 0.5f, DARKGRAY);
-        DrawCube(Vector3{beamMid.x, pillarH + 0.6f, beamMid.z}, hw * 1.6f, 0.5f, 0.15f, WHITE);
+        DrawOrientedBox(beamMid, startGantryPerp_, hw * 2.0f + 1.0f, 0.4f, 0.5f, DARKGRAY);
+        DrawOrientedBox(Vector3{beamMid.x, pillarH + 0.6f, beamMid.z}, startGantryPerp_, hw * 1.6f, 0.5f, 0.15f, WHITE);
         for (int c = 0; c < 6; ++c) {
             Color cell = (c % 2 == 0) ? BLACK : WHITE;
             float t = -0.5f + (static_cast<float>(c) + 0.5f) / 6.0f;
-            DrawCube(Vector3{beamMid.x + p.x * t * hw * 1.4f, pillarH + 0.6f, beamMid.z + p.z * t * hw * 1.4f}, hw * 0.22f,
-                     0.48f, 0.12f, cell);
+            Vector3 cellPos{
+                beamMid.x + startGantryPerp_.x * t * hw * 1.4f,
+                pillarH + 0.6f,
+                beamMid.z + startGantryPerp_.z * t * hw * 1.4f,
+            };
+            DrawOrientedBox(cellPos, startGantryPerp_, hw * 0.22f, 0.48f, 0.12f, cell);
         }
         float lightPhase = std::fmod(timeSeconds * 2.0f, 3.0f);
         Color lightColors[3] = {RED, YELLOW, GREEN};
@@ -920,7 +990,7 @@ void TrackRenderer::Draw(float timeSeconds) const {
         }
     }
 
-    // Gradins (structure statique).
+    // Gradins (structure statique, orientes le long de la ligne droite).
     for (const auto& gs : grandstands_) {
         constexpr int kRows = 4;
         float stepDepth = 1.8f;
@@ -931,15 +1001,15 @@ void TrackRenderer::Draw(float timeSeconds) const {
                 static_cast<float>(row) * 1.1f + 0.55f,
                 gs.origin.z + gs.outward.z * (static_cast<float>(row) * stepDepth + 0.9f),
             };
-            DrawCube(seatPos, stepWidth, 1.1f, stepDepth, Color{110, 110, 118, 255});
-            DrawCubeWires(seatPos, stepWidth, 1.1f, stepDepth, Fade(BLACK, 0.3f));
+            DrawOrientedBox(seatPos, gs.along, stepWidth, 1.1f, stepDepth, Color{110, 110, 118, 255});
+            DrawOrientedBoxWires(seatPos, gs.along, stepWidth, 1.1f, stepDepth, Fade(BLACK, 0.3f));
         }
         Vector3 roofPos{
             gs.origin.x + gs.outward.x * (static_cast<float>(kRows) * stepDepth + 0.5f),
             static_cast<float>(kRows) * 1.1f + 1.2f,
             gs.origin.z + gs.outward.z * (static_cast<float>(kRows) * stepDepth + 0.5f),
         };
-        DrawCube(roofPos, stepWidth + 1.0f, 0.25f, stepDepth + 1.5f, Color{180, 50, 50, 255});
+        DrawOrientedBox(roofPos, gs.along, stepWidth + 1.0f, 0.25f, stepDepth + 1.5f, Color{180, 50, 50, 255});
     }
 
     // Foule animee.
@@ -1023,6 +1093,8 @@ void TrackRenderer::ApplyShader(Shader shader) {
     ApplyShaderToModel(edgeLineInnerModel_, shader);
     ApplyShaderToModel(curbModelOuter_, shader);
     ApplyShaderToModel(curbModelInner_, shader);
+    ApplyShaderToModel(shoulderOuterModel_, shader);
+    ApplyShaderToModel(shoulderInnerModel_, shader);
     ApplyShaderToModel(groundModel_, shader);
     ApplyShaderToModel(finishLineModel_, shader);
     ApplyShaderToModel(skidOverlayModel_, shader);

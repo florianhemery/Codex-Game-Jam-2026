@@ -128,6 +128,12 @@ void main()
 
     vec3 color = albedo.rgb*(ambient + direct + points) + spec;
 
+    // Surfaces grises (route) : peu de dominance verte, boost pour rester lisibles de nuit.
+    float chroma = max(max(albedo.r, albedo.g), albedo.b) - min(min(albedo.r, albedo.g), albedo.b);
+    float greenBias = albedo.g - max(albedo.r, albedo.b);
+    float isRoad = step(0.20, albedo.r) * step(chroma, 0.22) * (1.0 - step(0.12, greenBias));
+    color *= 1.0 + isRoad * 0.55;
+
     // Brouillard exp2 vers fogColor.
     float dist = length(fragPosition - viewPos);
     float fogF = exp2(-fogDensity*fogDensity*dist*dist*1.442695);

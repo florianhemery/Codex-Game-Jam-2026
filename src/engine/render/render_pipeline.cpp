@@ -195,6 +195,21 @@ void RenderPipeline::PollShaderReload()
     watcher_.Poll();
 }
 
+void RenderPipeline::Resize(int screenWidth, int screenHeight)
+{
+    if (screenWidth < 1 || screenHeight < 1) return;
+    if (screenWidth == width_ && screenHeight == height_) return;
+
+    device_.DestroyRenderTarget(sceneRT_);
+    width_ = screenWidth;
+    height_ = screenHeight;
+    sceneRT_ = device_.CreateRenderTarget({width_, height_, RhiFormat::RGBA16F, true});
+
+    if (const RenderTexture2D* hdr = device_.GetRenderTexture(sceneRT_)) {
+        SetTextureWrap(hdr->texture, TEXTURE_WRAP_CLAMP);
+    }
+}
+
 std::string RenderPipeline::ResolveShaderDir(const char* shaderDir) const
 {
     if (shaderDir != nullptr) return shaderDir;

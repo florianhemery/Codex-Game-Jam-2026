@@ -674,7 +674,7 @@ void DrawMenu(const std::vector<TrackDef>& presets, int selectedIndex, int scree
         }
     }
 
-    DrawTextCentered("Haut/Bas : choisir   --   Entree : demarrer", cx, screenHeight - 56, 20, GRAY);
+    DrawTextCentered("Haut/Bas : circuit   Entree : demarrer   F11 : plein ecran", cx, screenHeight - 56, 20, GRAY);
 }
 
 } // namespace racer

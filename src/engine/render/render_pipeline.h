@@ -69,6 +69,9 @@ public:
     /// Hot-reload des shaders (via ShaderWatcher). A appeler chaque frame.
     void PollShaderReload();
 
+    /// Redimensionne la cible HDR scene (apres resize fenetre ou plein ecran).
+    void Resize(int screenWidth, int screenHeight);
+
     struct PostParams { float speedRatio = 0.0f; bool nitro = false; }; // speedRatio 0..1
 
     /// Rend une frame complete. A appeler entre BeginDrawing et EndDrawing.

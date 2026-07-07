@@ -131,6 +131,8 @@ private:
     Model edgeLineInnerModel_{};
     Model curbModelOuter_{};
     Model curbModelInner_{};
+    Model shoulderOuterModel_{};
+    Model shoulderInnerModel_{};
     Model groundModel_{};
     Model finishLineModel_{};
     std::vector<PropInstance> props_;

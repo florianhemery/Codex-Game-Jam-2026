@@ -59,14 +59,99 @@ void UpdateLapTimer(LapTimerState& timer, const racer::RacerEntry& player, float
     timer.lastLapFlash = std::max(0.0f, timer.lastLapFlash - dt);
 }
 
+struct DisplayState {
+    int width = 1280;
+    int height = 720;
+    int windowedWidth = 1280;
+    int windowedHeight = 720;
+    int monitorWidth = 1920;
+    int monitorHeight = 1080;
+};
+
+DisplayState ComputeInitialDisplay() {
+    DisplayState d;
+    const int monitor = GetCurrentMonitor();
+    d.monitorWidth = GetMonitorWidth(monitor);
+    d.monitorHeight = GetMonitorHeight(monitor);
+
+    constexpr float kAspect = 16.0f / 9.0f;
+    constexpr int kRefW = 1280;
+    constexpr int kRefH = 720;
+    constexpr int kMargin = 80;
+
+    int maxW = std::max(640, d.monitorWidth - kMargin);
+    int maxH = std::max(360, d.monitorHeight - kMargin);
+
+    float scale = std::min({static_cast<float>(maxW) / kRefW, static_cast<float>(maxH) / kRefH, 1.0f});
+    d.windowedWidth = static_cast<int>(kRefW * scale);
+    d.windowedHeight = static_cast<int>(kRefH * scale);
+
+    if (d.windowedWidth > maxW) {
+        d.windowedWidth = maxW;
+        d.windowedHeight = static_cast<int>(static_cast<float>(d.windowedWidth) / kAspect);
+    }
+    if (d.windowedHeight > maxH) {
+        d.windowedHeight = maxH;
+        d.windowedWidth = static_cast<int>(static_cast<float>(d.windowedHeight) * kAspect);
+    }
+
+    d.width = d.windowedWidth;
+    d.height = d.windowedHeight;
+    return d;
+}
+
+void EnterFullscreen(DisplayState& display) {
+    display.windowedWidth = GetScreenWidth();
+    display.windowedHeight = GetScreenHeight();
+    const int monitor = GetCurrentMonitor();
+    display.monitorWidth = GetMonitorWidth(monitor);
+    display.monitorHeight = GetMonitorHeight(monitor);
+    SetWindowSize(display.monitorWidth, display.monitorHeight);
+    if (!IsWindowFullscreen()) ToggleFullscreen();
+}
+
+void LeaveFullscreen(DisplayState& display) {
+    if (IsWindowFullscreen()) ToggleFullscreen();
+    SetWindowSize(display.windowedWidth, display.windowedHeight);
+}
+
+void ToggleFullscreenDisplay(DisplayState& display) {
+    if (IsWindowFullscreen()) LeaveFullscreen(display);
+    else EnterFullscreen(display);
+}
+
+void SyncDisplaySize(DisplayState& display, RenderPipeline* pipeline) {
+    const int newW = GetScreenWidth();
+    const int newH = GetScreenHeight();
+    if (newW < 1 || newH < 1) return;
+    if (newW == display.width && newH == display.height) return;
+    display.width = newW;
+    display.height = newH;
+    if (pipeline) pipeline->Resize(newW, newH);
+}
+
+void UpdateDisplay(DisplayState& display, RenderPipeline* pipeline) {
+    if (IsKeyPressed(KEY_F11) || (IsKeyDown(KEY_LEFT_ALT) && IsKeyPressed(KEY_ENTER))) {
+        ToggleFullscreenDisplay(display);
+    }
+    if (IsWindowResized() || IsKeyPressed(KEY_F11) ||
+        (IsKeyDown(KEY_LEFT_ALT) && IsKeyPressed(KEY_ENTER))) {
+        SyncDisplaySize(display, pipeline);
+    }
+}
+
 } // namespace
 
 int main() {
-    const int screenWidth = 1280;
-    const int screenHeight = 720;
-    SetConfigFlags(FLAG_MSAA_4X_HINT);
-    InitWindow(screenWidth, screenHeight, "racer");
+    DisplayState display = ComputeInitialDisplay();
+
+    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_WINDOW_RESIZABLE);
+    InitWindow(display.width, display.height, "racer");
+    SetWindowMinSize(640, 360);
     SetTargetFPS(60);
+
+    TraceLog(LOG_INFO, "DISPLAY: moniteur %dx%d, fenetre %dx%d", display.monitorWidth, display.monitorHeight,
+             display.width, display.height);
 
     const std::vector<racer::TrackDef>& presets = racer::Track::Presets();
     int selectedTrack = 0;
@@ -109,10 +194,11 @@ int main() {
         else vfx.SetRain(false);
     };
 
-    pipeline = std::make_unique<RenderPipeline>(screenWidth, screenHeight);
+    pipeline = std::make_unique<RenderPipeline>(display.width, display.height);
 
     while (!WindowShouldClose()) {
         float dt = std::min(GetFrameTime(), 0.1f);
+        UpdateDisplay(display, pipeline.get());
         pipeline->PollShaderReload();
         if (trackRenderer) trackRenderer->ApplyShader(pipeline->LitShader());
 
@@ -128,7 +214,7 @@ int main() {
 
             BeginDrawing();
             ClearBackground(Color{20, 24, 36, 255});
-            racer::DrawMenu(presets, selectedTrack, screenWidth, screenHeight);
+            racer::DrawMenu(presets, selectedTrack, display.width, display.height);
             EndDrawing();
             continue;
         }
@@ -264,14 +350,14 @@ int main() {
         for (size_t i = 0; i < racers.size(); ++i) {
             extras.racerColors.push_back(ColorForRacerIndex(i, racers[i].isPlayer));
         }
-        racer::DrawHudEx(*race, screenWidth, screenHeight, extras);
+        racer::DrawHudEx(*race, display.width, display.height, extras);
 
         if (race->Phase() == racer::RacePhase::Finished) {
             const char* menuHint = "M : retour au menu";
             int hw = MeasureText(menuHint, 20);
-            DrawText(menuHint, screenWidth / 2 - hw / 2, screenHeight / 2 + 50, 20, LIGHTGRAY);
+            DrawText(menuHint, display.width / 2 - hw / 2, display.height / 2 + 50, 20, LIGHTGRAY);
         }
-        DrawFPS(screenWidth - 90, screenHeight - 30);
+        DrawFPS(display.width - 90, display.height - 30);
         EndDrawing();
     }
 
