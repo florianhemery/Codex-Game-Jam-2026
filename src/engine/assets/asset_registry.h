@@ -17,6 +17,8 @@
 
 namespace racer::engine {
 
+
+class AssetRegistryDetail;
 struct PbrMaterialInfo {
     Color albedoColor{255, 255, 255, 255};
     Color emissiveColor{0, 0, 0, 255};
@@ -80,6 +82,8 @@ public:
 private:
     friend class AssetRegistry;
 
+    friend class AssetRegistryDetail;
+
     Model model_{};
     std::vector<PbrMaterialInfo> pbrInfos_;
     std::string path_;
@@ -122,6 +126,8 @@ public:
 
 private:
     friend class AssetRegistry;
+
+    friend class AssetRegistryDetail;
 
     Texture2D texture_{};
     std::string path_;

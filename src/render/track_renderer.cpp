@@ -848,6 +848,9 @@ struct TrackRendererBuild {
         TrackRendererDetail::MeshBuffers &sponsorBuf,
         const Track &track, const std::vector<Vector2> &perp,
         float halfWidth, size_t i);
+    static void setupLampTop(
+        TrackRenderer::LampInstance &lamp, const Vector2 &perp,
+        float sideSign, bool broken);
     static void addLampAtWaypoint(
         TrackRenderer &renderer, const Track &track,
         const std::vector<Vector2> &perp, float halfWidth, size_t i);
