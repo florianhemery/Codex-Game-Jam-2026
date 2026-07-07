@@ -1,9 +1,13 @@
-// Hot-reload de shaders : detection par mtime, rechargement securise
-// (l'ancien shader reste actif si la nouvelle compilation echoue).
+/*
+** EPITECH PROJECT, 2026
+** racer
+** File description:
+** Shader hot-reload implementation
+*/
 
 #include "engine/assets/shader_watcher.h"
 
-#include "rlgl.h" // rlGetShaderIdDefault() : detection du fallback raylib
+#include "rlgl.h"
 
 #include <utility>
 
@@ -11,62 +15,122 @@ namespace racer::engine {
 
 namespace fs = std::filesystem;
 
-namespace {
+class ShaderLoadUtils {
+public:
+    static bool tryGetMTime(
+        const std::string &path, fs::file_time_type &out);
+    static const char *pathOrNull(const std::string &path);
+    static bool loadSucceeded(const Shader &shader, bool wantsCustomStages);
+    static void unloadShaderSafe(Shader &shader);
+    static bool checkPathChanged(const std::string &path,
+                                 fs::file_time_type &storedTime);
+};
 
-// mtime d'un fichier sans exception ; false si le fichier est inaccessible.
-bool TryGetMTime(const std::string& path, fs::file_time_type& out)
+bool ShaderLoadUtils::tryGetMTime(
+    const std::string &path, fs::file_time_type &out)
 {
     std::error_code ec;
     const fs::file_time_type time = fs::last_write_time(path, ec);
-    if (ec) return false;
+
+    if (ec)
+        return false;
     out = time;
     return true;
 }
 
-const char* PathOrNull(const std::string& path)
+const char *ShaderLoadUtils::pathOrNull(const std::string &path)
 {
     return path.empty() ? nullptr : path.c_str();
 }
 
-// Un chargement est reussi si le shader est valide ET n'est pas retombe sur
-// le shader par defaut alors qu'on demandait des etages personnalises
-// (raylib retourne l'id du shader par defaut quand la compilation echoue).
-bool LoadSucceeded(const Shader& shader, bool wantsCustomStages)
+bool ShaderLoadUtils::loadSucceeded(
+    const Shader &shader, bool wantsCustomStages)
 {
-    if (!IsShaderValid(shader)) return false;
-    if (wantsCustomStages && shader.id == rlGetShaderIdDefault()) return false;
+    if (!IsShaderValid(shader))
+        return false;
+    if (wantsCustomStages && shader.id == rlGetShaderIdDefault())
+        return false;
     return true;
 }
 
-// UnloadShader ignore le shader par defaut mais ne libere pas son tableau
-// locs (alloue par LoadShader meme en cas de fallback) -> liberation manuelle.
-void UnloadShaderSafe(Shader& shader)
+void ShaderLoadUtils::unloadShaderSafe(Shader &shader)
 {
     if (shader.id == 0) {
         shader = Shader{};
         return;
     }
     if (shader.id == rlGetShaderIdDefault()) {
-        if (shader.locs != nullptr) MemFree(shader.locs);
+        if (shader.locs != nullptr)
+            MemFree(shader.locs);
     } else {
         UnloadShader(shader);
     }
     shader = Shader{};
 }
 
-} // namespace
+bool ShaderLoadUtils::checkPathChanged(const std::string &path,
+                                       fs::file_time_type &storedTime)
+{
+    fs::file_time_type time{};
+
+    if (path.empty() || !tryGetMTime(path, time) || time == storedTime)
+        return false;
+    storedTime = time;
+    return true;
+}
 
 ShaderWatcher::~ShaderWatcher()
 {
     UnloadAll();
 }
 
-ShaderSlot& ShaderWatcher::RegisterShader(const std::string& name,
-                                          const std::string& vsPath,
-                                          const std::string& fsPath)
+void ShaderWatcher::initSlotMtimes(ShaderSlot &slot,
+                                   const std::string &name,
+                                   const std::string &vsPath,
+                                   const std::string &fsPath)
+{
+    if (!vsPath.empty()
+        && !ShaderLoadUtils::tryGetMTime(vsPath, slot.vsTime_)) {
+        slot.vsTime_ = fs::file_time_type::min();
+        TraceLog(LOG_WARNING,
+            "SHADERS: [%s] vertex introuvable: %s",
+            name.c_str(), vsPath.c_str());
+    }
+    if (!fsPath.empty()
+        && !ShaderLoadUtils::tryGetMTime(fsPath, slot.fsTime_)) {
+        slot.fsTime_ = fs::file_time_type::min();
+        TraceLog(LOG_WARNING,
+            "SHADERS: [%s] fragment introuvable: %s",
+            name.c_str(), fsPath.c_str());
+    }
+}
+
+void ShaderWatcher::loadSlotInitial(ShaderSlot &slot,
+                                    const std::string &vsPath,
+                                    const std::string &fsPath)
+{
+    const bool wantsCustom = !vsPath.empty() || !fsPath.empty();
+
+    slot.shader_ = LoadShader(
+        ShaderLoadUtils::pathOrNull(vsPath),
+        ShaderLoadUtils::pathOrNull(fsPath));
+    slot.valid_ = ShaderLoadUtils::loadSucceeded(slot.shader_, wantsCustom);
+    if (!slot.valid_) {
+        TraceLog(LOG_WARNING,
+            "SHADERS: [%s] compilation initiale echouee, "
+            "shader par defaut actif",
+            slot.name_.c_str());
+    }
+}
+
+ShaderSlot &ShaderWatcher::RegisterShader(const std::string &name,
+                                          const std::string &vsPath,
+                                          const std::string &fsPath)
 {
     if (auto it = slots_.find(name); it != slots_.end()) {
-        TraceLog(LOG_WARNING, "SHADERS: [%s] deja enregistre, slot existant renvoye", name.c_str());
+        TraceLog(LOG_WARNING,
+            "SHADERS: [%s] deja enregistre, slot existant renvoye",
+            name.c_str());
         return *it->second;
     }
 
@@ -74,26 +138,10 @@ ShaderSlot& ShaderWatcher::RegisterShader(const std::string& name,
     slot->name_ = name;
     slot->vsPath_ = vsPath;
     slot->fsPath_ = fsPath;
+    initSlotMtimes(*slot, name, vsPath, fsPath);
+    loadSlotInitial(*slot, vsPath, fsPath);
 
-    // mtimes initiaux (fichier absent -> sentinelle min, reload des apparition).
-    if (!vsPath.empty() && !TryGetMTime(vsPath, slot->vsTime_)) {
-        slot->vsTime_ = fs::file_time_type::min();
-        TraceLog(LOG_WARNING, "SHADERS: [%s] vertex introuvable: %s", name.c_str(), vsPath.c_str());
-    }
-    if (!fsPath.empty() && !TryGetMTime(fsPath, slot->fsTime_)) {
-        slot->fsTime_ = fs::file_time_type::min();
-        TraceLog(LOG_WARNING, "SHADERS: [%s] fragment introuvable: %s", name.c_str(), fsPath.c_str());
-    }
-
-    const bool wantsCustom = !vsPath.empty() || !fsPath.empty();
-    slot->shader_ = LoadShader(PathOrNull(vsPath), PathOrNull(fsPath));
-    slot->valid_ = LoadSucceeded(slot->shader_, wantsCustom);
-    if (!slot->valid_) {
-        // Le shader retourne (defaut raylib) reste utilisable a l'ecran.
-        TraceLog(LOG_WARNING, "SHADERS: [%s] compilation initiale echouee, shader par defaut actif", name.c_str());
-    }
-
-    ShaderSlot& ref = *slot;
+    ShaderSlot &ref = *slot;
     slots_.emplace(name, std::move(slot));
     return ref;
 }
@@ -101,70 +149,77 @@ ShaderSlot& ShaderWatcher::RegisterShader(const std::string& name,
 void ShaderWatcher::Poll()
 {
     const auto now = std::chrono::steady_clock::now();
-    if (now - lastPoll_ < pollInterval_) return;
+
+    if (now - lastPoll_ < pollInterval_)
+        return;
     lastPoll_ = now;
 
-    for (auto& entry : slots_) {
-        ShaderSlot& slot = *entry.second;
-
+    for (auto &entry : slots_) {
+        ShaderSlot &slot = *entry.second;
         bool changed = false;
-        fs::file_time_type time{};
 
-        if (!slot.vsPath_.empty() && TryGetMTime(slot.vsPath_, time) && time != slot.vsTime_) {
-            slot.vsTime_ = time;
+        if (ShaderLoadUtils::checkPathChanged(slot.vsPath_, slot.vsTime_))
             changed = true;
-        }
-        if (!slot.fsPath_.empty() && TryGetMTime(slot.fsPath_, time) && time != slot.fsTime_) {
-            slot.fsTime_ = time;
+        if (ShaderLoadUtils::checkPathChanged(slot.fsPath_, slot.fsTime_))
             changed = true;
-        }
-
-        if (changed) TryReload(slot);
+        if (changed)
+            TryReload(slot);
     }
 }
 
-bool ShaderWatcher::TryReload(ShaderSlot& slot)
+bool ShaderWatcher::TryReload(ShaderSlot &slot)
 {
     const bool wantsCustom = !slot.vsPath_.empty() || !slot.fsPath_.empty();
-    Shader fresh = LoadShader(PathOrNull(slot.vsPath_), PathOrNull(slot.fsPath_));
+    Shader fresh = LoadShader(
+        ShaderLoadUtils::pathOrNull(slot.vsPath_),
+        ShaderLoadUtils::pathOrNull(slot.fsPath_));
 
-    if (!LoadSucceeded(fresh, wantsCustom)) {
-        // Echec : on garde l'ancien shader actif, l'erreur GLSL detaillee a
-        // deja ete loguee par raylib.
-        TraceLog(LOG_WARNING, "SHADERS: [%s] reload echoue, ancien shader conserve", slot.name_.c_str());
-        UnloadShaderSafe(fresh);
+    if (!ShaderLoadUtils::loadSucceeded(fresh, wantsCustom)) {
+        TraceLog(LOG_WARNING,
+            "SHADERS: [%s] reload echoue, ancien shader conserve",
+            slot.name_.c_str());
+        ShaderLoadUtils::unloadShaderSafe(fresh);
         return false;
     }
 
-    UnloadShaderSafe(slot.shader_);
+    ShaderLoadUtils::unloadShaderSafe(slot.shader_);
     slot.shader_ = fresh;
     slot.valid_ = true;
     ++slot.reloadCount_;
-    TraceLog(LOG_INFO, "SHADERS: [%s] recharge avec succes (#%d)", slot.name_.c_str(), slot.reloadCount_);
+    TraceLog(LOG_INFO,
+        "SHADERS: [%s] recharge avec succes (#%d)",
+        slot.name_.c_str(), slot.reloadCount_);
 
-    if (onReload_) onReload_(slot.name_, slot.shader_);
+    if (onReload_)
+        onReload_(slot.name_, slot.shader_);
     return true;
 }
 
-ShaderSlot* ShaderWatcher::Find(const std::string& name)
+ShaderSlot *ShaderWatcher::Find(const std::string &name)
 {
     auto it = slots_.find(name);
-    return (it != slots_.end()) ? it->second.get() : nullptr;
+
+    if (it != slots_.end())
+        return it->second.get();
+    return nullptr;
 }
 
 void ShaderWatcher::SetPollInterval(double seconds)
 {
-    if (seconds < 0.0) seconds = 0.0;
-    pollInterval_ = std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+    if (seconds < 0.0)
+        seconds = 0.0;
+    pollInterval_ = std::chrono::duration_cast<
+        std::chrono::steady_clock::duration>(
         std::chrono::duration<double>(seconds));
 }
 
 void ShaderWatcher::UnloadAll()
 {
-    // Contexte GL deja ferme -> ne plus toucher au GPU (fin de process).
     const bool gpuReady = IsWindowReady();
-    for (auto& entry : slots_) {
-        if (gpuReady) UnloadShaderSafe(entry.second->shader_);
+
+    for (auto &entry : slots_) {
+        if (gpuReady)
+            ShaderLoadUtils::unloadShaderSafe(entry.second->shader_);
     }
     slots_.clear();
 }
