@@ -1,6 +1,9 @@
-// Test headless du module core : World (EnTT) + JobSystem + SnapshotBuffer.
-// Aucune fonction fenetre/rendu raylib n'est appelee (Vector3/Color sont de
-// simples structs). Sortie : "OK" et code 0, sinon details + code 1.
+/*
+** EPITECH PROJECT, 2026
+** racer
+** File description:
+** Headless core module test (World, JobSystem, SnapshotBuffer)
+*/
 
 #include <atomic>
 #include <cstdint>
@@ -16,146 +19,331 @@
 
 namespace {
 
-int g_failures = 0;
+constexpr std::size_t K_ENTITY_COUNT = 100;
 
-} // namespace
+class CoreTestRunner {
+public:
+    void check(bool cond, int line, const char *expr);
+    void populateWorld(racer::engine::World &world,
+        std::vector<entt::entity> &entities);
+    void verifyWorldTags(const racer::engine::World &world,
+        const std::vector<entt::entity> &entities);
+    void verifyWorldLifecycle(racer::engine::World &world);
+    void verifyJobSystem();
+    void verifyParallelFor(racer::engine::World &world,
+        const std::vector<entt::entity> &entities);
+    racer::engine::FrameSnapshot &verifySnapshot(
+        racer::engine::World &world,
+        racer::engine::SnapshotBuffer &buffer);
+    void verifySecondFrame(racer::engine::World &world,
+        const std::vector<entt::entity> &entities,
+        racer::engine::SnapshotBuffer &buffer,
+        const racer::engine::FrameSnapshot &firstWrite);
+    int failures() const;
 
-#define CHECK(cond)                                                          \
-    do {                                                                     \
-        if (!(cond)) {                                                       \
-            std::fprintf(stderr, "ECHEC ligne %d : %s\n", __LINE__, #cond);  \
-            ++g_failures;                                                    \
-        }                                                                    \
-    } while (false)
+private:
+    void addEntity(racer::engine::World &world,
+        std::vector<entt::entity> &entities, std::size_t index);
+    void tagEntity(racer::engine::World &world, entt::entity entity,
+        std::size_t index);
+    void applyParallelTransform(racer::engine::World &world,
+        const std::vector<entt::entity> &entities, std::size_t index);
+    void verifyTransformsAfterParallel(
+        const racer::engine::World &world,
+        const std::vector<entt::entity> &entities);
+    void indexRenderItems(const racer::engine::FrameSnapshot &read,
+        std::vector<const racer::engine::RenderItem *> &byMesh);
+    void verifySnapshotItems(const racer::engine::FrameSnapshot &read);
+    void verifyRenderItemFields(std::size_t index,
+        const racer::engine::RenderItem *item);
+    void verifyRenderItemTint(std::size_t index,
+        const racer::engine::RenderItem *item);
+    void failOnParallelIndex(std::size_t index);
 
-int main() {
-    using namespace racer::engine;
+    int failures_ = 0;
+};
 
-    constexpr std::size_t kEntityCount = 100;
-
-    // --- Creation du monde : 100 entites completes ---
-    World world;
-    std::vector<entt::entity> entities;
-    entities.reserve(kEntityCount);
-    for (std::size_t i = 0; i < kEntityCount; ++i) {
-        const entt::entity entity = world.CreateEntity();
-        const float fi = static_cast<float>(i);
-        world.Add<TransformComponent>(entity, Vector3{fi, 0.0f, -fi}, 0.0f, 0.0f, 0.0f);
-        world.Add<KinematicsComponent>(entity, fi * 0.5f, 0.0f, false);
-        world.Add<RenderMeshComponent>(entity, static_cast<std::uint32_t>(i),
-                                       static_cast<std::uint32_t>(i % 4),
-                                       Color{static_cast<unsigned char>(i), 64, 128, 255});
-        world.Add<LapProgressComponent>(entity);
-        world.Add<NameComponent>(entity, "Racer " + std::to_string(i));
-        if (i == 0) {
-            world.Add<PlayerTag>(entity);
-        } else {
-            world.Add<AiTag>(entity);
-        }
-        entities.push_back(entity);
+void CoreTestRunner::check(bool cond, int line, const char *expr)
+{
+    if (!cond) {
+        std::fprintf(stderr, "ECHEC ligne %d : %s\n", line, expr);
+        ++failures_;
     }
+}
 
-    // --- Helpers World ---
-    CHECK(world.Has<PlayerTag>(entities[0]));
-    CHECK(!world.Has<AiTag>(entities[0]));
-    CHECK(world.Has<AiTag>(entities[1]));
-    CHECK(world.Get<NameComponent>(entities[42]).name == "Racer 42");
-    CHECK(world.Registry().view<PlayerTag>().size() == 1);
-    CHECK(world.Registry().view<AiTag>().size() == kEntityCount - 1);
+void CoreTestRunner::tagEntity(racer::engine::World &world,
+    entt::entity entity, std::size_t index)
+{
+    if (index == 0) {
+        world.Add<racer::engine::PlayerTag>(entity);
+    }
+    else {
+        world.Add<racer::engine::AiTag>(entity);
+    }
+}
 
+void CoreTestRunner::addEntity(racer::engine::World &world,
+    std::vector<entt::entity> &entities, std::size_t index)
+{
+    const entt::entity entity = world.CreateEntity();
+    const float fi = static_cast<float>(index);
+    const auto meshId = static_cast<std::uint32_t>(index);
+    const auto matId = static_cast<std::uint32_t>(index % 4);
+    const Color tint{
+        static_cast<unsigned char>(index), 64, 128, 255};
+
+    world.Add<racer::engine::TransformComponent>(
+        entity, Vector3{fi, 0.0f, -fi}, 0.0f, 0.0f, 0.0f);
+    world.Add<racer::engine::KinematicsComponent>(
+        entity, fi * 0.5f, 0.0f, false);
+    world.Add<racer::engine::RenderMeshComponent>(
+        entity, meshId, matId, tint);
+    world.Add<racer::engine::LapProgressComponent>(entity);
+    world.Add<racer::engine::NameComponent>(
+        entity, "Racer " + std::to_string(index));
+    tagEntity(world, entity, index);
+    entities.push_back(entity);
+}
+
+void CoreTestRunner::populateWorld(racer::engine::World &world,
+    std::vector<entt::entity> &entities)
+{
+    entities.reserve(K_ENTITY_COUNT);
+    for (std::size_t i = 0; i < K_ENTITY_COUNT; ++i) {
+        addEntity(world, entities, i);
+    }
+}
+
+void CoreTestRunner::verifyWorldTags(const racer::engine::World &world,
+    const std::vector<entt::entity> &entities)
+{
+    check(world.Has<racer::engine::PlayerTag>(entities[0]),
+        __LINE__, "world.Has<PlayerTag>(entities[0])");
+    check(!world.Has<racer::engine::AiTag>(entities[0]),
+        __LINE__, "!world.Has<AiTag>(entities[0])");
+    check(world.Has<racer::engine::AiTag>(entities[1]),
+        __LINE__, "world.Has<AiTag>(entities[1])");
+    check(world.Get<racer::engine::NameComponent>(entities[42]).name
+        == "Racer 42", __LINE__,
+        "world.Get<NameComponent>(entities[42]).name == \"Racer 42\"");
+    check(world.Registry().view<racer::engine::PlayerTag>().size() == 1,
+        __LINE__, "world.Registry().view<PlayerTag>().size() == 1");
+    check(world.Registry().view<racer::engine::AiTag>().size()
+        == K_ENTITY_COUNT - 1, __LINE__,
+        "world.Registry().view<AiTag>().size() == K_ENTITY_COUNT - 1");
+}
+
+void CoreTestRunner::verifyWorldLifecycle(racer::engine::World &world)
+{
     const entt::entity temp = world.CreateEntity();
-    CHECK(world.Registry().valid(temp));
+
+    check(world.Registry().valid(temp), __LINE__,
+        "world.Registry().valid(temp)");
     world.DestroyEntity(temp);
-    CHECK(!world.Registry().valid(temp));
+    check(!world.Registry().valid(temp), __LINE__,
+        "!world.Registry().valid(temp)");
+}
 
-    // --- JobSystem : Submit + future ---
-    JobSystem jobs;
-    CHECK(jobs.WorkerCount() >= 1);
+void CoreTestRunner::verifyJobSystem()
+{
+    racer::engine::JobSystem jobs;
+
+    check(jobs.WorkerCount() >= 1, __LINE__, "jobs.WorkerCount() >= 1");
     std::atomic<int> counter{0};
-    std::future<void> done = jobs.Submit([&counter] { counter.fetch_add(1); });
-    done.get();
-    CHECK(counter.load() == 1);
-
-    // --- ParallelFor : modifie les transforms (entites distinctes, pas de
-    // changement structurel du registry -> sur) ---
-    jobs.ParallelFor(0, kEntityCount, 7, [&world, &entities](std::size_t i) {
-        TransformComponent& transform = world.Get<TransformComponent>(entities[i]);
-        const float fi = static_cast<float>(i);
-        transform.position.y = fi * 2.0f;
-        transform.heading = fi * 0.01f;
-        transform.roll = fi * 0.001f;
+    std::future<void> done = jobs.Submit([&counter] {
+        counter.fetch_add(1);
     });
-    for (std::size_t i = 0; i < kEntityCount; ++i) {
-        CHECK(world.Get<TransformComponent>(entities[i]).position.y == static_cast<float>(i) * 2.0f);
+    done.get();
+    check(counter.load() == 1, __LINE__, "counter.load() == 1");
+}
+
+void CoreTestRunner::applyParallelTransform(
+    racer::engine::World &world,
+    const std::vector<entt::entity> &entities, std::size_t index)
+{
+    racer::engine::TransformComponent &transform =
+        world.Get<racer::engine::TransformComponent>(entities[index]);
+    const float fi = static_cast<float>(index);
+
+    transform.position.y = fi * 2.0f;
+    transform.heading = fi * 0.01f;
+    transform.roll = fi * 0.001f;
+}
+
+void CoreTestRunner::verifyTransformsAfterParallel(
+    const racer::engine::World &world,
+    const std::vector<entt::entity> &entities)
+{
+    for (std::size_t i = 0; i < K_ENTITY_COUNT; ++i) {
+        const float expected = static_cast<float>(i) * 2.0f;
+        const auto &transform =
+            world.Get<racer::engine::TransformComponent>(entities[i]);
+
+        check(transform.position.y == expected, __LINE__,
+            "transform.position.y == expected");
     }
+}
 
-    // ParallelFor sur intervalle vide : fn ne doit jamais etre appelee.
-    jobs.ParallelFor(5, 5, 4, [](std::size_t) { CHECK(false); });
+void CoreTestRunner::failOnParallelIndex(std::size_t index)
+{
+    (void)index;
+    check(false, __LINE__, "false");
+}
 
-    // --- Snapshot : capture, publication, relecture ---
-    SnapshotBuffer buffer;
-    CHECK(buffer.ReadLatest().items.empty()); // rien de publie pour l'instant
+void CoreTestRunner::verifyParallelFor(
+    racer::engine::World &world,
+    const std::vector<entt::entity> &entities)
+{
+    racer::engine::JobSystem jobs;
 
-    FrameSnapshot& write = buffer.WriteBegin();
-    write.simTime = 1.25;
-    CaptureSnapshot(world, write);
-    buffer.Publish();
+    jobs.ParallelFor(0, K_ENTITY_COUNT, 7,
+        [this, &world, &entities](std::size_t index) {
+            applyParallelTransform(world, entities, index);
+        });
+    verifyTransformsAfterParallel(world, entities);
+    jobs.ParallelFor(5, 5, 4,
+        [this](std::size_t index) {
+            failOnParallelIndex(index);
+        });
+}
 
-    const FrameSnapshot& read = buffer.ReadLatest();
-    CHECK(&read == &write);
-    CHECK(read.simTime == 1.25);
-    CHECK(read.items.size() == kEntityCount);
-
-    // L'ordre d'iteration d'EnTT n'est pas garanti : on indexe par meshId.
-    std::vector<const RenderItem*> byMesh(kEntityCount, nullptr);
-    for (const RenderItem& item : read.items) {
-        CHECK(item.meshId < kEntityCount);
-        if (item.meshId < kEntityCount) {
-            CHECK(byMesh[item.meshId] == nullptr);
+void CoreTestRunner::indexRenderItems(
+    const racer::engine::FrameSnapshot &read,
+    std::vector<const racer::engine::RenderItem *> &byMesh)
+{
+    for (const racer::engine::RenderItem &item : read.items) {
+        check(item.meshId < K_ENTITY_COUNT, __LINE__,
+            "item.meshId < K_ENTITY_COUNT");
+        if (item.meshId < K_ENTITY_COUNT) {
+            check(byMesh[item.meshId] == nullptr, __LINE__,
+                "byMesh[item.meshId] == nullptr");
             byMesh[item.meshId] = &item;
         }
     }
-    for (std::size_t i = 0; i < kEntityCount; ++i) {
-        const RenderItem* item = byMesh[i];
-        CHECK(item != nullptr);
-        if (item == nullptr) {
-            continue;
-        }
-        const float fi = static_cast<float>(i);
-        CHECK(item->position.x == fi);
-        CHECK(item->position.y == fi * 2.0f);
-        CHECK(item->position.z == -fi);
-        CHECK(item->heading == fi * 0.01f);
-        CHECK(item->roll == fi * 0.001f);
-        CHECK(item->materialId == static_cast<std::uint32_t>(i % 4));
-        CHECK(item->tint.r == static_cast<unsigned char>(i));
-        CHECK(item->tint.g == 64);
-        CHECK(item->tint.b == 128);
-        CHECK(item->tint.a == 255);
-    }
+}
 
-    // --- Deuxieme frame : verifie l'alternance des deux buffers ---
-    world.Get<TransformComponent>(entities[0]).position.y = 999.0f;
-    FrameSnapshot& write2 = buffer.WriteBegin();
-    CHECK(&write2 != &write); // l'autre buffer
-    write2.simTime = 2.5;
-    CaptureSnapshot(world, write2);
+void CoreTestRunner::verifyRenderItemFields(std::size_t index,
+    const racer::engine::RenderItem *item)
+{
+    const float fi = static_cast<float>(index);
+
+    check(item != nullptr, __LINE__, "item != nullptr");
+    if (item == nullptr) {
+        return;
+    }
+    check(item->position.x == fi, __LINE__, "item->position.x == fi");
+    check(item->position.y == fi * 2.0f, __LINE__,
+        "item->position.y == fi * 2.0f");
+    check(item->position.z == -fi, __LINE__, "item->position.z == -fi");
+    check(item->heading == fi * 0.01f, __LINE__,
+        "item->heading == fi * 0.01f");
+    check(item->roll == fi * 0.001f, __LINE__,
+        "item->roll == fi * 0.001f");
+    check(item->materialId == static_cast<std::uint32_t>(index % 4),
+        __LINE__,
+        "item->materialId == static_cast<std::uint32_t>(index % 4)");
+}
+
+void CoreTestRunner::verifyRenderItemTint(std::size_t index,
+    const racer::engine::RenderItem *item)
+{
+    if (item == nullptr) {
+        return;
+    }
+    check(item->tint.r == static_cast<unsigned char>(index), __LINE__,
+        "item->tint.r == static_cast<unsigned char>(index)");
+    check(item->tint.g == 64, __LINE__, "item->tint.g == 64");
+    check(item->tint.b == 128, __LINE__, "item->tint.b == 128");
+    check(item->tint.a == 255, __LINE__, "item->tint.a == 255");
+}
+
+void CoreTestRunner::verifySnapshotItems(
+    const racer::engine::FrameSnapshot &read)
+{
+    std::vector<const racer::engine::RenderItem *> byMesh(
+        K_ENTITY_COUNT, nullptr);
+
+    indexRenderItems(read, byMesh);
+    for (std::size_t i = 0; i < K_ENTITY_COUNT; ++i) {
+        verifyRenderItemFields(i, byMesh[i]);
+        verifyRenderItemTint(i, byMesh[i]);
+    }
+}
+
+racer::engine::FrameSnapshot &CoreTestRunner::verifySnapshot(
+    racer::engine::World &world, racer::engine::SnapshotBuffer &buffer)
+{
+    check(buffer.ReadLatest().items.empty(), __LINE__,
+        "buffer.ReadLatest().items.empty()");
+    racer::engine::FrameSnapshot &write = buffer.WriteBegin();
+    write.simTime = 1.25;
+    racer::engine::CaptureSnapshot(world, write);
     buffer.Publish();
 
-    const FrameSnapshot& read2 = buffer.ReadLatest();
-    CHECK(&read2 == &write2);
-    CHECK(read2.simTime == 2.5);
-    CHECK(read2.items.size() == kEntityCount);
+    const racer::engine::FrameSnapshot &read = buffer.ReadLatest();
+    check(&read == &write, __LINE__, "&read == &write");
+    check(read.simTime == 1.25, __LINE__, "read.simTime == 1.25");
+    check(read.items.size() == K_ENTITY_COUNT, __LINE__,
+        "read.items.size() == K_ENTITY_COUNT");
+    verifySnapshotItems(read);
+    return write;
+}
+
+void CoreTestRunner::verifySecondFrame(
+    racer::engine::World &world,
+    const std::vector<entt::entity> &entities,
+    racer::engine::SnapshotBuffer &buffer,
+    const racer::engine::FrameSnapshot &firstWrite)
+{
+    world.Get<racer::engine::TransformComponent>(entities[0]).position.y =
+        999.0f;
+    racer::engine::FrameSnapshot &write2 = buffer.WriteBegin();
+    check(&write2 != &firstWrite, __LINE__, "&write2 != &firstWrite");
+    write2.simTime = 2.5;
+    racer::engine::CaptureSnapshot(world, write2);
+    buffer.Publish();
+
+    const racer::engine::FrameSnapshot &read2 = buffer.ReadLatest();
+    check(&read2 == &write2, __LINE__, "&read2 == &write2");
+    check(read2.simTime == 2.5, __LINE__, "read2.simTime == 2.5");
+    check(read2.items.size() == K_ENTITY_COUNT, __LINE__,
+        "read2.items.size() == K_ENTITY_COUNT");
+
     bool foundUpdated = false;
-    for (const RenderItem& item : read2.items) {
+    for (const racer::engine::RenderItem &item : read2.items) {
         if (item.meshId == 0) {
             foundUpdated = (item.position.y == 999.0f);
         }
     }
-    CHECK(foundUpdated);
+    check(foundUpdated, __LINE__, "foundUpdated");
+}
 
-    if (g_failures != 0) {
-        std::fprintf(stderr, "%d verification(s) en echec\n", g_failures);
+int CoreTestRunner::failures() const
+{
+    return failures_;
+}
+
+} // namespace
+
+int main()
+{
+    CoreTestRunner runner;
+    racer::engine::World world;
+    std::vector<entt::entity> entities;
+    racer::engine::SnapshotBuffer buffer;
+
+    runner.populateWorld(world, entities);
+    runner.verifyWorldTags(world, entities);
+    runner.verifyWorldLifecycle(world);
+    runner.verifyJobSystem();
+    runner.verifyParallelFor(world, entities);
+    racer::engine::FrameSnapshot &firstWrite =
+        runner.verifySnapshot(world, buffer);
+    runner.verifySecondFrame(world, entities, buffer, firstWrite);
+
+    if (runner.failures() != 0) {
+        std::fprintf(stderr, "%d verification(s) en echec\n",
+            runner.failures());
         return 1;
     }
     std::printf("OK\n");
