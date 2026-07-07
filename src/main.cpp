@@ -12,14 +12,14 @@
 
 #include "raylib.h"
 
-#include "engine/render/render_pipeline.hpp"
-#include "race/race_state.hpp"
-#include "render/car_renderer.hpp"
-#include "render/hud.hpp"
-#include "render/track_renderer.hpp"
-#include "render/vfx.hpp"
-#include "track/track.hpp"
-#include "vehicle/car.hpp"
+#include "Engine/Render/RenderPipeline.hpp"
+#include "Race/RaceState.hpp"
+#include "Render/CarRenderer.hpp"
+#include "Render/Hud.hpp"
+#include "Render/TrackRenderer.hpp"
+#include "Render/VfxSystem.hpp"
+#include "Track/Track.hpp"
+#include "Vehicle/Car.hpp"
 
 namespace {
 

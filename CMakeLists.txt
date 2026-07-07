@@ -31,21 +31,21 @@ FetchContent_MakeAvailable(raylib)
 
 # Modules moteur (Phase 0) -- libs statiques independantes, chacune possede
 # son propre CMakeLists. Ne pas ajouter de sources moteur ici.
-add_subdirectory(src/engine/rhi)
-add_subdirectory(src/engine/assets)
-add_subdirectory(src/engine/core)
-add_subdirectory(src/engine/render)
+add_subdirectory(src/Engine/Rhi)
+add_subdirectory(src/Engine/Assets)
+add_subdirectory(src/Engine/Core)
+add_subdirectory(src/Engine/Render)
 
 add_executable(racer
     src/main.cpp
-    src/vehicle/car.cpp
-    src/track/track.cpp
-    src/ai/ai_driver.cpp
-    src/race/race_state.cpp
-    src/render/track_renderer.cpp
-    src/render/car_renderer.cpp
-    src/render/hud.cpp
-    src/render/vfx.cpp
+    src/Vehicle/Car.cpp
+    src/Track/Track.cpp
+    src/Ai/AiDriver.cpp
+    src/Race/RaceState.cpp
+    src/Render/TrackRenderer.cpp
+    src/Render/CarRenderer.cpp
+    src/Render/Hud.cpp
+    src/Render/VfxSystem.cpp
 )
 
 target_include_directories(racer PRIVATE src)
@@ -55,11 +55,11 @@ target_compile_features(racer PRIVATE cxx_std_20)
 # Outil headless : simule une course complete (IA vs IA) pour valider la
 # logique de jeu sans fenetre ni pilotage manuel.
 add_executable(race_sim_debug
-    src/tools/race_sim_debug.cpp
-    src/vehicle/car.cpp
-    src/track/track.cpp
-    src/ai/ai_driver.cpp
-    src/race/race_state.cpp
+    src/Tools/RaceSimDebug.cpp
+    src/Vehicle/Car.cpp
+    src/Track/Track.cpp
+    src/Ai/AiDriver.cpp
+    src/Race/RaceState.cpp
 )
 target_include_directories(race_sim_debug PRIVATE src)
 target_link_libraries(race_sim_debug PRIVATE raylib)
@@ -76,24 +76,24 @@ function(racer_add_demo name)
 endfunction()
 
 racer_add_demo(car_demo
-    src/render/car_demo.cpp
-    src/render/car_renderer.cpp
-    src/vehicle/car.cpp
+    src/Render/CarDemo.cpp
+    src/Render/CarRenderer.cpp
+    src/Vehicle/Car.cpp
 )
 racer_add_demo(track_demo
-    src/render/track_demo.cpp
-    src/render/track_renderer.cpp
-    src/track/track.cpp
+    src/Render/TrackDemo.cpp
+    src/Render/TrackRenderer.cpp
+    src/Track/Track.cpp
 )
 racer_add_demo(vfx_demo
-    src/render/vfx_demo.cpp
-    src/render/vfx.cpp
+    src/Render/VfxDemo.cpp
+    src/Render/VfxSystem.cpp
 )
 racer_add_demo(hud_demo
-    src/render/hud_demo.cpp
-    src/render/hud.cpp
-    src/race/race_state.cpp
-    src/ai/ai_driver.cpp
-    src/vehicle/car.cpp
-    src/track/track.cpp
+    src/Render/HudDemo.cpp
+    src/Render/Hud.cpp
+    src/Race/RaceState.cpp
+    src/Ai/AiDriver.cpp
+    src/Vehicle/Car.cpp
+    src/Track/Track.cpp
 )
