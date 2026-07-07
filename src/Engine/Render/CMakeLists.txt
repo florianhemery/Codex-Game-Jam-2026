@@ -8,6 +8,10 @@
 # Module rendu haut niveau (pipeline HDR, ombres, ciel, post-process).
 add_library(engine_render STATIC
     RenderPipeline.cpp
+    ShaderLocations.cpp
+    ShadowPass.cpp
+    ScenePass.cpp
+    PostPass.cpp
 )
 target_include_directories(engine_render PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(engine_render PUBLIC raylib engine_rhi engine_assets)

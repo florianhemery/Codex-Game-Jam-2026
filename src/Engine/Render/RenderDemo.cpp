@@ -63,6 +63,9 @@ public:
         int &ambianceIndex,
         int &frame,
         const std::array<racer::engine::Ambiance, 4> &ambiances);
+    static void initDemoWindow();
+    static void runAmbianceDemo();
+    static void shutdownDemoWindow();
 };
 
 void RenderDemoScene::saveScreenshot(const char *fileName)
@@ -289,51 +292,61 @@ void RenderDemoScene::advanceAmbiance(
     }
 }
 
-} // namespace
-
-int main()
+void RenderDemoScene::initDemoWindow()
 {
     SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(kWidth, kHeight, "render_demo");
     SetTargetFPS(60);
+}
 
-    {
-        racer::engine::RenderPipeline pipeline(kWidth, kHeight);
-        DemoModels models = RenderDemoScene::loadModels();
-        Camera3D camera = RenderDemoScene::makeCamera();
-        const std::array<racer::engine::Ambiance, 4> ambiances = {
-            racer::engine::Ambiance::MIDI,
-            racer::engine::Ambiance::AUBE_DOREE,
-            racer::engine::Ambiance::CREPUSCULE,
-            racer::engine::Ambiance::ORAGE};
-        const std::array<const char *, 4> labels = {
-            "Midi", "Aube doree", "Crepuscule", "Orage"};
-        int ambianceIndex = 0;
-        int frame = 0;
+void RenderDemoScene::runAmbianceDemo()
+{
+    racer::engine::RenderPipeline pipeline(kWidth, kHeight);
+    DemoModels models = loadModels();
+    Camera3D camera = makeCamera();
+    const std::array<racer::engine::Ambiance, 4> ambiances = {
+        racer::engine::Ambiance::MIDI,
+        racer::engine::Ambiance::AUBE_DOREE,
+        racer::engine::Ambiance::CREPUSCULE,
+        racer::engine::Ambiance::ORAGE};
+    const std::array<const char *, 4> labels = {
+        "Midi", "Aube doree", "Crepuscule", "Orage"};
+    int ambianceIndex = 0;
+    int frame = 0;
 
-        pipeline.setAmbiance(ambiances[0]);
-        while (!WindowShouldClose() && ambianceIndex < 4) {
-            pipeline.pollShaderReload();
-            const float t = static_cast<float>(GetTime());
-            const float pulse = 0.5f + 0.5f * std::sin(t * 6.0f);
-            const bool headlights = pipeline.params().headlights;
+    pipeline.setAmbiance(ambiances[0]);
+    while (!WindowShouldClose() && ambianceIndex < 4) {
+        pipeline.pollShaderReload();
+        const float t = static_cast<float>(GetTime());
+        const float pulse = 0.5f + 0.5f * std::sin(t * 6.0f);
+        const bool headlights = pipeline.params().headlights;
 
-            RenderDemoScene::renderAmbianceFrame(
-                pipeline,
-                models,
-                camera,
-                labels[static_cast<std::size_t>(ambianceIndex)],
-                t,
-                pulse,
-                headlights);
-            RenderDemoScene::advanceAmbiance(
-                pipeline, ambianceIndex, frame, ambiances);
-        }
-        RenderDemoScene::unloadDemoModel(models.ground_);
-        RenderDemoScene::unloadDemoModel(models.sphere_);
-        RenderDemoScene::unloadDemoModel(models.cylinder_);
+        renderAmbianceFrame(
+            pipeline,
+            models,
+            camera,
+            labels[static_cast<std::size_t>(ambianceIndex)],
+            t,
+            pulse,
+            headlights);
+        advanceAmbiance(pipeline, ambianceIndex, frame, ambiances);
     }
+    unloadDemoModel(models.ground_);
+    unloadDemoModel(models.sphere_);
+    unloadDemoModel(models.cylinder_);
+}
 
+void RenderDemoScene::shutdownDemoWindow()
+{
     CloseWindow();
+}
+
+} // namespace
+
+int main()
+{
+    RenderDemoScene::initDemoWindow();
+    RenderDemoScene::runAmbianceDemo();
+    RenderDemoScene::shutdownDemoWindow();
     return 0;
 }
