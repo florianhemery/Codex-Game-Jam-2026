@@ -60,7 +60,8 @@ void Hud::drawMenu(const std::vector<TrackDef> &presets, int selectedIndex,
     HudMenu::drawCards(presets, selectedIndex, screenWidth);
     HudMenu::drawStartButton(layout);
     HudGfx::drawTextCentered(
-        "Haut/Bas ou clic : choisir   --   Entree ou bouton : demarrer",
+        "Haut/Bas ou clic : choisir   --   Entree : demarrer"
+        "   --   F11 : plein ecran",
         centerX, screenHeight - 56, 20, GRAY);
 }
 

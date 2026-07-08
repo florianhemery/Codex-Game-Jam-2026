@@ -84,6 +84,38 @@ void GameLoop::pollShaders(Context &ctx)
         ctx.trackRenderer->applyShader(ctx.pipeline->litShader());
 }
 
+void GameLoop::updateDisplay(Context &ctx)
+{
+    const bool toggle = IsKeyPressed(KEY_F11)
+        || (IsKeyDown(KEY_LEFT_ALT) && IsKeyPressed(KEY_ENTER));
+
+    if (toggle) {
+        if (IsWindowFullscreen()) {
+            ToggleFullscreen();
+            SetWindowSize(ctx.windowedWidth, ctx.windowedHeight);
+        } else {
+            ctx.windowedWidth = GetScreenWidth();
+            ctx.windowedHeight = GetScreenHeight();
+            const int monitor = GetCurrentMonitor();
+
+            SetWindowSize(GetMonitorWidth(monitor),
+                GetMonitorHeight(monitor));
+            ToggleFullscreen();
+        }
+    }
+    if (!toggle && !IsWindowResized())
+        return;
+    const int newW = GetScreenWidth();
+    const int newH = GetScreenHeight();
+
+    if (newW < 1 || newH < 1)
+        return;
+    ctx.screenWidth = newW;
+    ctx.screenHeight = newH;
+    if (ctx.pipeline)
+        ctx.pipeline->resize(newW, newH);
+}
+
 namespace {
 
 bool keyJustPressed(int primary, int alternate = 0)
@@ -327,6 +359,7 @@ void GameLoop::run(Context &ctx)
     while (!WindowShouldClose()) {
         float dt = std::min(GetFrameTime(), 0.1f);
 
+        updateDisplay(ctx);
         pollShaders(ctx);
         if (ctx.appState == AppState::MENU) {
             if (handleMenuFrame(ctx))

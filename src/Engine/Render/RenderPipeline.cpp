@@ -190,6 +190,23 @@ void RenderPipeline::pollShaderReload()
     watcher_.poll();
 }
 
+void RenderPipeline::resize(int screenWidth, int screenHeight)
+{
+    if (screenWidth < 1 || screenHeight < 1)
+        return;
+    if (screenWidth == width_ && screenHeight == height_)
+        return;
+
+    device_.destroyRenderTarget(sceneRT_);
+    width_ = screenWidth;
+    height_ = screenHeight;
+    sceneRT_ = device_.createRenderTarget(
+        {width_, height_, RhiFormat::RGBA16F, true});
+
+    if (const RenderTexture2D *hdr = device_.getRenderTexture(sceneRT_))
+        SetTextureWrap(hdr->texture, TEXTURE_WRAP_CLAMP);
+}
+
 std::string RenderPipeline::resolveShaderDir(const char *shaderDir) const
 {
     if (shaderDir != nullptr)

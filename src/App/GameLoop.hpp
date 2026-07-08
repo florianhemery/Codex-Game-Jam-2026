@@ -39,6 +39,7 @@ private:
 
     static void startRace(Context &ctx, int trackIndex);
     static void pollShaders(Context &ctx);
+    static void updateDisplay(Context &ctx);
     static bool handleMenuFrame(Context &ctx);
     static bool shouldReturnToMenu(Context &ctx);
     static void handleRaceRestart(Context &ctx);

@@ -24,8 +24,10 @@ namespace racer {
 namespace app {
 
 struct GameLoop::Context {
-    const int screenWidth = 1280;
-    const int screenHeight = 720;
+    int screenWidth = 1280;
+    int screenHeight = 720;
+    int windowedWidth = 1280;
+    int windowedHeight = 720;
     const std::vector<TrackDef> &presets;
     int selectedTrack = 0;
     AppState appState = AppState::MENU;

@@ -41,6 +41,9 @@ public:
     void addLight(Vector3 position, Vector3 colorIntensity);
     void pollShaderReload();
 
+    /// Redimensionne la cible HDR scene (resize fenetre ou plein ecran).
+    void resize(int screenWidth, int screenHeight);
+
     struct PostParams {
         float speedRatio = 0.0f;
         bool nitro = false;
