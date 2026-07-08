@@ -189,13 +189,19 @@ void RaceState::updateCountdown(float dt)
         return;
     }
     countdownRemaining_ = 0.0f;
-    if (revvedDuringCountdown_) {
+    // A false start only re-arms the countdown a bounded number of times.
+    // Without a cap, an input source that holds throttle continuously
+    // (a player anticipating the green light, or a scripted/AI input)
+    // re-triggers revvedDuringCountdown_ every single frame, so the
+    // countdown would reset to 3s forever and the race would never begin.
+    if (revvedDuringCountdown_ && falseStartCount_ < kMaxFalseStarts) {
         revvedDuringCountdown_ = false;
         falseStartCount_ += 1;
         countdownRemaining_ = 3.0f;
         falseStartBanner_ = 2.8f;
         return;
     }
+    revvedDuringCountdown_ = false;
     beginRacing();
 }
 

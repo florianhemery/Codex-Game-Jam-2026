@@ -96,6 +96,7 @@ private:
     static constexpr float kOkLaunchMax = 0.50f;
     static constexpr float kWrapUpMaxSeconds = 12.0f;
     static constexpr float kWrapUpTimeScale = 3.0f;
+    static constexpr int kMaxFalseStarts = 1;
 
     void initPlayer(int totalCars);
     void initAiRacer(int aiIndex, int totalCars);
