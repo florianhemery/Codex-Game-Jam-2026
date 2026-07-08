@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "Render/Car/CarDraw.hpp"
 #include "rlgl.h"
 
 #include "Render/Car/CarPrimitives.hpp"
@@ -27,10 +28,10 @@ float CarWheelDraw::wrapAngle(float angle)
 
 void CarWheelDraw::drawWheelSpokes()
 {
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.0f, 0.0f},
         0.385f, 0.38f, 0.08f, Color{45, 45, 52, 255});
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.0f, 0.0f},
         0.385f, 0.08f, 0.38f, Color{45, 45, 52, 255});
     DrawCylinderExLit(
@@ -60,13 +61,13 @@ void CarWheelDraw::drawWheel(
 
 void CarWheelDraw::drawShadowDiscs()
 {
-    DrawCylinder(
+    carDraw::cylinder(
         Vector3{0.0f, 0.040f, 0.0f},
         2.45f, 2.45f, 0.006f, 22, Fade(BLACK, 0.09f));
-    DrawCylinder(
+    carDraw::cylinder(
         Vector3{0.0f, 0.048f, 0.0f},
         2.05f, 2.05f, 0.006f, 22, Fade(BLACK, 0.12f));
-    DrawCylinder(
+    carDraw::cylinder(
         Vector3{0.0f, 0.056f, 0.0f},
         1.60f, 1.60f, 0.006f, 22, Fade(BLACK, 0.16f));
 }
@@ -112,11 +113,11 @@ void CarWheelDraw::drawHeadlightGroundGlow()
     rlPushMatrix();
     rlTranslatef(0.0f, 0.02f, 5.0f);
     rlScalef(1.5f, 1.0f, 2.3f);
-    DrawCylinder(
+    carDraw::cylinder(
         Vector3{0.0f, 0.0f, 0.0f},
         0.62f, 0.62f, 0.005f, 18,
         Fade(Color{255, 240, 180, 255}, 0.10f));
-    DrawCylinder(
+    carDraw::cylinder(
         Vector3{0.0f, 0.006f, 0.0f},
         0.36f, 0.36f, 0.005f, 18,
         Fade(Color{255, 246, 205, 255}, 0.10f));
@@ -128,7 +129,7 @@ void CarWheelDraw::drawNitroGroundGlow()
     rlPushMatrix();
     rlTranslatef(0.0f, 0.02f, -2.95f);
     rlScalef(1.35f, 1.0f, 1.8f);
-    DrawCylinder(
+    carDraw::cylinder(
         Vector3{0.0f, 0.0f, 0.0f},
         0.55f, 0.55f, 0.005f, 16,
         Fade(Color{255, 150, 60, 255}, 0.16f));

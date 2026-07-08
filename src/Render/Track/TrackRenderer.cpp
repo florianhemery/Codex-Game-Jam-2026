@@ -78,11 +78,16 @@ void TrackRenderer::drawOpaqueGeometry() const
         DrawModel(barrierModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
     if (hasSponsors_)
         DrawModel(sponsorModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
+    rlDrawRenderBatchActive();
     BeginBlendMode(BLEND_ALPHA);
+    rlDrawRenderBatchActive();
     rlDisableDepthMask();
     DrawModel(skidOverlayModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
+    rlDrawRenderBatchActive();
     rlEnableDepthMask();
     EndBlendMode();
+    rlDrawRenderBatchActive();
+    rlSetTexture(rlGetTextureIdDefault());
     rlDisableBackfaceCulling();
     DrawModel(finishLineModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
     rlEnableBackfaceCulling();
@@ -104,6 +109,10 @@ void TrackRenderer::draw(float timeSeconds) const
     TrackDrawPass::drawTireStacks(*this);
     TrackDrawPass::drawPennants(*this, timeSeconds);
     TrackDrawPass::drawNpcs(*this, timeSeconds);
+    rlDrawRenderBatchActive();
+    EndBlendMode();
+    rlSetTexture(rlGetTextureIdDefault());
+    rlEnableDepthMask();
 }
 
 void TrackRenderer::applyShader(Shader shader)

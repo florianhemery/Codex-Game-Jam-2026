@@ -34,6 +34,12 @@ void GameLoop::LitPass::operator()() const
     if (!ctx_.trackRenderer)
         return;
     ctx_.trackRenderer->draw(static_cast<float>(GetTime()));
+}
+
+void GameLoop::CarsPass::operator()() const
+{
+    if (!ctx_.trackRenderer || !ctx_.race)
+        return;
     const auto &racers = ctx_.race->racers();
     const auto &pipeParams = ctx_.pipeline->params();
 
@@ -42,9 +48,17 @@ void GameLoop::LitPass::operator()() const
         CarVisual vis = GameLoop::buildCarVisual(
             ctx_, r, pipeParams.headlights);
 
+        // Hors shader lit : DrawCube met la couleur en sommet (comme car_demo).
+        // Sous BeginShaderMode(lit), colDiffuse est ecrase par le batch rlgl.
         CarRenderer::drawCarEx(
             r.car, vis, colorForRacerIndex(i, racers[i].isPlayer));
     }
+}
+
+void GameLoop::UnlitPass::operator()() const
+{
+    CarsPass{ctx_}();
+    VfxPass{ctx_}();
 }
 
 void GameLoop::VfxPass::operator()() const
@@ -293,7 +307,7 @@ void GameLoop::renderWorld(Context &ctx)
         ctx.trackRenderer->flushSkidMarks();
     setupHeadlights(ctx);
     ctx.pipeline->frame(
-        ctx.camera, OpaquePass(ctx), LitPass(ctx), VfxPass(ctx),
+        ctx.camera, OpaquePass(ctx), LitPass(ctx), UnlitPass(ctx),
         buildPostParams(ctx));
 }
 

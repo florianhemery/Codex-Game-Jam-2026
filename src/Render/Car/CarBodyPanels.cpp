@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "Render/Car/CarDraw.hpp"
 #include "rlgl.h"
 
 namespace racer {
@@ -46,37 +47,37 @@ void CarBodyDraw::drawChassisAssembly(const CarBodyPalette &palette)
 
 void CarBodyDraw::drawHeadlightFixtures(const CarVisual &vis)
 {
-    DrawCube(
+    carDraw::cube(
         Vector3{-kHeadX, kHeadY, kHeadZ - 0.012f},
         0.38f, 0.16f, 0.05f, Color{20, 20, 22, 255});
-    DrawCube(
+    carDraw::cube(
         Vector3{kHeadX, kHeadY, kHeadZ - 0.012f},
         0.38f, 0.16f, 0.05f, Color{20, 20, 22, 255});
     const Color headColor = vis.headlights
         ? Color{255, 252, 235, 255}
         : Color{248, 238, 205, 255};
 
-    DrawCube(
+    carDraw::cube(
         Vector3{-kHeadX, kHeadY, kHeadZ},
         0.30f, 0.11f, 0.06f, headColor);
-    DrawCube(
+    carDraw::cube(
         Vector3{kHeadX, kHeadY, kHeadZ},
         0.30f, 0.11f, 0.06f, headColor);
 }
 
 void CarBodyDraw::drawBrakeFixtures(const CarVisual &vis)
 {
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, kBrakeY, kBrakeZ - 0.005f},
         1.58f, 0.20f, 0.04f, Color{18, 18, 20, 255});
     const Color brakeColor = vis.braking
         ? Color{255, 46, 36, 255}
         : Color{110, 18, 18, 255};
 
-    DrawCube(
+    carDraw::cube(
         Vector3{-kBrakeX, kBrakeY, kBrakeZ},
         0.36f, 0.13f, 0.05f, brakeColor);
-    DrawCube(
+    carDraw::cube(
         Vector3{kBrakeX, kBrakeY, kBrakeZ},
         0.36f, 0.13f, 0.05f, brakeColor);
 }
@@ -87,15 +88,12 @@ void CarBodyDraw::drawOverlayEffects(
     drawHeadlightFixtures(vis);
     drawBrakeFixtures(vis);
     drawRainLight(vis, time);
-    drawBrakeGlow(vis);
-    drawRainGlow(vis, time);
-    // Les effets translucides ne doivent pas ecrire la profondeur : dessines
-    // entre la camera et la voiture, leurs valeurs de depth rejetaient les
-    // fragments de la carrosserie (voiture blanchie/fantome sous nitro).
-    // Flush du batch avant/apres : glDepthMask s'applique immediatement
-    // alors que les sommets rlgl partent au prochain flush.
+    // Effets translucides : pas d'ecriture de profondeur (sinon depth-test
+    // sur les voitures suivantes ou rejet de fragments de carrosserie).
     rlDrawRenderBatchActive();
     rlDisableDepthMask();
+    drawBrakeGlow(vis);
+    drawRainGlow(vis, time);
     if (vis.headlights)
         drawHeadlightGlow(vis);
     if (vis.nitro)
@@ -112,7 +110,7 @@ void CarBodyDraw::drawRainLight(const CarVisual &vis, float time)
         ? Color{255, 70, 70, 255}
         : Color{96, 22, 22, 255};
 
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.33f, -2.215f},
         0.16f, 0.16f, 0.05f, rainColor);
 }
@@ -121,10 +119,10 @@ void CarBodyDraw::drawBrakeGlow(const CarVisual &vis)
 {
     if (!vis.braking)
         return;
-    DrawCube(
+    carDraw::cube(
         Vector3{-kBrakeX, kBrakeY, -2.24f},
         0.44f, 0.20f, 0.05f, Fade(Color{255, 45, 35, 255}, 0.30f));
-    DrawCube(
+    carDraw::cube(
         Vector3{kBrakeX, kBrakeY, -2.24f},
         0.44f, 0.20f, 0.05f, Fade(Color{255, 45, 35, 255}, 0.30f));
 }
@@ -135,7 +133,7 @@ void CarBodyDraw::drawRainGlow(const CarVisual &vis, float time)
 
     if (!rainOn)
         return;
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.33f, -2.26f},
         0.24f, 0.24f, 0.05f, Fade(Color{255, 70, 70, 255}, 0.35f));
 }
@@ -144,17 +142,17 @@ void CarBodyDraw::drawHeadlightGlow(const CarVisual &vis)
 {
     if (!vis.headlights)
         return;
-    DrawSphere(
+    carDraw::sphere(
         Vector3{-kHeadX, kHeadY, kHeadZ + 0.02f},
         0.085f, Fade(Color{255, 244, 200, 255}, 0.45f));
-    DrawSphere(
+    carDraw::sphere(
         Vector3{kHeadX, kHeadY, kHeadZ + 0.02f},
         0.085f, Fade(Color{255, 244, 200, 255}, 0.45f));
-    DrawCylinderEx(
+    carDraw::cylinderEx(
         Vector3{-kHeadX, kHeadY, kHeadZ + 0.03f},
         Vector3{-0.78f, -0.12f, 5.6f},
         0.05f, 0.48f, 10, Fade(Color{255, 238, 170, 255}, 0.13f));
-    DrawCylinderEx(
+    carDraw::cylinderEx(
         Vector3{kHeadX, kHeadY, kHeadZ + 0.03f},
         Vector3{0.78f, -0.12f, 5.6f},
         0.05f, 0.48f, 10, Fade(Color{255, 238, 170, 255}, 0.13f));
@@ -180,26 +178,26 @@ void CarBodyDraw::drawExhaustFlame(float x, float time, float phase)
     const Vector3 tipCore{
         x, kExhaustY + 0.01f, kExhaustZ - len * 0.50f};
 
-    DrawCylinderEx(
+    carDraw::cylinderEx(
         base, tipCore, 0.048f, 0.010f, 8,
         Fade(Color{190, 230, 255, 255}, 0.95f));
-    DrawCylinderEx(
+    carDraw::cylinderEx(
         base, tipMid, 0.075f, 0.012f, 8,
         Fade(Color{255, 210, 90, 255}, 0.60f));
-    DrawCylinderEx(
+    carDraw::cylinderEx(
         base, tipOuter, 0.105f, 0.014f, 8,
         Fade(Color{255, 120, 30, 255}, 0.42f));
 }
 
 void CarBodyDraw::drawWindshield()
 {
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.80f, -0.42f},
         1.06f, 0.30f, 1.15f, Fade(Color{40, 58, 82, 255}, 0.55f));
     rlPushMatrix();
     rlTranslatef(0.0f, 0.76f, 0.28f);
     rlRotatef(-34.0f, 1.0f, 0.0f, 0.0f);
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.0f, 0.0f},
         1.02f, 0.44f, 0.05f, Fade(Color{50, 70, 96, 255}, 0.50f));
     rlPopMatrix();

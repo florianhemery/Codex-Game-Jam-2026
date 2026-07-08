@@ -47,6 +47,7 @@ struct LitLocs {
     int lightsPos = -1;
     int lightsColor = -1;
     int lightsCount = -1;
+    int useTextureAlbedo = -1;
 };
 
 struct SkyLocs {

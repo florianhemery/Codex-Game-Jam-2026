@@ -35,6 +35,8 @@ public:
 private:
     struct OpaquePass;
     struct LitPass;
+    struct CarsPass;
+    struct UnlitPass;
     struct VfxPass;
 
     static void startRace(Context &ctx, int trackIndex);

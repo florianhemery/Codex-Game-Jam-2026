@@ -17,6 +17,7 @@ in vec4 fragPosLight;
 // Uniforms fournis automatiquement par raylib
 uniform sampler2D texture0;
 uniform vec4 colDiffuse;
+uniform float useTextureAlbedo;
 
 // Environnement
 uniform vec3 viewPos;
@@ -72,7 +73,18 @@ float SunVisibility(float ndl)
 
 void main()
 {
-    vec4 albedo = texture(texture0, fragTexCoord)*colDiffuse*fragColor;
+    // DrawCube sous BeginShaderMode(lit) : couleur via colDiffuse (useTextureAlbedo=0).
+    vec4 albedo;
+    if (useTextureAlbedo < 0.5) {
+        albedo.rgb = colDiffuse.rgb * fragColor.rgb;
+        albedo.a = colDiffuse.a * fragColor.a;
+    } else if (length(fragColor.rgb - vec3(1.0)) > 0.01) {
+        albedo.rgb = fragColor.rgb;
+        albedo.a = fragColor.a;
+    } else {
+        albedo = texture(texture0, fragTexCoord) * colDiffuse * fragColor;
+    }
+
     vec3 V = normalize(viewPos - fragPosition);
 
     // Normale : certaines primitives raylib n'emettent pas de normale fiable,

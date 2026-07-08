@@ -5,6 +5,7 @@
 ** Curved car primitives with authored normals
 */
 
+#include "Render/Car/CarDraw.hpp"
 #include "Render/Car/CarPrimitives.hpp"
 
 #include "raymath.h"
@@ -34,7 +35,11 @@ void DrawCylinderExLit(
     const float baseAngle = (2.0f * PI) / static_cast<float>(sides);
 
     rlBegin(RL_TRIANGLES);
-    rlColor4ub(color.r, color.g, color.b, color.a);
+    carDraw::setColor(color);
+    if (carDraw::isActive())
+        rlColor4ub(255, 255, 255, 255);
+    else
+        rlColor4ub(color.r, color.g, color.b, color.a);
 
     for (int i = 0; i < sides; i++) {
         const float s1 = sinf(baseAngle * static_cast<float>(i + 0));
@@ -101,7 +106,11 @@ void DrawSphereLit(
     rlScalef(radius, radius, radius);
 
     rlBegin(RL_TRIANGLES);
-    rlColor4ub(color.r, color.g, color.b, color.a);
+    carDraw::setColor(color);
+    if (carDraw::isActive())
+        rlColor4ub(255, 255, 255, 255);
+    else
+        rlColor4ub(color.r, color.g, color.b, color.a);
 
     const float ringAngle = DEG2RAD * (180.0f / static_cast<float>(rings + 1));
     const float sliceAngle = DEG2RAD * (360.0f / static_cast<float>(slices));

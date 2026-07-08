@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "Render/Car/CarDraw.hpp"
 #include "rlgl.h"
 
 #include "Render/Car/CarPrimitives.hpp"
@@ -86,134 +87,134 @@ void CarBodyDraw::popChassisPose()
 
 void CarBodyDraw::drawBodyShell(const CarBodyPalette &palette)
 {
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.20f, -0.05f},
         1.70f, 0.22f, 4.10f, shade(palette.body, 0.32f));
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.44f, 0.10f},
         1.78f, 0.30f, 3.60f, palette.body);
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.42f, 1.95f},
         1.44f, 0.22f, 0.85f, shade(palette.body, 1.06f));
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.36f, 2.42f},
         1.02f, 0.16f, 0.34f, shade(palette.body, 1.08f));
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.52f, -1.35f},
         1.72f, 0.34f, 0.95f, shade(palette.body, 0.90f));
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.47f, -1.98f},
         1.70f, 0.40f, 0.42f, shade(palette.body, 0.72f));
 }
 
 void CarBodyDraw::drawWheelArches(const CarBodyPalette &palette)
 {
-    DrawCube(
+    carDraw::cube(
         Vector3{-0.82f, 0.63f, 1.45f},
         0.40f, 0.10f, 0.98f, shade(palette.body, 1.04f));
-    DrawCube(
+    carDraw::cube(
         Vector3{0.82f, 0.63f, 1.45f},
         0.40f, 0.10f, 0.98f, shade(palette.body, 1.04f));
-    DrawCube(
+    carDraw::cube(
         Vector3{-0.82f, 0.63f, -1.42f},
         0.40f, 0.10f, 0.98f, shade(palette.body, 0.96f));
-    DrawCube(
+    carDraw::cube(
         Vector3{0.82f, 0.63f, -1.42f},
         0.40f, 0.10f, 0.98f, shade(palette.body, 0.96f));
 }
 
 void CarBodyDraw::drawAeroTrim(const CarBodyPalette &palette)
 {
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.15f, 2.35f},
         1.58f, 0.09f, 0.35f, palette.carbon);
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.16f, -2.22f},
         1.46f, 0.13f, 0.24f, palette.carbon);
-    DrawCube(
+    carDraw::cube(
         Vector3{-0.42f, 0.20f, -2.22f},
         0.045f, 0.20f, 0.22f, palette.carbonLight);
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.20f, -2.22f},
         0.045f, 0.20f, 0.22f, palette.carbonLight);
-    DrawCube(
+    carDraw::cube(
         Vector3{0.42f, 0.20f, -2.22f},
         0.045f, 0.20f, 0.22f, palette.carbonLight);
 }
 
 void CarBodyDraw::drawLivery(const CarBodyPalette &palette)
 {
-    DrawCube(
+    carDraw::cube(
         Vector3{-0.17f, 0.598f, 0.10f},
         0.15f, 0.016f, 3.55f, palette.stripe);
-    DrawCube(
+    carDraw::cube(
         Vector3{0.17f, 0.598f, 0.10f},
         0.15f, 0.016f, 3.55f, palette.stripe);
-    DrawCube(
+    carDraw::cube(
         Vector3{-0.17f, 0.538f, 1.95f},
         0.15f, 0.016f, 0.80f, palette.stripe);
-    DrawCube(
+    carDraw::cube(
         Vector3{0.17f, 0.538f, 1.95f},
         0.15f, 0.016f, 0.80f, palette.stripe);
-    DrawCube(
+    carDraw::cube(
         Vector3{-0.17f, 0.698f, -1.35f},
         0.15f, 0.016f, 0.90f, palette.stripe);
-    DrawCube(
+    carDraw::cube(
         Vector3{0.17f, 0.698f, -1.35f},
         0.15f, 0.016f, 0.90f, palette.stripe);
 }
 
 void CarBodyDraw::drawRacePlates()
 {
-    DrawCube(
+    carDraw::cube(
         Vector3{-0.90f, 0.47f, 0.25f},
         0.025f, 0.30f, 0.44f, Color{242, 242, 238, 255});
-    DrawCube(
+    carDraw::cube(
         Vector3{0.90f, 0.47f, 0.25f},
         0.025f, 0.30f, 0.44f, Color{242, 242, 238, 255});
-    DrawCube(
+    carDraw::cube(
         Vector3{-0.918f, 0.47f, 0.25f},
         0.012f, 0.17f, 0.09f, Color{30, 30, 34, 255});
-    DrawCube(
+    carDraw::cube(
         Vector3{0.918f, 0.47f, 0.25f},
         0.012f, 0.17f, 0.09f, Color{30, 30, 34, 255});
 }
 
 void CarBodyDraw::drawFrontDetails(const CarBodyPalette &palette)
 {
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.64f, 0.85f},
         0.34f, 0.11f, 0.44f, palette.carbonLight);
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.645f, 1.08f},
         0.24f, 0.07f, 0.02f, Color{12, 12, 14, 255});
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.33f, 2.575f},
         0.62f, 0.10f, 0.05f, Color{14, 14, 16, 255});
 }
 
 void CarBodyDraw::drawSideIntakes()
 {
-    DrawCube(
+    carDraw::cube(
         Vector3{-0.905f, 0.44f, -0.62f},
         0.05f, 0.18f, 0.46f, Color{14, 14, 16, 255});
-    DrawCube(
+    carDraw::cube(
         Vector3{0.905f, 0.44f, -0.62f},
         0.05f, 0.18f, 0.46f, Color{14, 14, 16, 255});
 }
 
 void CarBodyDraw::drawMirrors(const CarBodyPalette &palette)
 {
-    DrawCube(
+    carDraw::cube(
         Vector3{-0.78f, 0.74f, 0.22f},
         0.14f, 0.035f, 0.035f, palette.carbon);
-    DrawCube(
+    carDraw::cube(
         Vector3{0.78f, 0.74f, 0.22f},
         0.14f, 0.035f, 0.035f, palette.carbon);
-    DrawCube(
+    carDraw::cube(
         Vector3{-0.92f, 0.78f, 0.22f},
         0.16f, 0.09f, 0.05f, palette.carbonLight);
-    DrawCube(
+    carDraw::cube(
         Vector3{0.92f, 0.78f, 0.22f},
         0.16f, 0.09f, 0.05f, palette.carbonLight);
 }
@@ -230,20 +231,20 @@ void CarBodyDraw::drawAntenna()
 
 void CarBodyDraw::drawRollCage(const CarBodyPalette &palette)
 {
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 1.00f, -0.90f},
         0.72f, 0.07f, 0.07f, palette.carbonLight);
-    DrawCube(
+    carDraw::cube(
         Vector3{-0.325f, 0.90f, -0.90f},
         0.07f, 0.24f, 0.07f, palette.carbonLight);
-    DrawCube(
+    carDraw::cube(
         Vector3{0.325f, 0.90f, -0.90f},
         0.07f, 0.24f, 0.07f, palette.carbonLight);
 }
 
 void CarBodyDraw::drawDriver()
 {
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.70f, -0.62f},
         0.46f, 0.16f, 0.26f, Color{40, 40, 45, 255});
     DrawSphereLit(
@@ -252,19 +253,19 @@ void CarBodyDraw::drawDriver()
 
 void CarBodyDraw::drawRearWing(const CarBodyPalette &palette)
 {
-    DrawCube(
+    carDraw::cube(
         Vector3{-0.48f, 0.80f, -2.02f},
         0.09f, 0.26f, 0.13f, palette.carbonLight);
-    DrawCube(
+    carDraw::cube(
         Vector3{0.48f, 0.80f, -2.02f},
         0.09f, 0.26f, 0.13f, palette.carbonLight);
-    DrawCube(
+    carDraw::cube(
         Vector3{0.0f, 0.97f, -2.05f},
         1.76f, 0.07f, 0.52f, shade(palette.body, 0.55f));
-    DrawCube(
+    carDraw::cube(
         Vector3{-0.885f, 0.95f, -2.05f},
         0.05f, 0.24f, 0.58f, palette.carbon);
-    DrawCube(
+    carDraw::cube(
         Vector3{0.885f, 0.95f, -2.05f},
         0.05f, 0.24f, 0.58f, palette.carbon);
 }

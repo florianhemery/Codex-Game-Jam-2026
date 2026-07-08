@@ -9,10 +9,11 @@
 
 #include <cmath>
 
-#include "rlgl.h"
-
 #include "Render/Car/CarBodyDraw.hpp"
+#include "Render/Car/CarDraw.hpp"
 #include "Render/Car/CarWheelDraw.hpp"
+
+#include "rlgl.h"
 
 namespace racer {
 
@@ -24,7 +25,6 @@ constexpr float kHeadZ = 2.37f;
 constexpr float kBrakeX = 0.55f;
 constexpr float kBrakeY = 0.55f;
 constexpr float kBrakeZ = -2.20f;
-constexpr float kExhaustX = 0.17f;
 constexpr float kExhaustY = 0.24f;
 constexpr float kExhaustZ = -2.26f;
 
@@ -56,11 +56,12 @@ void CarRenderer::drawCar(const Car &car, Color bodyColor)
     drawCarEx(car, CarVisual{}, bodyColor);
 }
 
-
 void CarRenderer::drawCarEx(const Car &car, const CarVisual &vis,
-    Color bodyColor)
+    Color bodyColor, Shader litShader)
 {
     const float time = static_cast<float>(GetTime());
+
+    carDraw::beginPass(litShader, bodyColor);
     const CarBodyPalette palette = CarBodyDraw::makeBodyPalette(bodyColor);
 
     CarWheelDraw::drawShadow(car, vis.drifting);
@@ -74,6 +75,8 @@ void CarRenderer::drawCarEx(const Car &car, const CarVisual &vis,
     CarBodyDraw::drawOverlayEffects(car, vis, time);
     CarBodyDraw::popChassisPose();
     rlPopMatrix();
+
+    carDraw::endPass(litShader);
 }
 
 } // namespace racer

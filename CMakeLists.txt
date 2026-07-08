@@ -75,6 +75,7 @@ set(RACER_TRACK_RENDER_SOURCES
 
 set(RACER_CAR_RENDER_SOURCES
     src/Render/Car/CarRenderer.cpp
+    src/Render/Car/CarDraw.cpp
     src/Render/Car/CarPrimitives.cpp
     src/Render/Car/CarBodyDraw.cpp
     src/Render/Car/CarBodyPanels.cpp

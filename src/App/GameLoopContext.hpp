@@ -62,6 +62,22 @@ private:
     Context &ctx_;
 };
 
+struct GameLoop::CarsPass {
+    explicit CarsPass(Context &ctx) : ctx_(ctx) {}
+    void operator()() const;
+
+private:
+    Context &ctx_;
+};
+
+struct GameLoop::UnlitPass {
+    explicit UnlitPass(Context &ctx) : ctx_(ctx) {}
+    void operator()() const;
+
+private:
+    Context &ctx_;
+};
+
 struct GameLoop::VfxPass {
     explicit VfxPass(Context &ctx) : ctx_(ctx) {}
     void operator()() const;

@@ -38,6 +38,11 @@ void uploadLitUniforms(Shader lit, const LitLocs &locs,
     SetShaderValueV(lit, locs.lightsColor, lightsColor, SHADER_UNIFORM_VEC3,
                     maxLights);
     SetShaderValue(lit, locs.lightsCount, &lightCount, SHADER_UNIFORM_INT);
+    if (locs.useTextureAlbedo >= 0) {
+        const float useTex = 1.0f;
+
+        SetShaderValue(lit, locs.useTextureAlbedo, &useTex, SHADER_UNIFORM_FLOAT);
+    }
 }
 
 void uploadSkyUniforms(Shader sky, const SkyLocs &locs,

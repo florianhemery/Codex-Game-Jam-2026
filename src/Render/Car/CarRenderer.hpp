@@ -21,7 +21,7 @@ class CarRenderer {
 public:
     static void drawCar(const Car &car, Color bodyColor);
     static void drawCarEx(const Car &car, const CarVisual &vis,
-        Color bodyColor);
+        Color bodyColor, Shader litShader = {});
     static CarLightPoints getCarLightPoints(const Car &car);
 };
 
