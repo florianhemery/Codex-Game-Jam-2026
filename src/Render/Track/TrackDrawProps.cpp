@@ -5,6 +5,8 @@
 ** Track prop and spectator draw pass
 */
 
+#include <cmath>
+
 #include "Render/Track/TrackDrawPass.hpp"
 #include "Render/Track/TrackMeshBuilder.hpp"
 #include "Render/Track/TrackRenderer.hpp"

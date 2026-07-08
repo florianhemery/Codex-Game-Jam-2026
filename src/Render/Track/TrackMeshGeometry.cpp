@@ -5,6 +5,8 @@
 ** Track mesh buffer and box geometry
 */
 
+#include <cstring>
+
 #include "Render/Track/TrackMeshBuilder.hpp"
 #include "rlgl.h"
 

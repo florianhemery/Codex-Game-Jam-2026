@@ -5,6 +5,8 @@
 ** Track finish line and mountain ring meshes
 */
 
+#include <cmath>
+
 #include "Render/Track/TrackMeshBuilder.hpp"
 #include "rlgl.h"
 

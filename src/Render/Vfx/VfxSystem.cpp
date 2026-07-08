@@ -8,6 +8,7 @@
 #include "Render/Vfx/VfxSystem.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 #include "Render/Vfx/VfxDrawPass.hpp"
 #include "Render/Vfx/VfxSystemImpl.hpp"

@@ -5,6 +5,8 @@
 ** HUD speed gauge drawing
 */
 
+#include <cmath>
+
 #include "Render/Hud/HudRaceOverlay.hpp"
 #include "Render/Hud/HudGfx.hpp"
 

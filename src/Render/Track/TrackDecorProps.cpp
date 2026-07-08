@@ -5,6 +5,8 @@
 ** Track props grandstands and waypoint decor
 */
 
+#include <cmath>
+
 #include "Render/Track/TrackDecorBuilder.hpp"
 #include "Render/Track/TrackMeshBuilder.hpp"
 #include "Render/Track/TrackRenderer.hpp"
