@@ -8,7 +8,6 @@
 #include "World/Aurelia/AureliaData.hpp"
 
 #include <algorithm>
-#include <cmath>
 #include <string>
 #include <vector>
 
@@ -35,41 +34,87 @@ std::vector<PoiInstance> g_pois = {
         -1, -1, RegionId::PORT, Color{220, 140, 120, 255}},
     {"garage_volcano", PoiType::GARAGE, "Garage Observatoire", 96.0f, 144.0f,
         10.0f, -1, -1, -1, RegionId::VOLCANO, Color{255, 180, 100, 255}},
-    {"mission_marina", PoiType::MISSION_GIVER, "Convois cote", 64.0f, 32.0f,
-        12.0f, -1, 0, -1, RegionId::MARINA, Color{255, 255, 120, 255}},
-    {"mission_forest", PoiType::MISSION_GIVER, "Chrono brume", -64.0f, -96.0f,
-        12.0f, -1, 1, -1, RegionId::FOREST, Color{200, 255, 200, 255}},
-    {"mission_port", PoiType::MISSION_GIVER, "Livraison docks", 192.0f, -80.0f,
-        12.0f, -1, 2, -1, RegionId::PORT, Color{255, 200, 160, 255}},
-    {"mission_volcano", PoiType::MISSION_GIVER, "Remontee caldeira", 128.0f,
-        192.0f, 12.0f, -1, 3, -1, RegionId::VOLCANO, Color{255, 160, 100, 255}},
+    {"mission_marina", PoiType::MISSION_GIVER, "Convoi du Bord de Mer", 64.0f,
+        32.0f, 12.0f, -1, 0, -1, RegionId::MARINA, Color{255, 255, 120, 255}},
+    {"mission_forest", PoiType::MISSION_GIVER, "Le Fantome de la Brume",
+        -64.0f, -96.0f, 12.0f, -1, 1, -1, RegionId::FOREST,
+        Color{200, 255, 200, 255}},
+    {"mission_port", PoiType::MISSION_GIVER, "Livraison Usine Rouge", 192.0f,
+        -80.0f, 12.0f, -1, 2, -1, RegionId::PORT, Color{255, 200, 160, 255}},
+    {"mission_volcano", PoiType::MISSION_GIVER, "Remontee de la Caldeira",
+        128.0f, 192.0f, 12.0f, -1, 4, -1, RegionId::VOLCANO,
+        Color{255, 160, 100, 255}},
+    {"mission_marina_time", PoiType::MISSION_GIVER, "Chrono de l'Anneau",
+        40.0f, 24.0f, 12.0f, -1, 5, -1, RegionId::MARINA,
+        Color{255, 255, 120, 255}},
+    {"mission_marina_delivery", PoiType::MISSION_GIVER, "Pieces du Littoral",
+        0.0f, -8.0f, 12.0f, -1, 7, -1, RegionId::MARINA,
+        Color{255, 255, 120, 255}},
+    {"mission_forest_fog", PoiType::MISSION_GIVER, "Evasion sous la Canopee",
+        -20.0f, -100.0f, 12.0f, -1, 3, -1, RegionId::FOREST,
+        Color{200, 255, 200, 255}},
+    {"mission_forest_convoy", PoiType::MISSION_GIVER, "Convoi Forestier",
+        -48.0f, -140.0f, 12.0f, -1, 6, -1, RegionId::FOREST,
+        Color{200, 255, 200, 255}},
+    {"mission_forest_north", PoiType::MISSION_GIVER, "Brume du Nord", -100.0f,
+        -60.0f, 12.0f, -1, 9, -1, RegionId::FOREST, Color{200, 255, 200, 255}},
+    {"mission_port_ghost", PoiType::MISSION_GIVER, "Fantome des Docks", 140.0f,
+        -60.0f, 12.0f, -1, 8, -1, RegionId::PORT, Color{255, 200, 160, 255}},
+    {"mission_port_time", PoiType::MISSION_GIVER, "Chrono des Quais", 200.0f,
+        -16.0f, 12.0f, -1, 11, -1, RegionId::PORT, Color{255, 200, 160, 255}},
+    {"mission_volcano_cendres", PoiType::MISSION_GIVER, "Cendres Rapides",
+        160.0f, 160.0f, 12.0f, -1, 10, -1, RegionId::VOLCANO,
+        Color{255, 160, 100, 255}},
 };
 
 std::vector<MissionDef> g_missions = {
-    {"m_convoy_coast", "Convois cote", MissionKind::CONVOY, RegionId::MARINA,
-        95.0f, 12, BiomeId::COAST},
-    {"m_ghost_forest", "Fantome brumeux", MissionKind::GHOST_CHASE,
-        RegionId::FOREST, 110.0f, 15, BiomeId::FOREST},
-    {"m_delivery_port", "Livraison Usine", MissionKind::DELIVERY, RegionId::PORT,
-        130.0f, 15, BiomeId::PORT},
-    {"m_fog_escape", "Evasion brouillard", MissionKind::FOG_ESCAPE,
-        RegionId::FOREST, 100.0f, 18, BiomeId::FOREST},
-    {"m_caldera", "Remontee caldeira", MissionKind::CALDERA_CLIMB,
-        RegionId::VOLCANO, 140.0f, 20, BiomeId::VOLCANO},
-    {"m_time_marina", "Chrono Marina", MissionKind::TIME_TRIAL,
-        RegionId::MARINA, 85.0f, 10, BiomeId::COAST},
-    {"m_convoy_forest", "Convois forestier", MissionKind::CONVOY,
-        RegionId::FOREST, 120.0f, 12, BiomeId::FOREST},
-    {"m_delivery_coast", "Pieces littoral", MissionKind::DELIVERY,
-        RegionId::MARINA, 100.0f, 10, BiomeId::COAST},
-    {"m_ghost_port", "Ghost industriel", MissionKind::GHOST_CHASE,
-        RegionId::PORT, 125.0f, 14, BiomeId::PORT},
-    {"m_fog_north", "Brume nord", MissionKind::FOG_ESCAPE, RegionId::FOREST,
-        105.0f, 16, BiomeId::FOREST},
-    {"m_caldera2", "Cendres rapides", MissionKind::CALDERA_CLIMB,
-        RegionId::VOLCANO, 135.0f, 18, BiomeId::VOLCANO},
-    {"m_time_port", "Chrono docks", MissionKind::TIME_TRIAL, RegionId::PORT,
-        115.0f, 12, BiomeId::PORT},
+    {"m_convoy_coast", "Convoi du Bord de Mer",
+        "Escortez le camion de pieces le long de la corniche sans le semer.",
+        MissionKind::CONVOY, RegionId::MARINA, 95.0f, 12, BiomeId::COAST},
+    {"m_ghost_forest", "Le Fantome de la Brume",
+        "Rattrapez le chrono fantome avant qu'il ne disparaisse dans le "
+        "brouillard.",
+        MissionKind::GHOST_CHASE, RegionId::FOREST, 110.0f, 15,
+        BiomeId::FOREST},
+    {"m_delivery_port", "Livraison Usine Rouge",
+        "Amenez les pieces detachees a l'atelier avant la fermeture des "
+        "docks.",
+        MissionKind::DELIVERY, RegionId::PORT, 130.0f, 15, BiomeId::PORT},
+    {"m_fog_escape", "Evasion sous la Canopee",
+        "Filez vers le sud avant que la brume n'avale la route.",
+        MissionKind::FOG_ESCAPE, RegionId::FOREST, 100.0f, 18,
+        BiomeId::FOREST},
+    {"m_caldera", "Remontee de la Caldeira",
+        "Grimpez jusqu'a l'observatoire avant que les cendres ne "
+        "retombent.",
+        MissionKind::CALDERA_CLIMB, RegionId::VOLCANO, 140.0f, 20,
+        BiomeId::VOLCANO},
+    {"m_time_marina", "Chrono de l'Anneau",
+        "Un tour rapide sur l'Anneau Vitesse, comme au bon vieux temps des "
+        "essais.",
+        MissionKind::TIME_TRIAL, RegionId::MARINA, 85.0f, 10, BiomeId::COAST},
+    {"m_convoy_forest", "Convoi Forestier",
+        "Guidez le fourgon de pieces a travers les serpentins boises.",
+        MissionKind::CONVOY, RegionId::FOREST, 120.0f, 12, BiomeId::FOREST},
+    {"m_delivery_coast", "Pieces du Littoral",
+        "Livrez le kit de restauration au garage avant la maree haute.",
+        MissionKind::DELIVERY, RegionId::MARINA, 100.0f, 10, BiomeId::COAST},
+    {"m_ghost_port", "Fantome des Docks",
+        "Un ancien pilote d'usine a laisse son chrono. A vous de l'effacer.",
+        MissionKind::GHOST_CHASE, RegionId::PORT, 125.0f, 14, BiomeId::PORT},
+    {"m_fog_north", "Brume du Nord",
+        "Ressortez de la foret avant que le brouillard ne coupe la "
+        "visibilite.",
+        MissionKind::FOG_ESCAPE, RegionId::FOREST, 105.0f, 16,
+        BiomeId::FOREST},
+    {"m_caldera2", "Cendres Rapides",
+        "Filez vers le Circuit des Cendres avant la prochaine coulee.",
+        MissionKind::CALDERA_CLIMB, RegionId::VOLCANO, 135.0f, 18,
+        BiomeId::VOLCANO},
+    {"m_time_port", "Chrono des Quais",
+        "Un chrono honnete sur le Circuit Technique, entre les grues et "
+        "l'acier.",
+        MissionKind::TIME_TRIAL, RegionId::PORT, 115.0f, 12, BiomeId::PORT},
 };
 
 RoadGraph g_roads{};
@@ -153,6 +198,46 @@ void AureliaData::attachRaceLabels(const std::vector<TrackDef> &presets)
     }
 }
 
+namespace {
+
+struct LoreSpot {
+    float x;
+    float z;
+    RegionId region;
+};
+
+// 20 plaques des Veilleurs, cinq par region, placees pres des routes et
+// reperes existants (hubs, garages, circuits) pour rester accessibles a
+// pied/en voiture dans les WorldBounds actuelles.
+const LoreSpot kLoreSpots[20] = {
+    // Marina (cote solaire)
+    {20.0f, -10.0f, RegionId::MARINA},
+    {40.0f, 20.0f, RegionId::MARINA},
+    {0.0f, 20.0f, RegionId::MARINA},
+    {60.0f, 10.0f, RegionId::MARINA},
+    {28.0f, -40.0f, RegionId::MARINA},
+    // Foret brumeuse
+    {-50.0f, -70.0f, RegionId::FOREST},
+    {-90.0f, -140.0f, RegionId::FOREST},
+    {-30.0f, -110.0f, RegionId::FOREST},
+    {-70.0f, -50.0f, RegionId::FOREST},
+    {-100.0f, -170.0f, RegionId::FOREST},
+    // Port industriel
+    {130.0f, -40.0f, RegionId::PORT},
+    {170.0f, -10.0f, RegionId::PORT},
+    {190.0f, -60.0f, RegionId::PORT},
+    {150.0f, -70.0f, RegionId::PORT},
+    {200.0f, -30.0f, RegionId::PORT},
+    // Caldeira volcanique
+    {70.0f, 100.0f, RegionId::VOLCANO},
+    {100.0f, 150.0f, RegionId::VOLCANO},
+    {60.0f, 180.0f, RegionId::VOLCANO},
+    {180.0f, 190.0f, RegionId::VOLCANO},
+    {140.0f, 170.0f, RegionId::VOLCANO},
+};
+
+} // namespace
+
 void AureliaData::initCollectibles()
 {
     static bool done = false;
@@ -161,24 +246,17 @@ void AureliaData::initCollectibles()
     }
     done = true;
     for (int i = 0; i < 20; ++i) {
-        float angle = static_cast<float>(i) / 20.0f * 6.28318f;
-        float radius = 80.0f + static_cast<float>(i % 5) * 24.0f;
+        const LoreSpot &spot = kLoreSpots[static_cast<size_t>(i)];
         PoiInstance lore{};
         lore.id = "lore";
         lore.type = PoiType::COLLECTIBLE;
-        lore.label = "Fragment Veilleur";
-        lore.worldX = std::cos(angle) * radius;
-        lore.worldZ = std::sin(angle) * radius;
+        lore.label = "Plaque des Veilleurs";
+        lore.worldX = spot.x;
+        lore.worldZ = spot.z;
         lore.radius = 6.0f;
         lore.loreIndex = i;
+        lore.region = spot.region;
         lore.color = Color{255, 220, 120, 200};
-        if (lore.worldZ > 120.0f) {
-            lore.region = RegionId::VOLCANO;
-        } else if (lore.worldX > 100.0f) {
-            lore.region = RegionId::PORT;
-        } else if (lore.worldZ < -60.0f) {
-            lore.region = RegionId::FOREST;
-        }
         g_pois.push_back(lore);
     }
 }

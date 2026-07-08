@@ -60,7 +60,7 @@ void AureliaWorld::update(float dt, const CarInput &input, float steerSmoothed,
     streamer_.ensureLoaded();
     renderer_.sync(streamer_);
 
-    traffic_.update(dt, streamer_, px, pz);
+    traffic_.update(dt, streamer_, px, pz, timeOfDay_, currentBiome());
     missions_.update(dt, px, pz, playerCar_.speed());
     updateActivePois();
     collectNearbyLore();

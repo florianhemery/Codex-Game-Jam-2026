@@ -66,6 +66,7 @@ struct PoiInstance {
 struct MissionDef {
     const char *id = "";
     const char *title = "";
+    const char *description = "";
     MissionKind kind = MissionKind::CONVOY;
     RegionId region = RegionId::MARINA;
     float targetTime = 120.0f;

@@ -2,11 +2,18 @@
 
 ## La péninsule
 
-**Aurélia** est une péninsule fictive de ~12 km² dédiée à la culture automobile.
-Autrefois laboratoire d'essais des « Veilleurs », elle mélange littoral ensoleillé,
-forêt brumeuse, port industriel et caldeira volcanique. Le joueur roule librement
-entre les biomes ; les circuits ne sont plus des portails abstraits mais des
-installations ancrées dans le paysage.
+**Aurélia** est une péninsule fictive dédiée à la culture automobile, à terme
+~12 km² (cible M4). Autrefois laboratoire d'essais des « Veilleurs », elle
+mélange littoral ensoleillé, forêt brumeuse, port industriel et caldeira
+volcanique. Le joueur roule librement entre les biomes ; les circuits ne sont
+plus des portails abstraits mais des installations ancrées dans le paysage.
+
+**État actuel (M1, playable) :** la péninsule jouable couvre environ
+340×400 m (`WorldBounds` dans `src/World/Aurelia/AureliaBounds.hpp`) — un
+seul « quartier » central par biome, pas encore l'échelle complète.
+L'extension vers 12 km² nécessite une refonte coordonnée (réseau routier,
+seuils de biomes, positions de POI, rayon de streaming des chunks) plutôt
+qu'un simple agrandissement des bornes : voir An 1/T3 du plan directeur.
 
 ## Pôles d'activité
 

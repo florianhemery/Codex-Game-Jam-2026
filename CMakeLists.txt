@@ -235,6 +235,30 @@ target_link_libraries(world_chunk_test PRIVATE raylib)
 target_compile_features(world_chunk_test PRIVATE cxx_std_20)
 racer_bundle_runtime_dlls(world_chunk_test)
 
+# Outil headless : conduit reellement la voiture joueur a travers le monde
+# ouvert Aurelia (via PlayerDriveSystem, le meme chemin d'execution que le
+# jeu) et verifie des invariants de trajectoire -- pas de saut de hauteur
+# brutal (route qui devient une falaise/un canyon), pas de NaN, pas de
+# sortie des WorldBounds, vitesse moyenne plausible. Complementaire de
+# world_chunk_test (qui echantillonne le terrain de facon statique) et de
+# race_sim_debug (circuit ferme, IA vs IA) : celui-ci couvre le monde
+# ouvert en conduite reelle.
+add_executable(regression_harness
+    tests/regression_harness.cpp
+    src/Vehicle/Car.cpp
+    src/World/Chunk/ChunkTypes.cpp
+    src/World/Chunk/ChunkGenerator.cpp
+    src/World/Aurelia/AureliaTypes.cpp
+    src/World/Aurelia/AureliaData.cpp
+    src/World/Stream/ChunkStreamer.cpp
+    src/World/Road/RoadGraph.cpp
+    src/World/Sim/PlayerDriveSystem.cpp
+)
+target_include_directories(regression_harness PRIVATE src)
+target_link_libraries(regression_harness PRIVATE raylib)
+target_compile_features(regression_harness PRIVATE cxx_std_20)
+racer_bundle_runtime_dlls(regression_harness)
+
 racer_add_demo(world_editor
     src/Tools/WorldEditor.cpp
     src/World/Chunk/ChunkTypes.cpp

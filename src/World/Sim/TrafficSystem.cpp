@@ -16,6 +16,8 @@
 
 
 
+#include <algorithm>
+
 #include <cmath>
 
 
@@ -31,8 +33,7 @@ namespace {
 constexpr float kSpawnRadius = 140.0f;
 
 constexpr float kDespawnRadius = 200.0f;
-
-
+constexpr int kMinActiveVehicles = 2;
 
 float distXZ(float ax, float az, float bx, float bz)
 
@@ -58,13 +59,15 @@ TrafficSystem::TrafficSystem(const RoadGraph &graph) : graph_(graph) {}
 
 void TrafficSystem::spawnIfNeeded(float playerX, float playerZ,
 
-    const ChunkStreamer &streamer)
+    const ChunkStreamer &streamer, int targetActiveCount)
 
 {
 
     if (graph_.edges().empty()
 
-        || static_cast<int>(vehicles_.size()) >= kMaxVehicles) {
+        || static_cast<int>(vehicles_.size()) >= kMaxVehicles
+
+        || activeCount() >= targetActiveCount) {
 
         return;
 
@@ -154,19 +157,185 @@ void TrafficSystem::despawnFar(float playerX, float playerZ)
 
 
 
-void TrafficSystem::update(float dt, const ChunkStreamer &streamer,
-
-    float playerX, float playerZ)
+int TrafficSystem::activeCount() const
 
 {
 
-    spawnIfNeeded(playerX, playerZ, streamer);
+    int count = 0;
+
+    for (const TrafficVehicle &v : vehicles_) {
+
+        if (v.active) {
+
+            ++count;
+
+        }
+
+    }
+
+    return count;
+
+}
+
+
+
+void TrafficSystem::refreshVisible()
+
+{
+
+    visibleVehicles_.clear();
+
+    for (const TrafficVehicle &v : vehicles_) {
+
+        if (v.active) {
+
+            visibleVehicles_.push_back(v);
+
+        }
+
+    }
+
+}
+
+
+
+float TrafficSystem::computeDensityTarget(float timeOfDay, BiomeId biome)
+
+{
+
+    // Time-of-day shapes a rush-hour curve: quiet at night, ramping up at
+    // dawn into a busy morning/midday peak, easing through the afternoon
+    // and winding down again at dusk. Mirrors the bands used by
+    // AureliaWorld::ambianceForTime()/fogDensity() for the same cycle.
+
+    float timeFactor;
+
+    if (timeOfDay < 0.22f || timeOfDay > 0.88f) {
+
+        timeFactor = 0.30f; // dead of night: streets mostly empty
+
+    } else if (timeOfDay < 0.32f) {
+
+        float t = (timeOfDay - 0.22f) / 0.10f;
+
+        timeFactor = 0.30f + t * 0.55f; // dawn ramp-up
+
+    } else if (timeOfDay < 0.55f) {
+
+        timeFactor = 1.0f; // morning/midday rush
+
+    } else if (timeOfDay < 0.72f) {
+
+        timeFactor = 0.70f; // afternoon lull
+
+    } else {
+
+        float t = (timeOfDay - 0.72f) / 0.16f;
+
+        timeFactor = 0.70f - t * 0.40f; // dusk wind-down
+
+    }
+
+
+
+    // Biome flavor from the world bible: the Port's docks run delivery
+    // traffic around the clock, the Volcano's treacherous roads keep most
+    // drivers away, the Forest's backroads are quiet, and the Coast/Marina
+    // is the baseline.
+
+    float biomeFactor = 1.0f;
+
+    switch (biome) {
+
+    case BiomeId::PORT:
+
+        biomeFactor = 1.3f;
+
+        break;
+
+    case BiomeId::VOLCANO:
+
+        biomeFactor = 0.45f;
+
+        break;
+
+    case BiomeId::FOREST:
+
+        biomeFactor = 0.75f;
+
+        break;
+
+    case BiomeId::COAST:
+
+    default:
+
+        biomeFactor = 1.0f;
+
+        break;
+
+    }
+
+
+
+    return std::clamp(timeFactor * biomeFactor, 0.15f, 1.0f);
+
+}
+
+
+
+void TrafficSystem::update(float dt, const ChunkStreamer &streamer,
+
+    float playerX, float playerZ, float timeOfDay, BiomeId biome)
+
+{
+
+    densityTarget_ = computeDensityTarget(timeOfDay, biome);
+
+    int targetActiveCount = std::clamp(
+
+        static_cast<int>(std::round(densityTarget_
+
+            * static_cast<float>(kMaxVehicles))),
+
+        kMinActiveVehicles, kMaxVehicles);
+
+
+
+    spawnIfNeeded(playerX, playerZ, streamer, targetActiveCount);
 
     despawnFar(playerX, playerZ);
 
 
 
+    // Reactivate parked vehicles first, cheaper than spawning a new one,
+    // so a density rise (e.g. entering the Port) brings idle pool slots
+    // back to life immediately instead of waiting on the spawn timer.
+
     for (TrafficVehicle &v : vehicles_) {
+
+        if (activeCount() >= targetActiveCount) {
+
+            break;
+
+        }
+
+        if (!v.active) {
+
+            v.active = true;
+
+        }
+
+    }
+
+
+
+    for (TrafficVehicle &v : vehicles_) {
+
+        if (!v.active) {
+
+            continue;
+
+        }
 
         Vector2 tangent = graph_.edgeTangent(v.edgeIndex, v.t);
 
@@ -195,11 +364,30 @@ void TrafficSystem::update(float dt, const ChunkStreamer &streamer,
 
             tangent = graph_.edgeTangent(v.edgeIndex, v.t);
 
+
+
+            // Natural respawn point: a vehicle that just completed its
+            // loop is parked instead of continuing onto the next edge
+            // when the pool is over the current density target, thinning
+            // traffic without destroying pooled instances.
+
+            if (activeCount() > targetActiveCount) {
+
+                v.active = false;
+
+                continue;
+
+            }
+
         }
 
         v.heading = std::atan2(tangent.x, tangent.y);
 
     }
+
+
+
+    refreshVisible();
 
 }
 

@@ -33,8 +33,9 @@ unsigned int AIDriver::hashU32(unsigned int value)
     return value;
 }
 
-AIDriver::AIDriver(float skill, unsigned int seed)
+AIDriver::AIDriver(float skill, unsigned int seed, AiDifficulty difficulty)
     : skill_(skill)
+    , difficulty_(difficulty)
 {
     if (seed == 0) {
         seed = static_cast<unsigned int>(skill * kDefaultSeedMultiplier)
@@ -45,18 +46,44 @@ AIDriver::AIDriver(float skill, unsigned int seed)
         / kLaneHashNormalizer * 2.0f - 1.0f) * kLaneOffsetRange;
     float weakness = std::max(0.0f, 1.0f - skill_);
     nitroReserve_ = kNitroReserveBase + weakness * kNitroReserveWeaknessScale;
+
+    switch (difficulty_) {
+    case AiDifficulty::Easy:
+        speedMul_ = kEasySpeedMul;
+        gripMul_ = kEasyGripMul;
+        lookaheadMul_ = kEasyLookaheadMul;
+        steerMul_ = kEasySteerMul;
+        nitroMul_ = kEasyNitroMul;
+        break;
+    case AiDifficulty::Hard:
+        speedMul_ = kHardSpeedMul;
+        gripMul_ = kHardGripMul;
+        lookaheadMul_ = kHardLookaheadMul;
+        steerMul_ = kHardSteerMul;
+        nitroMul_ = kHardNitroMul;
+        break;
+    case AiDifficulty::Normal:
+    default:
+        speedMul_ = 1.0f;
+        gripMul_ = 1.0f;
+        lookaheadMul_ = 1.0f;
+        steerMul_ = 1.0f;
+        nitroMul_ = 1.0f;
+        break;
+    }
 }
 
 AIDriver::CornerLimits AIDriver::anticipateCorners(
     const Car &car,
     const Track &track,
     float currentDist,
-    float speedAbs) const
+    float speedAbs,
+    float rubberBand) const
 {
     CornerLimits limits;
     limits.vLimit = kUnlimitedSpeed;
     float chord = kChordBase + speedAbs * kChordSpeedScale;
-    scanCornerSamples(limits, car, track, currentDist, chord);
+    scanCornerSamples(limits, car, track, currentDist, chord, rubberBand);
     return limits;
 }
 
@@ -65,7 +92,8 @@ void AIDriver::scanCornerSamples(
     const Car &car,
     const Track &track,
     float currentDist,
-    float chord) const
+    float chord,
+    float rubberBand) const
 {
     Vector2 prev = track.pointAtDistance(currentDist);
     Vector2 cur = track.pointAtDistance(currentDist + chord);
@@ -76,7 +104,8 @@ void AIDriver::scanCornerSamples(
         float nextHeading = std::atan2(next.x - cur.x, next.y - cur.y);
         float turnPerUnit = std::fabs(
             normalizeAngle(nextHeading - prevHeading)) / chord;
-        accumulateCornerSample(limits, car, chord, turnPerUnit, sampleIndex);
+        accumulateCornerSample(
+            limits, car, chord, turnPerUnit, sampleIndex, rubberBand);
         prev = cur;
         cur = next;
     }
@@ -87,12 +116,13 @@ void AIDriver::accumulateCornerSample(
     const Car &car,
     float chord,
     float turnPerU,
-    int sampleIndex) const
+    int sampleIndex,
+    float rubberBand) const
 {
     limits.maxTurnPerU = std::max(limits.maxTurnPerU, turnPerU);
     float vCorner = std::max(
         kMinCornerSpeed,
-        kGripBudget * skill_ * skill_
+        kGripBudget * gripMul_ * rubberBand * skill_ * skill_
             / std::max(turnPerU, kMinTurnPerUnit));
     float distToTurn = chord * static_cast<float>(sampleIndex - 1);
     float brakeAccel = car.tuning().braking * kBrakeFraction;
@@ -103,7 +133,7 @@ void AIDriver::accumulateCornerSample(
 
 float AIDriver::computeLookahead(float speedAbs) const
 {
-    return kLookaheadBase + speedAbs * kLookaheadSpeedScale;
+    return (kLookaheadBase + speedAbs * kLookaheadSpeedScale) * lookaheadMul_;
 }
 
 Vector2 AIDriver::offsetTargetFromLane(
@@ -151,13 +181,15 @@ float AIDriver::computeTargetSpeed(
     const Car &car,
     float turnSeverity,
     float vLimit,
-    bool wantNitro) const
+    bool wantNitro,
+    float rubberBand) const
 {
     float alignFactor = std::clamp(
         1.0f - turnSeverity * kAlignTurnScale,
         kAlignFactorMin,
         kAlignFactorMax);
-    float vCruise = car.tuning().maxSpeed * alignFactor * skill_;
+    float vCruise = car.tuning().maxSpeed * alignFactor * skill_
+        * speedMul_ * rubberBand;
     if (wantNitro) {
         vCruise += car.tuning().nitroMaxSpeedBonus;
     }
@@ -170,7 +202,8 @@ bool AIDriver::shouldUseNitro(
     float vLimit,
     float turnSeverity) const
 {
-    float nitroMargin = kNitroMarginBase + kNitroMarginSkillScale * skill_;
+    float nitroMargin = (kNitroMarginBase + kNitroMarginSkillScale * skill_)
+        / nitroMul_;
     return car.nitroRemaining() > nitroReserve_
         && turnSeverity < kNitroTurnThreshold
         && vLimit > speedAbs + nitroMargin;
@@ -197,30 +230,35 @@ void AIDriver::applyDriveInput(
     float speedAbs,
     float vLimit,
     float turnSeverity,
+    float rubberBand,
     CarInput &input) const
 {
     bool wantNitro = shouldUseNitro(car, speedAbs, vLimit, turnSeverity);
-    float vTarget = computeTargetSpeed(car, turnSeverity, vLimit, wantNitro);
+    float vTarget = computeTargetSpeed(
+        car, turnSeverity, vLimit, wantNitro, rubberBand);
     applyThrottle(car, speedAbs, vLimit, vTarget, input);
     input.handbrake = turnSeverity > kHandbrakeTurnThreshold
         && speedAbs > kHandbrakeMinSpeed;
     input.nitro = wantNitro && input.throttle >= kFullThrottle;
 }
 
-CarInput AIDriver::computeInput(const Car &car, const Track &track) const
+CarInput AIDriver::computeInput(
+    const Car &car, const Track &track, float rubberBand) const
 {
+    float rb = std::clamp(rubberBand, kRubberBandMin, kRubberBandMax);
     Track::Progress trackProgress = track.projectPosition(car.position());
     float currentDist = track.cumulativeDistance(trackProgress);
     float speedAbs = std::fabs(car.speed());
-    CornerLimits limits = anticipateCorners(car, track, currentDist, speedAbs);
+    CornerLimits limits = anticipateCorners(
+        car, track, currentDist, speedAbs, rb);
     Vector2 target = computeTarget(
         track, currentDist, speedAbs, limits.maxTurnPerU);
     float headingError = computeHeadingError(car, target);
     float turnSeverity = std::fabs(headingError);
     CarInput input;
     input.steer = std::clamp(
-        headingError * kSteerGain, kSteerMin, kSteerMax);
-    applyDriveInput(car, speedAbs, limits.vLimit, turnSeverity, input);
+        headingError * kSteerGain * steerMul_, kSteerMin, kSteerMax);
+    applyDriveInput(car, speedAbs, limits.vLimit, turnSeverity, rb, input);
     return input;
 }
 

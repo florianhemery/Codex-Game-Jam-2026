@@ -15,9 +15,11 @@
 
 namespace racer {
 
-RaceState::RaceState(Track track, int lapsToWin, int aiCount)
+RaceState::RaceState(
+    Track track, int lapsToWin, int aiCount, AiDifficulty difficulty)
     : track_(std::move(track))
     , lapsToWin_(lapsToWin)
+    , difficulty_(difficulty)
 {
     int totalCars = aiCount + 1;
 
@@ -25,6 +27,7 @@ RaceState::RaceState(Track track, int lapsToWin, int aiCount)
     for (int i = 0; i < aiCount; ++i) {
         initAiRacer(i, totalCars);
     }
+    rubberBandFactors_.assign(racers_.size(), 1.0f);
 }
 
 void RaceState::initPlayer(int totalCars)
@@ -60,7 +63,7 @@ void RaceState::initAiRacer(int aiIndex, int totalCars)
     ai.car.tuning().maxSpeed *= 0.90f + 0.10f * skill;
     ai.car.tuning().acceleration *= 0.85f + 0.15f * skill;
     unsigned int seed = static_cast<unsigned int>(1000 + aiIndex * 7919);
-    aiDrivers_.emplace_back(skill, seed);
+    aiDrivers_.emplace_back(skill, seed, difficulty_);
 }
 
 void RaceState::update(float dt, const CarInput& playerInput)
@@ -107,9 +110,15 @@ void RaceState::updateWrapUp(float dt)
         if (racer.finished) {
             continue;
         }
-        CarInput input = racer.isPlayer
-            ? idle
-            : aiDrivers_[i - 1].computeInput(racer.car, track_);
+        CarInput input;
+        if (racer.isPlayer) {
+            input = idle;
+        } else {
+            float rubberBand = computeRubberBand(racer);
+            rubberBandFactors_[i] = rubberBand;
+            input = aiDrivers_[i - 1].computeInput(
+                racer.car, track_, rubberBand);
+        }
         racer.lastInput = input;
         racer.car.update(input, simDt);
         Track::Progress prog = track_.projectPosition(racer.car.position());
@@ -182,6 +191,34 @@ float RaceState::startBoostRemaining() const
     return racers_[static_cast<size_t>(playerIndex_)].car.startBoostTimer();
 }
 
+float RaceState::rubberBandFactor(int racerIndex) const
+{
+    if (racerIndex < 0
+        || racerIndex >= static_cast<int>(rubberBandFactors_.size())) {
+        return 1.0f;
+    }
+    return rubberBandFactors_[static_cast<size_t>(racerIndex)];
+}
+
+// Ecart de progression (joueur - IA) converti en multiplicateur borne :
+// une IA loin derriere (ecart positif) recoit un leger coup de pouce, une IA
+// loin devant (ecart negatif) est legerement bridee. Plafonne a
+// +/-kRubberBandMaxBoost, donc jamais d'effet boule-de-neige.
+float RaceState::computeRubberBand(const RacerEntry& racer) const
+{
+    if (racer.isPlayer
+        || playerIndex_ < 0
+        || playerIndex_ >= static_cast<int>(racers_.size())) {
+        return 1.0f;
+    }
+    const RacerEntry& player = racers_[static_cast<size_t>(playerIndex_)];
+    float gap = raceProgress(player) - raceProgress(racer);
+    float fullGap = std::max(
+        1.0f, track_.totalLength() * kRubberBandFullGapFraction);
+    float normalized = std::clamp(gap / fullGap, -1.0f, 1.0f);
+    return 1.0f + normalized * kRubberBandMaxBoost;
+}
+
 void RaceState::updateCountdown(float dt)
 {
     countdownRemaining_ -= dt;
@@ -232,9 +269,15 @@ void RaceState::updateSingleRacer(
     if (racer.finished) {
         return;
     }
-    CarInput input = racer.isPlayer
-        ? playerInput
-        : aiDrivers_[index - 1].computeInput(racer.car, track_);
+    CarInput input;
+    if (racer.isPlayer) {
+        input = playerInput;
+    } else {
+        float rubberBand = computeRubberBand(racer);
+        rubberBandFactors_[index] = rubberBand;
+        input = aiDrivers_[index - 1].computeInput(
+            racer.car, track_, rubberBand);
+    }
     if (racer.isPlayer && waitingForLaunch_ && input.throttle > 0.08f) {
         waitingForLaunch_ = false;
         applyLaunchGrade(elapsedTime_, racer);

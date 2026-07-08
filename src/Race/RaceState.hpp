@@ -48,7 +48,11 @@ struct RacerEntry {
 // tete d'une course a N tours.
 class RaceState {
 public:
-    RaceState(Track track, int lapsToWin, int aiCount);
+    RaceState(
+        Track track,
+        int lapsToWin,
+        int aiCount,
+        AiDifficulty difficulty = AiDifficulty::Normal);
 
     void update(float dt, const CarInput& playerInput);
 
@@ -70,6 +74,13 @@ public:
     float falseStartBannerTimer() const { return falseStartBanner_; }
     float startBoostRemaining() const;
 
+    AiDifficulty difficulty() const { return difficulty_; }
+    // Multiplicateur de rubber-banding actuellement applique au racer
+    // d'indice donne (1.0 pour le joueur ou si l'indice est invalide).
+    // Borne a +/-15% - cf. AIDriver::kRubberBandMin/Max. Sert a inspecter/
+    // debugger le systeme sans dependre d'assertions internes.
+    float rubberBandFactor(int racerIndex) const;
+
 private:
     void processCountdownInput(const CarInput &input);
     void beginRacing();
@@ -79,8 +90,10 @@ private:
     Track track_;
     std::vector<RacerEntry> racers_;
     std::vector<AIDriver> aiDrivers_;
+    std::vector<float> rubberBandFactors_;
     int playerIndex_ = 0;
     int lapsToWin_;
+    AiDifficulty difficulty_ = AiDifficulty::Normal;
     RacePhase phase_ = RacePhase::COUNTDOWN;
     float countdownRemaining_ = 3.0f;
     float elapsedTime_ = 0.0f;
@@ -97,6 +110,10 @@ private:
     static constexpr float kWrapUpMaxSeconds = 12.0f;
     static constexpr float kWrapUpTimeScale = 3.0f;
     static constexpr int kMaxFalseStarts = 1;
+    // Fraction de la longueur du circuit consideree comme un "plein" ecart
+    // pour le rubber-banding (au-dela, le multiplicateur plafonne).
+    static constexpr float kRubberBandFullGapFraction = 0.08f;
+    static constexpr float kRubberBandMaxBoost = 0.15f;
 
     void initPlayer(int totalCars);
     void initAiRacer(int aiIndex, int totalCars);
@@ -113,6 +130,7 @@ private:
     void finalizePlayerIfDone(RacerEntry& racer);
     void updateWrapUp(float dt);
     float raceProgress(const RacerEntry& racer) const;
+    float computeRubberBand(const RacerEntry& racer) const;
 };
 
 } // namespace racer

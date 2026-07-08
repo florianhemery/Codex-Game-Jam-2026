@@ -73,7 +73,7 @@ jobs:
 
       - name: Build
         shell: pwsh
-        run: cmake --build build --target racer world_chunk_test -j 4
+        run: cmake --build build --target racer world_chunk_test regression_harness -j 4
 
       - name: Run test suite
         shell: pwsh
@@ -87,4 +87,18 @@ jobs:
           }
           if (-not ($capturedOutput -join "`n" -match "OK: all \d+ Aurelia world checks passed")) {
             Write-Error "world_chunk_test output did not contain the expected success line"
+          }
+
+      - name: Run driving-feel regression harness
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $output = & .\build\regression_harness.exe 2>&1 | Tee-Object -Variable capturedOutput
+          $exitCode = $LASTEXITCODE
+          $capturedOutput | Write-Host
+          if ($exitCode -ne 0) {
+            Write-Error "regression_harness exited with code $exitCode"
+          }
+          if (-not ($capturedOutput -join "`n" -match "OK: all regression harness checks passed")) {
+            Write-Error "regression_harness output did not contain the expected success line"
           }
