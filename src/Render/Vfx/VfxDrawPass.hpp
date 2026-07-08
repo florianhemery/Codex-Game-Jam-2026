@@ -16,6 +16,8 @@ namespace racer {
 
 struct VfxDrawPass {
     static VfxCamBasis makeCamBasis(const Camera3D &cam);
+    static unsigned char nearCameraFade(
+        const VfxParticle &p, const VfxCamBasis &cb, unsigned char alpha);
     static void emitQuad(
         const Texture2D &tex, Vector3 c, Vector3 hr, Vector3 hu, Color tint);
     static void computeBillboardAxes(

@@ -20,6 +20,26 @@
 
 namespace racer {
 
+namespace {
+
+void drawOrientedBox(
+    Vector3 center, Vector3 along, float alongLen,
+    float height, float depth, Color color)
+{
+    float yaw = std::atan2(-along.z, along.x) * RAD2DEG;
+
+    rlPushMatrix();
+    rlTranslatef(center.x, center.y, center.z);
+    rlRotatef(yaw, 0.0f, 1.0f, 0.0f);
+    DrawCube(Vector3{0.0f, 0.0f, 0.0f}, alongLen, height, depth, color);
+    DrawCubeWires(
+        Vector3{0.0f, 0.0f, 0.0f}, alongLen, height, depth,
+        Fade(BLACK, 0.3f));
+    rlPopMatrix();
+}
+
+} // namespace
+
 void TrackDrawPass::drawOneCloud(
     const TrackCloudInstance &cloud, float timeSeconds)
 {
@@ -48,24 +68,35 @@ void TrackDrawPass::drawClouds(
 }
 
 void TrackDrawPass::drawOneLamp(
-    const TrackLampInstance &lamp)
+    const TrackLampInstance &lamp, float timeSeconds)
 {
     DrawCylinderEx(
         lamp.base, lamp.top, 0.08f, 0.06f, 6, Color{90, 90, 95, 255});
     if (lamp.lit) {
-        DrawSphere(lamp.top, 0.22f, lamp.headColor);
+        float pulse = 0.85f + 0.15f * std::sin(timeSeconds * 5.5f
+            + lamp.base.x * 0.2f + lamp.base.z * 0.17f);
+        Color glow = Color{
+            static_cast<unsigned char>(lamp.headColor.r * pulse),
+            static_cast<unsigned char>(lamp.headColor.g * pulse),
+            static_cast<unsigned char>(lamp.headColor.b * pulse),
+            255,
+        };
+
+        DrawSphere(lamp.top, 0.22f, glow);
         DrawCylinder(
-            Vector3{lamp.top.x, 0.02f, lamp.top.z}, 1.0f, 1.0f, 0.02f, 10,
-            Fade(lamp.headColor, 0.14f));
+            Vector3{lamp.top.x, 0.02f, lamp.top.z},
+            0.8f + pulse * 0.4f, 0.8f + pulse * 0.4f, 0.02f, 10,
+            Fade(glow, 0.14f));
     } else {
         DrawSphere(lamp.top, 0.15f, lamp.headColor);
     }
 }
 
-void TrackDrawPass::drawLamps(const TrackRenderer &renderer)
+void TrackDrawPass::drawLamps(
+    const TrackRenderer &renderer, float timeSeconds)
 {
     for (const auto &lamp : renderer.lamps_)
-        drawOneLamp(lamp);
+        drawOneLamp(lamp, timeSeconds);
 }
 
 void TrackDrawPass::drawArchSpan(const TrackRenderer &renderer)
@@ -196,45 +227,25 @@ void TrackDrawPass::drawGantryCheckerCells(
     }
 }
 
-void TrackDrawPass::drawGantryLights(
-    float timeSeconds, Vector3 leftBase, float pillarH, Vector3 d)
-{
-    float lightPhase = std::fmod(timeSeconds * 2.0f, 3.0f);
-    Color lightColors[3] = {RED, YELLOW, GREEN};
-
-    for (int l = 0; l < 3; ++l) {
-        bool on = lightPhase >= static_cast<float>(l)
-            && lightPhase < static_cast<float>(l + 1);
-        Color lc = on ? lightColors[l] : Fade(lightColors[l], 0.25f);
-
-        DrawSphere(
-            Vector3{
-                leftBase.x + d.x * 0.8f,
-                pillarH - 1.5f - static_cast<float>(l) * 0.7f,
-                leftBase.z + d.z * 0.8f,
-            },
-            0.18f, lc);
-    }
-}
-
 void TrackDrawPass::drawStartGantry(
     const TrackRenderer &renderer, float timeSeconds)
 {
+    (void)timeSeconds;
     Vector3 p = renderer.startGantryPerp_;
-    Vector3 d = renderer.startGantryAlong_;
     float hw = renderer.trackHalfWidth_ + 1.5f;
     Vector3 leftBase{
-        renderer.startGantryBase_.x - p.x * hw, 0.0f,
+        renderer.startGantryBase_.x - p.x * hw,
+        renderer.startGantryBase_.y,
         renderer.startGantryBase_.z - p.z * hw,
     };
     Vector3 rightBase{
-        renderer.startGantryBase_.x + p.x * hw, 0.0f,
+        renderer.startGantryBase_.x + p.x * hw,
+        renderer.startGantryBase_.y,
         renderer.startGantryBase_.z + p.z * hw,
     };
     constexpr float pillarH = 7.5f;
 
     drawGantryBeam(leftBase, rightBase, p, hw, pillarH);
-    drawGantryLights(timeSeconds, leftBase, pillarH, d);
 }
 
 void TrackDrawPass::drawGrandstandRows(
@@ -242,21 +253,18 @@ void TrackDrawPass::drawGrandstandRows(
 {
     constexpr int kRows = 4;
     float stepDepth = 1.8f;
-    float stepWidth = gs.length;
     Color seatColor{110, 110, 118, 255};
 
     for (int row = 0; row < kRows; ++row) {
+        float outwardD = static_cast<float>(row) * stepDepth + stepDepth * 0.5f;
         Vector3 seatPos{
-            gs.origin.x + gs.outward.x
-                * (static_cast<float>(row) * stepDepth + 0.9f),
+            gs.origin.x + gs.outward.x * outwardD,
             static_cast<float>(row) * 1.1f + 0.55f,
-            gs.origin.z + gs.outward.z
-                * (static_cast<float>(row) * stepDepth + 0.9f),
+            gs.origin.z + gs.outward.z * outwardD,
         };
 
-        DrawCube(seatPos, stepWidth, 1.1f, stepDepth, seatColor);
-        DrawCubeWires(
-            seatPos, stepWidth, 1.1f, stepDepth, Fade(BLACK, 0.3f));
+        drawOrientedBox(
+            seatPos, gs.along, gs.length, 1.1f, stepDepth, seatColor);
     }
 }
 
@@ -265,17 +273,15 @@ void TrackDrawPass::drawGrandstandRoof(
 {
     constexpr int kRows = 4;
     float stepDepth = 1.8f;
-    float stepWidth = gs.length;
+    float outwardD = static_cast<float>(kRows) * stepDepth + stepDepth * 0.5f;
     Vector3 roofPos{
-        gs.origin.x + gs.outward.x
-            * (static_cast<float>(kRows) * stepDepth + 0.5f),
+        gs.origin.x + gs.outward.x * outwardD,
         static_cast<float>(kRows) * 1.1f + 1.2f,
-        gs.origin.z + gs.outward.z
-            * (static_cast<float>(kRows) * stepDepth + 0.5f),
+        gs.origin.z + gs.outward.z * outwardD,
     };
 
-    DrawCube(
-        roofPos, stepWidth + 1.0f, 0.25f, stepDepth + 1.5f,
+    drawOrientedBox(
+        roofPos, gs.along, gs.length + 1.0f, 0.25f, stepDepth + 1.5f,
         Color{180, 50, 50, 255});
 }
 
@@ -292,4 +298,6 @@ void TrackDrawPass::drawGrandstandStructure(
     for (const auto &gs : renderer.grandstands_)
         drawOneGrandstand(gs);
 }
+
+} // namespace racer
 

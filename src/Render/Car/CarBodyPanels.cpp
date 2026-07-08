@@ -6,10 +6,26 @@
 */
 
 #include "Render/Car/CarBodyDraw.hpp"
-#include "Render/Car/CarVisual.hpp"
+#include "Render/CarVisual.hpp"
+
+#include <algorithm>
+#include <cmath>
+
 #include "rlgl.h"
 
 namespace racer {
+
+namespace {
+constexpr float kHeadX = 0.48f;
+constexpr float kHeadY = 0.44f;
+constexpr float kHeadZ = 2.37f;
+constexpr float kBrakeX = 0.55f;
+constexpr float kBrakeY = 0.55f;
+constexpr float kBrakeZ = -2.20f;
+constexpr float kExhaustX = 0.17f;
+constexpr float kExhaustY = 0.24f;
+constexpr float kExhaustZ = -2.26f;
+} // namespace
 
 void CarBodyDraw::drawChassisAssembly(const CarBodyPalette &palette)
 {
@@ -73,11 +89,20 @@ void CarBodyDraw::drawOverlayEffects(
     drawRainLight(vis, time);
     drawBrakeGlow(vis);
     drawRainGlow(vis, time);
+    // Les effets translucides ne doivent pas ecrire la profondeur : dessines
+    // entre la camera et la voiture, leurs valeurs de depth rejetaient les
+    // fragments de la carrosserie (voiture blanchie/fantome sous nitro).
+    // Flush du batch avant/apres : glDepthMask s'applique immediatement
+    // alors que les sommets rlgl partent au prochain flush.
+    rlDrawRenderBatchActive();
+    rlDisableDepthMask();
     if (vis.headlights)
         drawHeadlightGlow(vis);
     if (vis.nitro)
         drawNitroFlames(car, time);
     drawWindshield();
+    rlDrawRenderBatchActive();
+    rlEnableDepthMask();
 }
 
 void CarBodyDraw::drawRainLight(const CarVisual &vis, float time)
@@ -139,8 +164,31 @@ void CarBodyDraw::drawNitroFlames(const Car &car, float time)
 {
     const float phase = car.position().x * 3.7f + car.position().z * 2.9f;
 
-    drawExhaustFlame(-kExhaustX, time, phase);
-    drawExhaustFlame(kExhaustX, time, phase + 2.1f);
+    CarBodyDraw::drawExhaustFlame(-kExhaustX, time, phase);
+    CarBodyDraw::drawExhaustFlame(kExhaustX, time, phase + 2.1f);
+}
+
+void CarBodyDraw::drawExhaustFlame(float x, float time, float phase)
+{
+    const float flicker = 0.30f * std::sin(time * 40.0f + phase)
+        + 0.14f * std::sin(time * 23.7f + phase * 1.7f);
+    const float len = std::clamp(1.05f + flicker, 0.55f, 1.5f);
+    const Vector3 base{x, kExhaustY, kExhaustZ + 0.02f};
+    const Vector3 tipOuter{x, kExhaustY + 0.06f, kExhaustZ - len};
+    const Vector3 tipMid{
+        x, kExhaustY + 0.03f, kExhaustZ - len * 0.78f};
+    const Vector3 tipCore{
+        x, kExhaustY + 0.01f, kExhaustZ - len * 0.50f};
+
+    DrawCylinderEx(
+        base, tipCore, 0.048f, 0.010f, 8,
+        Fade(Color{190, 230, 255, 255}, 0.95f));
+    DrawCylinderEx(
+        base, tipMid, 0.075f, 0.012f, 8,
+        Fade(Color{255, 210, 90, 255}, 0.60f));
+    DrawCylinderEx(
+        base, tipOuter, 0.105f, 0.014f, 8,
+        Fade(Color{255, 120, 30, 255}, 0.42f));
 }
 
 void CarBodyDraw::drawWindshield()
@@ -159,4 +207,3 @@ void CarBodyDraw::drawWindshield()
 
 } // namespace racer
 
-} // namespace racer

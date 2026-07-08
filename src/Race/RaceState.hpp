@@ -64,6 +64,7 @@ private:
     void updateSingleRacer(
         size_t index, float dt, const CarInput& playerInput, int numSegments);
     void applySurfaceGrip(RacerEntry& racer, const Track::Progress& prog);
+    void applyTrackHeight(RacerEntry& racer, float dt);
     void updateMidpointFlag(
         RacerEntry& racer, const Track::Progress& prog, int numSegments);
     void updateLapCount(

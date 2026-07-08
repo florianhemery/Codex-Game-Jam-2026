@@ -40,7 +40,7 @@ private:
     static constexpr int kCornerSampleCount = 5;
     static constexpr float kMinTurnPerUnit = 1e-3f;
     static constexpr float kBrakeFraction = 0.7f;
-    static constexpr float kLookaheadBase = 10.0f;
+    static constexpr float kLookaheadBase = 15.0f;
     static constexpr float kLookaheadSpeedScale = 0.6f;
     static constexpr float kTangentDelta = 2.0f;
     static constexpr float kMaxTurnPerUnit = 0.06f;
@@ -54,7 +54,7 @@ private:
     static constexpr float kBrakeThrottle = -0.75f;
     static constexpr float kFullThrottle = 1.0f;
     static constexpr float kCoastThrottle = 0.15f;
-    static constexpr float kNitroMarginBase = 6.0f;
+    static constexpr float kNitroMarginBase = 9.0f;
     static constexpr float kNitroMarginSkillScale = 8.0f;
     static constexpr float kNitroTurnThreshold = 0.15f;
     static constexpr float kHandbrakeTurnThreshold = 1.2f;

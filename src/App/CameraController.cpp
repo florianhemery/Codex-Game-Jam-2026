@@ -26,12 +26,12 @@ CameraTargets computeDesiredCamera(const Car &playerCar)
 
     return CameraTargets{
         {
-            playerCar.position().x - forward.x * 9.0f,
+            playerCar.position().x - forward.x * 13.0f,
             playerCar.position().y + 4.5f,
-            playerCar.position().z - forward.z * 9.0f,
+            playerCar.position().z - forward.z * 13.0f,
         },
         {
-            playerCar.position().x + forward.x * 4.0f,
+            playerCar.position().x + forward.x * 6.0f,
             playerCar.position().y + 1.0f,
             playerCar.position().z + forward.z * 4.0f,
         },

@@ -41,6 +41,7 @@ public:
         Color color, int dashPeriod, int dashOn);
     static Mesh buildCheckerGroundMesh(
         float totalSize, int tilesPerSide, SurfaceStyle style);
+    static Mesh buildSolidGroundMesh(float totalSize, SurfaceStyle style);
     static Mesh buildFinishLineMesh(
         const Track &track, const std::vector<Vector2> &perp);
     static void drawPropShadow(Vector3 pos, float radius);

@@ -5,3 +5,7 @@ out/
 *.obj
 *.pdb
 *.ilk
+.cursor/
+.tools/
+*.log
+epitech_cpp_coding_style.pdf

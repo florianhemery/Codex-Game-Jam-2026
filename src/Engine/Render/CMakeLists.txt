@@ -18,7 +18,8 @@ target_link_libraries(engine_render PUBLIC raylib engine_rhi engine_assets)
 target_compile_features(engine_render PRIVATE cxx_std_20)
 
 # Demo autonome du pipeline : fenetre de test + captures d'ecran automatiques.
-add_executable(render_demo RenderDemo.cpp)
+add_executable(render_demo RenderDemo.cpp RenderDemoScene.cpp)
 target_include_directories(render_demo PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(render_demo PRIVATE engine_render)
 target_compile_features(render_demo PRIVATE cxx_std_20)
+racer_bundle_runtime_dlls(render_demo)

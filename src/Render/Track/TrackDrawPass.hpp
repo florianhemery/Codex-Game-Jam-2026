@@ -21,8 +21,10 @@ struct TrackDrawPass {
         const TrackRenderer &renderer, float timeSeconds);
     static void drawOneCloud(
         const TrackCloudInstance &cloud, float timeSeconds);
-    static void drawLamps(const TrackRenderer &renderer);
-    static void drawOneLamp(const TrackLampInstance &lamp);
+    static void drawLamps(
+        const TrackRenderer &renderer, float timeSeconds);
+    static void drawOneLamp(
+        const TrackLampInstance &lamp, float timeSeconds);
     static void drawArch(const TrackRenderer &renderer);
     static void drawArchSpan(const TrackRenderer &renderer);
     static void drawRoadDamage(const TrackRenderer &renderer);
@@ -40,8 +42,6 @@ struct TrackDrawPass {
         const TrackGrandstandInstance &gs);
     static void drawOneSkidMark(
         const TrackSkidMarkCmd &cmd, Vector2 origin, float worldSize);
-    static void drawGantryLights(
-        float timeSeconds, Vector3 leftBase, float pillarH, Vector3 d);
     static void drawGrandstandStructure(const TrackRenderer &renderer);
     static void drawOneGrandstand(
         const TrackGrandstandInstance &gs);

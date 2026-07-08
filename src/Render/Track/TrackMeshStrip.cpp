@@ -8,6 +8,8 @@
 #include "Render/Track/TrackMeshBuilder.hpp"
 #include "rlgl.h"
 
+#include <cmath>
+
 namespace racer {
 
 void TrackMeshBuilder::fillStripEndpoints(
@@ -21,12 +23,13 @@ void TrackMeshBuilder::fillStripEndpoints(
     inner.resize(n);
     outer.resize(n);
     for (size_t i = 0; i < n; ++i) {
+        float baseY = yHeight;
         inner[i] = Vector3{
-            wp[i].x + perp[i].x * innerOffset, yHeight,
+            wp[i].x + perp[i].x * innerOffset, baseY,
             wp[i].y + perp[i].y * innerOffset,
         };
         outer[i] = Vector3{
-            wp[i].x + perp[i].x * outerOffset, yHeight,
+            wp[i].x + perp[i].x * outerOffset, baseY,
             wp[i].y + perp[i].y * outerOffset,
         };
     }
@@ -51,15 +54,39 @@ void TrackMeshBuilder::allocColoredStripMesh(Mesh &mesh, size_t n)
 void TrackMeshBuilder::writeColoredQuadVertices(
     Mesh &mesh, size_t vBase, const Vector3 quad[4], Color c)
 {
+    Vector3 e1{
+        quad[1].x - quad[0].x, quad[1].y - quad[0].y, quad[1].z - quad[0].z,
+    };
+    Vector3 e2{
+        quad[3].x - quad[0].x, quad[3].y - quad[0].y, quad[3].z - quad[0].z,
+    };
+    Vector3 normal{
+        e1.y * e2.z - e1.z * e2.y,
+        e1.z * e2.x - e1.x * e2.z,
+        e1.x * e2.y - e1.y * e2.x,
+    };
+    float len = std::sqrt(
+        normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+
+    if (len > 1e-5f) {
+        normal.x /= len;
+        normal.y /= len;
+        normal.z /= len;
+    } else {
+        normal = Vector3{0.0f, 1.0f, 0.0f};
+    }
+    if (normal.y < 0.0f)
+        normal = Vector3{-normal.x, -normal.y, -normal.z};
+
     for (int k = 0; k < 4; ++k) {
         size_t vIdx = vBase + static_cast<size_t>(k);
 
         mesh.vertices[vIdx * 3 + 0] = quad[k].x;
         mesh.vertices[vIdx * 3 + 1] = quad[k].y;
         mesh.vertices[vIdx * 3 + 2] = quad[k].z;
-        mesh.normals[vIdx * 3 + 0] = 0.0f;
-        mesh.normals[vIdx * 3 + 1] = 1.0f;
-        mesh.normals[vIdx * 3 + 2] = 0.0f;
+        mesh.normals[vIdx * 3 + 0] = normal.x;
+        mesh.normals[vIdx * 3 + 1] = normal.y;
+        mesh.normals[vIdx * 3 + 2] = normal.z;
         mesh.colors[vIdx * 4 + 0] = c.r;
         mesh.colors[vIdx * 4 + 1] = c.g;
         mesh.colors[vIdx * 4 + 2] = c.b;
@@ -86,7 +113,7 @@ void TrackMeshBuilder::writeStripSegment(
     Color c)
 {
     size_t j = (i + 1) % n;
-    Vector3 quad[4] = {inner[i], inner[j], outer[j], outer[i]};
+    Vector3 quad[4] = {inner[i], outer[i], outer[j], inner[j]};
 
     writeColoredQuadVertices(mesh, i * 4, quad, c);
     writeMeshQuadIndices(
@@ -140,6 +167,8 @@ Mesh TrackMeshBuilder::buildStripMesh(
         track, perp, innerOffset, outerOffset, yHeight, inner, outer);
     Mesh mesh{};
 
+    if (n == 0)
+        return mesh;
     allocColoredStripMesh(mesh, n);
     for (size_t i = 0; i < n; ++i)
         writeStripSegment(mesh, i, n, inner, outer, colorFn(i));
@@ -184,10 +213,11 @@ Vector3 TrackMeshBuilder::makeDashedQuadPoint(
     bool outer)
 {
     const auto &wp = track.waypoints();
+    float baseY = yHeight;
     float offset = outer ? outerOffset : innerOffset;
 
     return Vector3{
-        wp[idx].x + perp[idx].x * offset, yHeight,
+        wp[idx].x + perp[idx].x * offset, baseY,
         wp[idx].y + perp[idx].y * offset,
     };
 }
@@ -198,7 +228,12 @@ Mesh TrackMeshBuilder::buildDashedStripMesh(
     Color color, int dashPeriod, int dashOn)
 {
     size_t n = track.waypoints().size();
-    int segmentCount = countDashSegments(n, dashPeriod, dashOn);
+    int segmentCount = 0;
+
+    for (size_t i = 0; i < n; ++i) {
+        if (static_cast<int>(i % static_cast<size_t>(dashPeriod)) < dashOn)
+            ++segmentCount;
+    }
     Mesh mesh{};
 
     allocDashedStripMesh(mesh, segmentCount);
@@ -226,11 +261,11 @@ void TrackMeshBuilder::fillDashedStripLoop(
             makeDashedQuadPoint(
                 track, perp, i, innerOffset, outerOffset, yHeight, false),
             makeDashedQuadPoint(
-                track, perp, j, innerOffset, outerOffset, yHeight, false),
+                track, perp, i, innerOffset, outerOffset, yHeight, true),
             makeDashedQuadPoint(
                 track, perp, j, innerOffset, outerOffset, yHeight, true),
             makeDashedQuadPoint(
-                track, perp, i, innerOffset, outerOffset, yHeight, true),
+                track, perp, j, innerOffset, outerOffset, yHeight, false),
         };
 
         writeDashedSegment(mesh, quadIdx, quad, color);

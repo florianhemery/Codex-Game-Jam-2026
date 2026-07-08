@@ -10,6 +10,10 @@
 
 namespace racer {
 
+namespace {
+constexpr int kSkidTextureSize = 2048;
+} // namespace
+
 void TrackMeshBuilder::appendQuad(
     MeshBuffers &mb, Vector3 p1, Vector3 p2, Vector3 p3, Vector3 p4,
     Vector3 normal, Color color)
@@ -188,4 +192,3 @@ Vector2 TrackMeshBuilder::worldToSkidTex(
 
 } // namespace racer
 
-} // namespace racer

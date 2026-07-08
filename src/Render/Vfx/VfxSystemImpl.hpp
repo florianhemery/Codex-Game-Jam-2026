@@ -12,12 +12,13 @@
 
 #include "raylib.h"
 
+#include "Render/Vfx/VfxSystem.hpp"
 #include "Render/Vfx/VfxTypes.hpp"
 
 namespace racer {
 
 struct VfxSystem::Impl {
-    std::array<VfxParticle, kMaxVfxParticles> pool_{};
+    std::array<VfxParticle, kVfxMaxParticles> pool_{};
     int count_ = 0;
 
     Texture2D texPuff_{};

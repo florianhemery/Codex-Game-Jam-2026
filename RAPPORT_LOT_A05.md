@@ -43,4 +43,5 @@
 
 ## Verification build
 
-Cible impactee : `engine_core` (bibliotheque contenant `world.cpp`).
+Cible impactee : `engine_core` (bibliotheque contenant `world.cpp`).  
+**Resultat :** compilation et liaison OK (`cmake --build build --target engine_core`).

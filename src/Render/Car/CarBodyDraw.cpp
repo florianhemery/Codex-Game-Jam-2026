@@ -12,6 +12,8 @@
 
 #include "rlgl.h"
 
+#include "Render/Car/CarPrimitives.hpp"
+
 namespace racer {
 
 namespace {
@@ -28,7 +30,7 @@ constexpr float kExhaustZ = -2.26f;
 
 } // namespace
 
-CarCarBodyPalette CarBodyDraw::makeCarCarBodyPalette(Color bodyColor)
+CarBodyPalette CarBodyDraw::makeBodyPalette(Color bodyColor)
 {
     const float lum = 0.299f * bodyColor.r + 0.587f * bodyColor.g
         + 0.114f * bodyColor.b;
@@ -36,7 +38,7 @@ CarCarBodyPalette CarBodyDraw::makeCarCarBodyPalette(Color bodyColor)
         ? Color{30, 30, 36, 255}
         : Color{245, 245, 242, 255};
 
-    return CarCarBodyPalette{
+    return CarBodyPalette{
         bodyColor,
         stripe,
         Color{36, 36, 42, 255},
@@ -92,10 +94,10 @@ void CarBodyDraw::drawBodyShell(const CarBodyPalette &palette)
         1.78f, 0.30f, 3.60f, palette.body);
     DrawCube(
         Vector3{0.0f, 0.42f, 1.95f},
-        1.44f, 0.22f, 0.85f, shade(palette.body, 1.10f));
+        1.44f, 0.22f, 0.85f, shade(palette.body, 1.06f));
     DrawCube(
         Vector3{0.0f, 0.36f, 2.42f},
-        1.02f, 0.16f, 0.34f, shade(palette.body, 1.16f));
+        1.02f, 0.16f, 0.34f, shade(palette.body, 1.08f));
     DrawCube(
         Vector3{0.0f, 0.52f, -1.35f},
         1.72f, 0.34f, 0.95f, shade(palette.body, 0.90f));
@@ -218,12 +220,12 @@ void CarBodyDraw::drawMirrors(const CarBodyPalette &palette)
 
 void CarBodyDraw::drawAntenna()
 {
-    DrawCylinderEx(
+    DrawCylinderExLit(
         Vector3{0.32f, 0.69f, -1.30f},
         Vector3{0.40f, 1.02f, -1.42f},
         0.012f, 0.012f, 6, Color{25, 25, 28, 255});
-    DrawSphere(
-        Vector3{0.40f, 1.02f, -1.42f}, 0.024f, Color{25, 25, 28, 255});
+    DrawSphereLit(
+        Vector3{0.40f, 1.02f, -1.42f}, 0.024f, 8, 8, Color{25, 25, 28, 255});
 }
 
 void CarBodyDraw::drawRollCage(const CarBodyPalette &palette)
@@ -244,8 +246,8 @@ void CarBodyDraw::drawDriver()
     DrawCube(
         Vector3{0.0f, 0.70f, -0.62f},
         0.46f, 0.16f, 0.26f, Color{40, 40, 45, 255});
-    DrawSphere(
-        Vector3{0.0f, 0.82f, -0.55f}, 0.13f, Color{252, 216, 80, 255});
+    DrawSphereLit(
+        Vector3{0.0f, 0.82f, -0.55f}, 0.13f, 8, 8, Color{252, 216, 80, 255});
 }
 
 void CarBodyDraw::drawRearWing(const CarBodyPalette &palette)
@@ -269,13 +271,15 @@ void CarBodyDraw::drawRearWing(const CarBodyPalette &palette)
 
 void CarBodyDraw::drawExhaustPipes()
 {
-    DrawCylinderEx(
+    DrawCylinderExLit(
         Vector3{-kExhaustX, kExhaustY, -2.05f},
         Vector3{-kExhaustX, kExhaustY, kExhaustZ},
         0.055f, 0.055f, 8, Color{35, 35, 38, 255});
-    DrawCylinderEx(
+    DrawCylinderExLit(
         Vector3{kExhaustX, kExhaustY, -2.05f},
         Vector3{kExhaustX, kExhaustY, kExhaustZ},
         0.055f, 0.055f, 8, Color{35, 35, 38, 255});
 }
+
+} // namespace racer
 

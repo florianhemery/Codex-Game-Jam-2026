@@ -44,7 +44,7 @@ void main()
     // Blur radial + aberration chromatique par canal, en HDR.
     vec3 hdr = vec3(0.0);
     float total = 0.0;
-    float reach = speedBlur*0.28*distC;
+    float reach = speedBlur*0.08*distC;
     vec2 ca = toCenter*aberration*(1.0 + distC*2.0);
     for (int i = 0; i < 8; i++)
     {
@@ -66,8 +66,8 @@ void main()
     float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
     color = clamp(mix(vec3(luma), color, saturation), 0.0, 1.0);
 
-    // Grain de film subtil, anime.
-    float g = Hash(uv*vec2(917.0, 533.0) + fract(time)*vec2(31.7, 57.3)) - 0.5;
+    // Grain fixe (sans animation temporelle) pour eviter le scintillement.
+    float g = Hash(uv * vec2(917.0, 533.0)) - 0.5;
     color += vec3(g*grainAmount);
 
     // Vignette.

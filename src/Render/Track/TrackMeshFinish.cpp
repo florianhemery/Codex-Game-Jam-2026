@@ -10,6 +10,8 @@
 
 namespace racer {
 
+constexpr float kTrackSurfaceY = 0.06f;
+
 void TrackMeshBuilder::allocCheckerMesh(Mesh &mesh, int tilesPerSide)
 {
     mesh.vertexCount = tilesPerSide * tilesPerSide * 4;
@@ -57,12 +59,37 @@ Mesh TrackMeshBuilder::buildCheckerGroundMesh(
     float half = totalSize * 0.5f;
     Mesh mesh{};
     Color greenA = (style == SurfaceStyle::ABIMEE)
-        ? Color{118, 108, 62, 255} : Color{58, 130, 58, 255};
+        ? Color{118, 108, 62, 255} : Color{40, 150, 44, 255};
     Color greenB = (style == SurfaceStyle::ABIMEE)
-        ? Color{108, 98, 55, 255} : Color{50, 118, 50, 255};
+        ? Color{108, 98, 55, 255} : Color{36, 142, 40, 255};
 
     allocCheckerMesh(mesh, tilesPerSide);
     fillCheckerTiles(mesh, tilesPerSide, tileSize, half, greenA, greenB);
+    UploadMesh(&mesh, false);
+    return mesh;
+}
+
+Mesh TrackMeshBuilder::buildSolidGroundMesh(
+    float totalSize, SurfaceStyle style)
+{
+    float half = totalSize * 0.5f;
+    Color base = (style == SurfaceStyle::ABIMEE)
+        ? Color{112, 102, 58, 255} : Color{38, 146, 42, 255};
+    Mesh mesh{};
+    Vector3 quad[4] = {
+        {-half, 0.0f, -half},
+        {-half, 0.0f, half},
+        {half, 0.0f, half},
+        {half, 0.0f, -half},
+    };
+
+    mesh.vertexCount = 4;
+    mesh.triangleCount = 2;
+    mesh.vertices = static_cast<float *>(MemAlloc(12 * sizeof(float)));
+    mesh.normals = static_cast<float *>(MemAlloc(12 * sizeof(float)));
+    mesh.colors = static_cast<unsigned char *>(MemAlloc(16));
+    mesh.indices = static_cast<unsigned short *>(MemAlloc(6 * sizeof(unsigned short)));
+    writeCheckerTile(mesh, 0, quad, base);
     UploadMesh(&mesh, false);
     return mesh;
 }
@@ -107,19 +134,19 @@ void TrackMeshBuilder::makeFinishColumnQuad(
     constexpr float kLineDepth = 2.5f;
 
     quad[0] = Vector3{
-        base.x + p.x * t0 - dir.x * kLineDepth * 0.5f, 0.03f,
+        base.x + p.x * t0 - dir.x * kLineDepth * 0.5f, kTrackSurfaceY + 0.01f,
         base.y + p.y * t0 - dir.y * kLineDepth * 0.5f,
     };
     quad[1] = Vector3{
-        base.x + p.x * t0 + dir.x * kLineDepth * 0.5f, 0.03f,
+        base.x + p.x * t0 + dir.x * kLineDepth * 0.5f, kTrackSurfaceY + 0.01f,
         base.y + p.y * t0 + dir.y * kLineDepth * 0.5f,
     };
     quad[2] = Vector3{
-        base.x + p.x * t1 + dir.x * kLineDepth * 0.5f, 0.03f,
+        base.x + p.x * t1 + dir.x * kLineDepth * 0.5f, kTrackSurfaceY + 0.01f,
         base.y + p.y * t1 + dir.y * kLineDepth * 0.5f,
     };
     quad[3] = Vector3{
-        base.x + p.x * t1 - dir.x * kLineDepth * 0.5f, 0.03f,
+        base.x + p.x * t1 - dir.x * kLineDepth * 0.5f, kTrackSurfaceY + 0.01f,
         base.y + p.y * t1 - dir.y * kLineDepth * 0.5f,
     };
 }
@@ -144,7 +171,7 @@ void TrackMeshBuilder::fillFinishLineColumns(
 void TrackMeshBuilder::drawPropShadow(Vector3 pos, float radius)
 {
     DrawCylinder(
-        Vector3{pos.x, 0.015f, pos.z}, radius, radius, 0.02f, 10,
+        Vector3{pos.x, 0.040f, pos.z}, radius, radius, 0.02f, 10,
         Fade(BLACK, 0.28f));
 }
 

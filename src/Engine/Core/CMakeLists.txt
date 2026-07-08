@@ -36,5 +36,6 @@ add_executable(engine_core_test
     CoreTestSnapshotHelpers.cpp
 )
 target_link_libraries(engine_core_test PRIVATE engine_core)
+racer_bundle_runtime_dlls(engine_core_test)
 # Sortie dans build-core/<config>/ (chemin attendu par la verification).
 set_target_properties(engine_core_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})

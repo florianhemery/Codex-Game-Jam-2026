@@ -72,6 +72,7 @@ private:
         bool approaching);
     static void nudgeLateral(
         Car& car, float fwdX, float fwdZ, float push, float sideSign);
+    static void enforceMinimumSeparation(Car& a, Car& b);
 };
 
 } // namespace racer

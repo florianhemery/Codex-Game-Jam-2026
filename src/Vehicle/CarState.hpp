@@ -23,6 +23,8 @@ struct CarState {
     bool isDrifting_ = false;
     float surfaceGrip_ = 1.0f;
     float surfaceDrag_ = 1.0f;
+    float verticalVelocity_ = 0.0f;
+    bool airborne_ = false;
     CarTuning tuning_{};
 
     Vector3 &position()
@@ -103,6 +105,26 @@ struct CarState {
     float surfaceDrag() const
     {
         return surfaceDrag_;
+    }
+
+    float &verticalVelocity()
+    {
+        return verticalVelocity_;
+    }
+
+    float verticalVelocity() const
+    {
+        return verticalVelocity_;
+    }
+
+    bool &airborne()
+    {
+        return airborne_;
+    }
+
+    bool airborne() const
+    {
+        return airborne_;
     }
 
     CarTuning &tuning()

@@ -141,7 +141,9 @@ void HudMinimap::drawPlayer(const RaceState &race, const HudExtras &extras,
 void HudMinimap::draw(const RaceState &race, const HudExtras &extras,
     int screenWidth, int screenHeight)
 {
-    const float size = 220.0f;
+    float screenMin = std::min(
+        static_cast<float>(screenWidth), static_cast<float>(screenHeight));
+    const float size = std::clamp(screenMin * 0.32f, 260.0f, 360.0f);
     Rectangle panel{
         static_cast<float>(screenWidth) - size - 16.0f,
         static_cast<float>(screenHeight) - size - 16.0f,
@@ -156,15 +158,15 @@ void HudMinimap::draw(const RaceState &race, const HudExtras &extras,
         return;
     }
     Rectangle area{
-        panel.x + 20.0f, panel.y + 20.0f,
-        panel.width - 40.0f, panel.height - 40.0f
+        panel.x + 12.0f, panel.y + 12.0f,
+        panel.width - 24.0f, panel.height - 24.0f
     };
-    HudMapProjection proj = HudMinimap::fitTrackInRect(waypoints, area, false);
+    HudMapProjection proj = HudMinimap::fitTrackInRect(waypoints, area, true);
 
-    float road = std::clamp(race.getTrack().width() * proj.scale, 3.0f, 10.0f);
+    float road = std::clamp(race.getTrack().width() * proj.scale, 5.0f, 16.0f);
 
-    HudMinimap::drawTrackPolyline(waypoints, proj, road, HudGfx::fade(WHITE, 0.15f));
-    HudMinimap::drawTrackPolyline(waypoints, proj, 1.5f, HudGfx::fade(WHITE, 0.28f));
+    HudMinimap::drawTrackPolyline(waypoints, proj, road, HudGfx::fade(WHITE, 0.32f));
+    HudMinimap::drawTrackPolyline(waypoints, proj, 2.0f, HudGfx::fade(WHITE, 0.55f));
     HudMinimap::drawFinishLineTick(waypoints, proj, road * 0.8f + 2.0f, RAYWHITE);
     HudMinimap::drawOpponents(race, extras, proj, panel);
     HudMinimap::drawPlayer(race, extras, proj, panel);

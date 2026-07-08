@@ -49,6 +49,7 @@ struct VfxCamBasis {
     Vector3 right;
     Vector3 up;
     Vector3 fwd;
+    Vector3 pos;
 };
 
 } // namespace racer

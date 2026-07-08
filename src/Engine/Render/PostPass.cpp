@@ -9,19 +9,33 @@
 
 #include "raymath.h"
 
+#include <cmath>
+
 namespace racer::engine {
 
 namespace {
+
+float computeSpeedBlur(float speedRatio, bool nitro)
+{
+    if (!nitro)
+        return 0.0f;
+    float speed = Clamp(speedRatio, 0.0f, 1.0f);
+    constexpr float kBlurStart = 0.55f;
+
+    if (speed < kBlurStart)
+        return 0.0f;
+    float t = (speed - kBlurStart) / (1.0f - kBlurStart);
+    return t * t * 0.28f;
+}
 
 void uploadPostUniforms(Shader post, const PostLocs &locs,
                         const AmbianceParams &params, float time,
                         const RenderPipeline::PostParams &postParams)
 {
     const float speed = Clamp(postParams.speedRatio, 0.0f, 1.0f);
-    const float blur = speed * (postParams.nitro ? 1.4f : 1.0f);
-    const float aberration = 0.0010f + 0.0035f * speed
-        + (postParams.nitro ? 0.0020f : 0.0f);
-    const float grain = 0.028f;
+    const float blur = computeSpeedBlur(speed, postParams.nitro);
+    const float aberration = postParams.nitro ? 0.0003f : 0.0f;
+    const float grain = 0.0f;
 
     SetShaderValue(post, locs.exposure, &params.exposure, SHADER_UNIFORM_FLOAT);
     SetShaderValue(post, locs.gradeTint, &params.gradeTint,
@@ -55,6 +69,7 @@ void PostPass::run(Device &device, RenderTargetHandle sceneRT, Shader postShader
         -static_cast<float>(hdr->texture.height),
     };
 
+    ClearBackground(BLACK);
     BeginShaderMode(postShader);
     DrawTextureRec(hdr->texture, src, Vector2{0.0f, 0.0f}, WHITE);
     EndShaderMode();

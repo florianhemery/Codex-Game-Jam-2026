@@ -8,6 +8,9 @@
 #include "Render/Track/TrackDrawPass.hpp"
 #include "Render/Track/TrackMeshBuilder.hpp"
 #include "Render/Track/TrackRenderer.hpp"
+
+#include <cmath>
+
 #include "rlgl.h"
 
 namespace racer {
@@ -61,4 +64,3 @@ void TrackDrawPass::drawNpcs(
 
 } // namespace racer
 
-} // namespace racer

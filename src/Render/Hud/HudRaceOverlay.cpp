@@ -43,7 +43,7 @@ void HudRaceOverlay::drawStandingsRow(const HudStandingsRowParams &params)
     Vector2 dot{params.panel.x + 50.0f, params.rowY + 9.0f};
 
     HudGfx::drawCircleV(dot, 6.0f,
-        racerColorFor(params.extras, params.idx, params.racer.isPlayer));
+        HudGfx::racerColorFor(params.extras, params.idx, params.racer.isPlayer));
     HudGfx::drawCircleLinesV(dot, 6.0f, HudGfx::fade(WHITE, 0.35f));
     HudGfx::drawText(params.racer.name.c_str(),
         static_cast<int>(params.panel.x + 66.0f),

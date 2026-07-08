@@ -15,8 +15,13 @@
 #include "Render/Track/TrackMeshBuilder.hpp"
 #include "Render/Track/TrackSkidMarks.hpp"
 #include "Render/Track/TrackSkyDraw.hpp"
+#include "rlgl.h"
 
 namespace racer {
+
+namespace {
+constexpr float kGroundDrawY = -0.10f;
+} // namespace
 
 TrackRenderer::TrackRenderer(const Track &track, const TrackDef &def)
     : surfaceStyle_(def.surfaceStyle)
@@ -56,7 +61,11 @@ TrackRenderer::~TrackRenderer()
 
 void TrackRenderer::drawOpaqueGeometry() const
 {
-    DrawModel(groundModel_, Vector3{0.0f, -0.05f, 0.0f}, 1.0f, WHITE);
+    DrawModel(
+        groundModel_,
+        Vector3{groundCenter_.x, kGroundDrawY, groundCenter_.z},
+        1.0f, WHITE);
+    rlDisableBackfaceCulling();
     DrawModel(trackModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
     DrawModel(rubberLineModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
     DrawModel(centerDashModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
@@ -64,22 +73,27 @@ void TrackRenderer::drawOpaqueGeometry() const
     DrawModel(edgeLineInnerModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
     DrawModel(curbModelOuter_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
     DrawModel(curbModelInner_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
+    rlEnableBackfaceCulling();
     if (hasBarriers_)
         DrawModel(barrierModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
     if (hasSponsors_)
         DrawModel(sponsorModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
     BeginBlendMode(BLEND_ALPHA);
+    rlDisableDepthMask();
     DrawModel(skidOverlayModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
+    rlEnableDepthMask();
     EndBlendMode();
+    rlDisableBackfaceCulling();
     DrawModel(finishLineModel_, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
+    rlEnableBackfaceCulling();
 }
 
 void TrackRenderer::draw(float timeSeconds) const
 {
-    TrackMeshBuilder::drawMountainsRing(220.0f, 2.0f, 48);
+    TrackMeshBuilder::drawMountainsRing(groundSpan_ * 0.55f, 2.0f, 56);
     TrackDrawPass::drawClouds(*this, timeSeconds);
     drawOpaqueGeometry();
-    TrackDrawPass::drawLamps(*this);
+    TrackDrawPass::drawLamps(*this, timeSeconds);
     TrackDrawPass::drawArch(*this);
     TrackDrawPass::drawRoadDamage(*this);
     TrackDrawPass::drawAbimeeDebris(*this);
@@ -109,7 +123,6 @@ void TrackRenderer::applyShader(Shader shader)
     if (hasSponsors_)
         TrackMeshBuilder::applyShaderToModel(sponsorModel_, shader);
 }
-
 
 void TrackRenderer::drawSkyGradient(int screenWidth, int screenHeight) const
 {

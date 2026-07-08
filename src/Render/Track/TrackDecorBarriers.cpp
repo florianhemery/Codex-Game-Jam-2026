@@ -187,7 +187,7 @@ void TrackDecorBuilder::buildLampRing(
 {
     const auto &wp = track.waypoints();
 
-    for (size_t i = 0; i < wp.size(); i += 10)
+    for (size_t i = 0; i < wp.size(); i += 8)
         addLampAtWaypoint(renderer, track, perp, halfWidth, i);
 }
 
@@ -230,7 +230,7 @@ void TrackDecorBuilder::buildSceneDecor(
 {
     buildCloudRing(renderer);
     buildGrandstands(renderer, track, perp, halfWidth);
-    constexpr int kStride = 3;
+    constexpr int kStride = 2;
     const auto &wp = track.waypoints();
 
     for (size_t i = 0; i < wp.size(); i += static_cast<size_t>(kStride))
@@ -242,4 +242,3 @@ void TrackDecorBuilder::buildSceneDecor(
 
 } // namespace racer
 
-} // namespace racer

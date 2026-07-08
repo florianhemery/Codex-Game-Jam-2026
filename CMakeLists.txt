@@ -29,6 +29,26 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(raylib)
 
+# LLVM-MinGW lie libc++/libunwind en dynamique : copier les DLL a cote des .exe
+get_filename_component(RACER_LLVM_MINGW_BIN "${CMAKE_CXX_COMPILER}" DIRECTORY)
+set(RACER_RUNTIME_DLLS
+    "${RACER_LLVM_MINGW_BIN}/libc++.dll"
+    "${RACER_LLVM_MINGW_BIN}/libunwind.dll"
+    "${RACER_LLVM_MINGW_BIN}/libwinpthread-1.dll"
+)
+
+function(racer_bundle_runtime_dlls target)
+    if(NOT WIN32)
+        return()
+    endif()
+    add_custom_command(TARGET ${target} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${RACER_RUNTIME_DLLS}
+            $<TARGET_FILE_DIR:${target}>
+        COMMENT "Copy LLVM-MinGW runtime DLLs for ${target}"
+    )
+endfunction()
+
 # Modules moteur (Phase 0) -- libs statiques independantes, chacune possede
 # son propre CMakeLists. Ne pas ajouter de sources moteur ici.
 add_subdirectory(src/Engine/Rhi)
@@ -39,15 +59,25 @@ add_subdirectory(src/Engine/Render)
 set(RACER_TRACK_RENDER_SOURCES
     src/Render/Track/TrackRenderer.cpp
     src/Render/Track/TrackMeshBuilder.cpp
+    src/Render/Track/TrackMeshStrip.cpp
+    src/Render/Track/TrackMeshFinish.cpp
+    src/Render/Track/TrackMeshGeometry.cpp
     src/Render/Track/TrackDecorBuilder.cpp
+    src/Render/Track/TrackDecorClouds.cpp
+    src/Render/Track/TrackDecorProps.cpp
+    src/Render/Track/TrackDecorBarriers.cpp
     src/Render/Track/TrackDrawPass.cpp
+    src/Render/Track/TrackDrawProps.cpp
+    src/Render/Track/TrackDrawNpc.cpp
     src/Render/Track/TrackSkidMarks.cpp
     src/Render/Track/TrackSkyDraw.cpp
 )
 
 set(RACER_CAR_RENDER_SOURCES
     src/Render/Car/CarRenderer.cpp
+    src/Render/Car/CarPrimitives.cpp
     src/Render/Car/CarBodyDraw.cpp
+    src/Render/Car/CarBodyPanels.cpp
     src/Render/Car/CarWheelDraw.cpp
 )
 
@@ -56,6 +86,7 @@ set(RACER_HUD_SOURCES
     src/Render/Hud/HudGfx.cpp
     src/Render/Hud/HudMinimap.cpp
     src/Render/Hud/HudMenu.cpp
+    src/Render/Hud/HudRaceGauge.cpp
     src/Render/Hud/HudRaceOverlay.cpp
     src/Render/Hud/HudFinishScreen.cpp
 )
@@ -63,8 +94,15 @@ set(RACER_HUD_SOURCES
 set(RACER_VFX_SOURCES
     src/Render/Vfx/VfxSystem.cpp
     src/Render/Vfx/VfxParticlePool.cpp
+    src/Render/Vfx/VfxParticleTick.cpp
     src/Render/Vfx/VfxDrawPass.cpp
     src/Render/Vfx/VfxTextureFactory.cpp
+)
+
+set(RACER_TRACK_DOMAIN_SOURCES
+    src/Track/Track.cpp
+    src/Track/TrackPresets.cpp
+    src/Track/TrackWaypoints.cpp
 )
 
 set(RACER_RENDER_SOURCES
@@ -78,11 +116,12 @@ add_executable(racer
     src/main.cpp
     src/App/MainApp.cpp
     src/App/GameLoop.cpp
+    src/App/GameLoopVfx.cpp
     src/App/CameraController.cpp
     src/App/LapTimer.cpp
     src/App/RacerColors.cpp
     src/Vehicle/Car.cpp
-    src/Track/Track.cpp
+    ${RACER_TRACK_DOMAIN_SOURCES}
     src/Ai/AiDriver.cpp
     src/Race/RaceState.cpp
     src/Race/RaceContactResolver.cpp
@@ -92,6 +131,7 @@ add_executable(racer
 target_include_directories(racer PRIVATE src)
 target_link_libraries(racer PRIVATE raylib engine_render)
 target_compile_features(racer PRIVATE cxx_std_20)
+racer_bundle_runtime_dlls(racer)
 
 # Outil headless : simule une course complete (IA vs IA) pour valider la
 # logique de jeu sans fenetre ni pilotage manuel.
@@ -99,7 +139,7 @@ add_executable(race_sim_debug
     src/Tools/RaceSimDebug.cpp
     src/Tools/RaceSimPrinter.cpp
     src/Vehicle/Car.cpp
-    src/Track/Track.cpp
+    ${RACER_TRACK_DOMAIN_SOURCES}
     src/Ai/AiDriver.cpp
     src/Race/RaceState.cpp
     src/Race/RaceContactResolver.cpp
@@ -107,6 +147,7 @@ add_executable(race_sim_debug
 target_include_directories(race_sim_debug PRIVATE src)
 target_link_libraries(race_sim_debug PRIVATE raylib)
 target_compile_features(race_sim_debug PRIVATE cxx_std_20)
+racer_bundle_runtime_dlls(race_sim_debug)
 
 # Demos autonomes par sous-systeme : fenetre courte + captures d'ecran
 # automatiques, utilisees par les agents pour valider visuellement leur
@@ -116,6 +157,7 @@ function(racer_add_demo name)
     target_include_directories(${name} PRIVATE src)
     target_link_libraries(${name} PRIVATE raylib)
     target_compile_features(${name} PRIVATE cxx_std_20)
+    racer_bundle_runtime_dlls(${name})
 endfunction()
 
 racer_add_demo(car_demo
@@ -126,7 +168,7 @@ racer_add_demo(car_demo
 racer_add_demo(track_demo
     src/Render/Demos/TrackDemo.cpp
     ${RACER_TRACK_RENDER_SOURCES}
-    src/Track/Track.cpp
+    ${RACER_TRACK_DOMAIN_SOURCES}
 )
 racer_add_demo(vfx_demo
     src/Render/Demos/VfxDemo.cpp
@@ -139,5 +181,5 @@ racer_add_demo(hud_demo
     src/Race/RaceContactResolver.cpp
     src/Ai/AiDriver.cpp
     src/Vehicle/Car.cpp
-    src/Track/Track.cpp
+    ${RACER_TRACK_DOMAIN_SOURCES}
 )

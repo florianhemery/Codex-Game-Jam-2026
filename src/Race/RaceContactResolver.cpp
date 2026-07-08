@@ -14,9 +14,10 @@ namespace racer {
 
 namespace {
 
-constexpr float kContactDist = 3.0f;
-constexpr float kMaxPush = 0.25f;
-constexpr float kMaxDeflect = 0.06f;
+constexpr float kContactDist = 4.4f;
+constexpr float kMinSeparation = 4.0f;
+constexpr float kMaxPush = 0.45f;
+constexpr float kMaxDeflect = 0.09f;
 constexpr float kSpeedDamping = 0.96f;
 
 } // namespace
@@ -45,15 +46,17 @@ float RaceContactResolver::sign(float value)
 
 void RaceContactResolver::resolveAll(std::vector<RacerEntry>& racers)
 {
-    for (size_t i = 0; i < racers.size(); ++i) {
-        if (racers[i].finished) {
-            continue;
-        }
-        for (size_t j = i + 1; j < racers.size(); ++j) {
-            if (racers[j].finished) {
+    for (int pass = 0; pass < 2; ++pass) {
+        for (size_t i = 0; i < racers.size(); ++i) {
+            if (racers[i].finished) {
                 continue;
             }
-            resolvePair(racers, i, j);
+            for (size_t j = i + 1; j < racers.size(); ++j) {
+                if (racers[j].finished) {
+                    continue;
+                }
+                resolvePair(racers, i, j);
+            }
         }
     }
 }
@@ -120,12 +123,13 @@ void RaceContactResolver::resolvePair(
     applyContactSeparation(a, b, nx, nz, overlap);
     applyContactDamping(a, b, nx, nz);
     applyContactDeflection(a, b, nx, nz, overlap);
+    enforceMinimumSeparation(a, b);
 }
 
 void RaceContactResolver::applyContactSeparation(
     Car& a, Car& b, float nx, float nz, float overlap)
 {
-    float push = std::min(overlap * 0.25f, kMaxPush);
+    float push = std::min(overlap * 0.42f, kMaxPush);
 
     a.position().x -= nx * push;
     a.position().z -= nz * push;
@@ -154,8 +158,8 @@ void RaceContactResolver::applyContactDamping(Car& a, Car& b, float nx, float nz
 void RaceContactResolver::computeDeflectScalars(
     float overlap, float& push, float& deflect)
 {
-    push = std::min(overlap * 0.25f, kMaxPush);
-    deflect = std::min(kMaxDeflect, overlap * 0.04f);
+    push = std::min(overlap * 0.42f, kMaxPush);
+    deflect = std::min(kMaxDeflect, overlap * 0.05f);
 }
 
 void RaceContactResolver::computeHeadingSides(
@@ -187,8 +191,28 @@ void RaceContactResolver::applyHeadingDeflection(
 void RaceContactResolver::nudgeLateral(
     Car& car, float fwdX, float fwdZ, float push, float sideSign)
 {
-    car.position().x += sideSign * fwdZ * push * 0.6f;
-    car.position().z += sideSign * (-fwdX) * push * 0.6f;
+    car.position().x += sideSign * fwdZ * push * 0.9f;
+    car.position().z += sideSign * (-fwdX) * push * 0.9f;
+}
+
+void RaceContactResolver::enforceMinimumSeparation(Car& a, Car& b)
+{
+    float dx = b.position().x - a.position().x;
+    float dz = b.position().z - a.position().z;
+    float distSq = dx * dx + dz * dz;
+
+    if (distSq >= kMinSeparation * kMinSeparation) {
+        return;
+    }
+    float dist = std::sqrt(std::max(distSq, 1e-8f));
+    float nx = dx / dist;
+    float nz = dz / dist;
+    float gap = (kMinSeparation - dist) * 0.52f;
+
+    a.position().x -= nx * gap;
+    a.position().z -= nz * gap;
+    b.position().x += nx * gap;
+    b.position().z += nz * gap;
 }
 
 void RaceContactResolver::nudgeIfApproaching(
@@ -199,6 +223,8 @@ void RaceContactResolver::nudgeIfApproaching(
     float sideSign,
     bool approaching)
 {
+    (void)nx;
+    (void)nz;
     if (!approaching) {
         return;
     }

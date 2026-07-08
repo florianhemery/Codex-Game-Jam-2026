@@ -23,84 +23,6 @@ constexpr float kLaneCenter = 0.5f;
 constexpr float kLaneBackSpacing = 4.0f;
 constexpr float kMaxDistSq = 1e30f;
 
-constexpr float kAnneauStraight = 120.0f;
-constexpr float kAnneauRadius = 22.0f;
-constexpr float kAnneauWidth = 13.0f;
-constexpr float kAnneauChicaneEast = 0.0f;
-constexpr float kAnneauChicaneWest = 0.0f;
-constexpr float kAnneauChicaneFreq = 1.0f;
-
-constexpr float kSinueuxStraight = 90.0f;
-constexpr float kSinueuxRadius = 16.0f;
-constexpr float kSinueuxWidth = 11.0f;
-constexpr float kSinueuxChicaneEast = 9.0f;
-constexpr float kSinueuxChicaneWest = 6.0f;
-constexpr float kSinueuxChicaneFreq = 2.0f;
-
-constexpr float kTechniqueStraight = 55.0f;
-constexpr float kTechniqueRadius = 11.0f;
-constexpr float kTechniqueWidth = 10.0f;
-constexpr float kTechniqueChicaneEast = 8.0f;
-constexpr float kTechniqueChicaneWest = 9.0f;
-constexpr float kTechniqueChicaneFreq = 3.0f;
-
-constexpr float kAbimeeStraight = 70.0f;
-constexpr float kAbimeeRadius = 14.0f;
-constexpr float kAbimeeWidth = 10.0f;
-constexpr float kAbimeeChicaneEast = 5.0f;
-constexpr float kAbimeeChicaneWest = 7.0f;
-constexpr float kAbimeeChicaneFreq = 2.0f;
-
-TrackDef makeAnneauVitessePreset()
-{
-    return {
-        "Anneau Vitesse",
-        "Grand ovale rapide, longues lignes droites, pas de chicane",
-        kAnneauStraight, kAnneauRadius, kAnneauWidth,
-        kAnneauChicaneEast, kAnneauChicaneWest, kAnneauChicaneFreq,
-    };
-}
-
-TrackDef makeCircuitSinueuxPreset()
-{
-    return {
-        "Circuit Sinueux",
-        "Un peu de tout : virages serres et deux chicanes",
-        kSinueuxStraight, kSinueuxRadius, kSinueuxWidth,
-        kSinueuxChicaneEast, kSinueuxChicaneWest, kSinueuxChicaneFreq,
-    };
-}
-
-TrackDef makeCircuitTechniquePreset()
-{
-    return {
-        "Circuit Technique",
-        "Court, tres serre, chicanes prononcees, ideal pour driver",
-        kTechniqueStraight, kTechniqueRadius, kTechniqueWidth,
-        kTechniqueChicaneEast, kTechniqueChicaneWest, kTechniqueChicaneFreq,
-    };
-}
-
-TrackDef makeRouteAbimeePreset()
-{
-    return {
-        "Route Abimee",
-        "Chaussee delavee, nids-de-poule et decor aride, grip reduit",
-        kAbimeeStraight, kAbimeeRadius, kAbimeeWidth,
-        kAbimeeChicaneEast, kAbimeeChicaneWest, kAbimeeChicaneFreq,
-        SurfaceStyle::ABIMEE,
-    };
-}
-
-std::vector<TrackDef> buildTrackPresets()
-{
-    return {
-        makeAnneauVitessePreset(),
-        makeCircuitSinueuxPreset(),
-        makeCircuitTechniquePreset(),
-        makeRouteAbimeePreset(),
-    };
-}
 
 float wrapTrackDistance(float distance, float totalLength)
 {
@@ -167,12 +89,6 @@ Track Track::make(const TrackDef& def)
     return t;
 }
 
-const std::vector<TrackDef>& Track::presets()
-{
-    static const std::vector<TrackDef> presets = buildTrackPresets();
-    return presets;
-}
-
 void Track::recomputeLengths()
 {
     std::size_t n = waypoints_.size();
@@ -192,59 +108,6 @@ float Track::segmentLength(Vector2 a, Vector2 b)
     float dx = b.x - a.x;
     float dy = b.y - a.y;
     return std::sqrt(dx * dx + dy * dy);
-}
-
-void Track::appendEastStraight(
-    const TrackDef& def, std::vector<Vector2>& waypoints)
-{
-    for (int i = 0; i <= kStraightSegments; ++i) {
-        float iF = static_cast<float>(i);
-        float segF = static_cast<float>(kStraightSegments);
-        float lt = iF / segF;
-        float z = -def.straightLength * kHalf + lt * def.straightLength;
-        float chicane = def.chicaneAmpEast * std::sin(kChicaneCycles * PI * lt);
-        waypoints.push_back({def.radius + chicane, z});
-    }
-}
-
-void Track::appendNorthCurve(
-    const TrackDef& def, std::vector<Vector2>& waypoints)
-{
-    for (int i = 1; i < kCurveSegments; ++i) {
-        float iF = static_cast<float>(i);
-        float segF = static_cast<float>(kCurveSegments);
-        float a = (iF / segF) * PI;
-        float x = def.radius * std::cos(a);
-        float y = def.straightLength * kHalf + def.radius * std::sin(a);
-        waypoints.push_back({x, y});
-    }
-}
-
-void Track::appendWestStraight(
-    const TrackDef& def, std::vector<Vector2>& waypoints)
-{
-    for (int i = 0; i <= kStraightSegments; ++i) {
-        float iF = static_cast<float>(i);
-        float segF = static_cast<float>(kStraightSegments);
-        float lt = iF / segF;
-        float z = def.straightLength * kHalf - lt * def.straightLength;
-        float phase = def.chicaneFreqWest * kChicaneCycles * PI * lt;
-        float chicane = def.chicaneAmpWest * std::sin(phase);
-        waypoints.push_back({-def.radius + chicane, z});
-    }
-}
-
-void Track::appendSouthCurve(
-    const TrackDef& def, std::vector<Vector2>& waypoints)
-{
-    for (int i = 1; i < kCurveSegments; ++i) {
-        float iF = static_cast<float>(i);
-        float segF = static_cast<float>(kCurveSegments);
-        float a = PI + (iF / segF) * PI;
-        float x = def.radius * std::cos(a);
-        float y = -def.straightLength * kHalf + def.radius * std::sin(a);
-        waypoints.push_back({x, y});
-    }
 }
 
 Vector3 Track::startPosition(int laneIndex, int laneCount) const

@@ -21,7 +21,7 @@ namespace racer::engine {
 class ShadowPass {
 public:
     static constexpr int kResolution = 2048;
-    static constexpr float kExtent = 130.0f;
+    static constexpr float kExtent = 280.0f;
     static constexpr float kDistance = 260.0f;
     static constexpr int kTextureSlot = 15;
 

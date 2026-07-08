@@ -24,24 +24,32 @@ namespace {
 constexpr int kSkidTextureSize = 2048;
 } // namespace
 
+namespace {
+
+constexpr float kGroundDrawY = -0.10f;
+constexpr float kTrackSurfaceY = 0.06f;
+
+} // namespace
+
 void TrackDecorBuilder::buildTrackMeshes(
     TrackRenderer &renderer, const Track &track,
     const std::vector<Vector2> &perp, float halfWidth)
 {
     SurfaceStyle style = renderer.surfaceStyle_;
     Mesh trackMesh = TrackMeshBuilder::buildStripMesh(
-        track, perp, -halfWidth, halfWidth, 0.02f,
+        track, perp, -halfWidth, halfWidth, kTrackSurfaceY,
         [style](size_t i) {
             return TrackMeshBuilder::asphaltColor(
                 TrackMeshBuilder::hashIndex(i), style);
         });
     renderer.trackModel_ = LoadModelFromMesh(trackMesh);
     Mesh rubberMesh = TrackMeshBuilder::buildStripMesh(
-        track, perp, -0.35f, 0.35f, 0.021f,
-        [](size_t) { return Color{28, 28, 32, 255}; });
+        track, perp, -0.35f, 0.35f, kTrackSurfaceY + 0.008f,
+        [](size_t) { return Color{52, 52, 58, 255}; });
     renderer.rubberLineModel_ = LoadModelFromMesh(rubberMesh);
     Mesh centerDash = TrackMeshBuilder::buildDashedStripMesh(
-        track, perp, -0.12f, 0.12f, 0.035f, WHITE, 4, 2);
+        track, perp, -0.12f, 0.12f, kTrackSurfaceY + 0.022f,
+        WHITE, 4, 2);
     renderer.centerDashModel_ = LoadModelFromMesh(centerDash);
 }
 
@@ -51,11 +59,13 @@ void TrackDecorBuilder::buildEdgeLineMeshes(
 {
     constexpr float kEdgeWidth = 0.18f;
     Mesh edgeOuter = TrackMeshBuilder::buildStripMesh(
-        track, perp, halfWidth - kEdgeWidth, halfWidth - 0.02f, 0.034f,
+        track, perp, halfWidth - kEdgeWidth, halfWidth - 0.02f,
+        kTrackSurfaceY + 0.014f,
         [](size_t) { return WHITE; });
     renderer.edgeLineOuterModel_ = LoadModelFromMesh(edgeOuter);
     Mesh edgeInner = TrackMeshBuilder::buildStripMesh(
-        track, perp, -halfWidth + 0.02f, -halfWidth + kEdgeWidth, 0.034f,
+        track, perp, -halfWidth + 0.02f, -halfWidth + kEdgeWidth,
+        kTrackSurfaceY + 0.014f,
         [](size_t) { return WHITE; });
     renderer.edgeLineInnerModel_ = LoadModelFromMesh(edgeInner);
 }
@@ -71,14 +81,14 @@ void TrackDecorBuilder::buildCurbMeshes(
         ? Color{160, 150, 130, 255} : RAYWHITE;
     Mesh curbMeshOuter = TrackMeshBuilder::buildStripMesh(
         track, perp, halfWidth - kCurbWidth * 0.5f,
-        halfWidth + kCurbWidth * 0.5f, 0.025f,
+        halfWidth + kCurbWidth * 0.5f, kTrackSurfaceY + 0.004f,
         [curbA, curbB](size_t i) {
             return (static_cast<int>(i / 3) % 2 == 0) ? curbA : curbB;
         });
     renderer.curbModelOuter_ = LoadModelFromMesh(curbMeshOuter);
     Mesh curbMeshInner = TrackMeshBuilder::buildStripMesh(
         track, perp, -halfWidth - kCurbWidth * 0.5f,
-        -halfWidth + kCurbWidth * 0.5f, 0.025f,
+        -halfWidth + kCurbWidth * 0.5f, kTrackSurfaceY + 0.004f,
         [curbA, curbB](size_t i) {
             return (static_cast<int>(i / 3) % 2 == 0) ? curbA : curbB;
         });
@@ -89,8 +99,20 @@ void TrackDecorBuilder::buildGroundAndFinishMeshes(
     TrackRenderer &renderer, const Track &track,
     const std::vector<Vector2> &perp)
 {
+    float minX = 0.0f;
+    float maxX = 0.0f;
+    float minZ = 0.0f;
+    float maxZ = 0.0f;
+
+    scanWaypointBounds(track, minX, maxX, minZ, maxZ);
+    float span = std::max(maxX - minX, maxZ - minZ) + 80.0f;
+    renderer.groundSpan_ = span;
+    renderer.groundCenter_ = Vector3{
+        (minX + maxX) * 0.5f, 0.0f, (minZ + maxZ) * 0.5f,
+    };
+    int tilesPerSide = (renderer.surfaceStyle_ == SurfaceStyle::ABIMEE) ? 16 : 8;
     Mesh groundMesh = TrackMeshBuilder::buildCheckerGroundMesh(
-        500.0f, 40, renderer.surfaceStyle_);
+        span, tilesPerSide, renderer.surfaceStyle_);
     renderer.groundModel_ = LoadModelFromMesh(groundMesh);
     Mesh finishMesh = TrackMeshBuilder::buildFinishLineMesh(track, perp);
     renderer.finishLineModel_ = LoadModelFromMesh(finishMesh);
@@ -113,102 +135,13 @@ void TrackDecorBuilder::initStartGantry(
 {
     const auto &wp = track.waypoints();
 
-    renderer.startGantryBase_ = Vector3{wp[0].x, 0.0f, wp[0].y};
+    renderer.startGantryBase_ = Vector3{
+        wp[0].x, kTrackSurfaceY, wp[0].y,
+    };
     renderer.startGantryPerp_ = Vector3{perp[0].x, 0.0f, perp[0].y};
     renderer.startGantryAlong_ = Vector3{-perp[0].y, 0.0f, perp[0].x};
 }
 
-void TrackDecorBuilder::buildCloudPuffs(
-    TrackCloudInstance &cloud, int cloudIndex)
-{
-    uint32_t h = TrackMeshBuilder::hashIndex(
-        static_cast<size_t>(cloudIndex) + 9000);
-    int puffCount = 3 + static_cast<int>(h % 3);
-
-    for (int p = 0; p < puffCount; ++p) {
-        uint32_t ph = TrackMeshBuilder::hashIndex(
-            static_cast<size_t>(cloudIndex * 10 + p));
-        cloud.puffOffsets.push_back(Vector3{
-            static_cast<float>(ph % 100) * 0.08f - 4.0f,
-            static_cast<float>((ph >> 4) % 50) * 0.02f,
-            static_cast<float>((ph >> 8) % 100) * 0.08f - 4.0f,
-        });
-        cloud.puffScales.push_back(
-            1.8f + static_cast<float>(ph % 40) * 0.04f);
-    }
-}
-
-void TrackDecorBuilder::buildCloudRing(TrackRenderer &renderer)
-{
-    for (int c = 0; c < 14; ++c) {
-        uint32_t h = TrackMeshBuilder::hashIndex(
-            static_cast<size_t>(c) + 9000);
-        float angle = static_cast<float>(c) / 14.0f * 2.0f * PI;
-        float dist = 120.0f + static_cast<float>(h % 80);
-        TrackCloudInstance cloud;
-
-        cloud.basePosition = Vector3{
-            std::cos(angle) * dist, 42.0f + static_cast<float>(h % 20),
-            std::sin(angle) * dist,
-        };
-        cloud.driftSpeed = 0.4f + static_cast<float>(h % 50) * 0.01f;
-        cloud.scale = 2.5f + static_cast<float>(h % 30) * 0.05f;
-        buildCloudPuffs(cloud, c);
-        renderer.clouds_.push_back(cloud);
-    }
-}
-
-Color TrackDecorBuilder::makeSpectatorShirtColor(uint32_t sh)
-{
-    return Color{
-        static_cast<unsigned char>(80 + sh % 175),
-        static_cast<unsigned char>(60 + (sh >> 4) % 175),
-        static_cast<unsigned char>(50 + (sh >> 8) % 175),
-        255,
-    };
-}
-
-Vector3 TrackDecorBuilder::makeSpectatorPosition(
-    const TrackGrandstandInstance &gs,
-    float rowH, float alongT, float outwardD)
-{
-    return Vector3{
-        gs.origin.x + gs.along.x * alongT + gs.outward.x * outwardD,
-        rowH,
-        gs.origin.z + gs.along.z * alongT + gs.outward.z * outwardD,
-    };
-}
-
-void TrackDecorBuilder::addGrandstandSpectator(
-    TrackGrandstandInstance &gs, size_t mid,
-    int row, int col)
-{
-    constexpr int kCols = 14;
-    uint32_t sh = TrackMeshBuilder::hashIndex(
-        static_cast<size_t>(row * kCols + col) + mid * 17);
-    float alongT = (static_cast<float>(col) / (kCols - 1) - 0.5f) * gs.length;
-    float outwardD = static_cast<float>(row) * 1.8f + 1.5f;
-    float rowH = static_cast<float>(row) * 1.1f + 0.5f;
-    TrackSpectatorInstance spec;
-
-    spec.position = makeSpectatorPosition(gs, rowH, alongT, outwardD);
-    spec.shirtColor = makeSpectatorShirtColor(sh);
-    spec.jumpPhase = static_cast<float>(sh % 628) * 0.01f;
-    spec.jumpSpeed = 2.5f + static_cast<float>(sh % 30) * 0.05f;
-    gs.spectators.push_back(spec);
-}
-
-void TrackDecorBuilder::fillGrandstandSpectators(
-    TrackGrandstandInstance &gs, size_t mid)
-{
-    constexpr int kRows = 4;
-    constexpr int kCols = 14;
-
-    for (int row = 0; row < kRows; ++row) {
-        for (int col = 0; col < kCols; ++col)
-            addGrandstandSpectator(gs, mid, row, col);
-    }
-}
 
 void TrackDecorBuilder::addAbimeeCrackAt(
     TrackRenderer &renderer, const TrackPotholeInstance &hole,
@@ -312,7 +245,8 @@ void TrackDecorBuilder::setupSkidTextureModel(TrackRenderer &renderer)
     ClearBackground(BLANK);
     EndTextureMode();
     Mesh skidQuad = TrackMeshBuilder::buildSkidQuadMesh(
-        renderer.skidWorldOrigin_, renderer.skidWorldSize_, 0.045f);
+        renderer.skidWorldOrigin_, renderer.skidWorldSize_,
+        kTrackSurfaceY + 0.03f);
     renderer.skidOverlayModel_ = LoadModelFromMesh(skidQuad);
     if (renderer.skidOverlayModel_.materialCount > 0) {
         renderer.skidOverlayModel_.materials[0]
@@ -348,4 +282,6 @@ bool TrackDecorBuilder::isSharpCorner(
     d1.y /= l1;
     return d0.x * d1.x + d0.y * d1.y < kCurveDot;
 }
+
+} // namespace racer
 

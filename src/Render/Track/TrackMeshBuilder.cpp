@@ -101,10 +101,15 @@ Color TrackMeshBuilder::asphaltColor(uint32_t h, SurfaceStyle style)
             255,
         };
     }
-    unsigned char base = static_cast<unsigned char>(52 + noise % 18);
+    unsigned char base = static_cast<unsigned char>(72 + noise % 24);
 
     return Color{
-        base, base, static_cast<unsigned char>(base + 4), 255,
+        base,
+        static_cast<unsigned char>(base + 2),
+        static_cast<unsigned char>(base + 8),
+        255,
     };
 }
+
+} // namespace racer
 

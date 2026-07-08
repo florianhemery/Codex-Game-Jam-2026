@@ -36,6 +36,7 @@ void RaceState::initPlayer(int totalCars)
     player.car.position() = track_.startPosition(0, totalCars);
     player.car.heading() = track_.startHeading();
     player.car.velocityHeading() = player.car.heading();
+    applyTrackHeight(player, 0.0f);
     Track::Progress prog = track_.projectPosition(player.car.position());
     player.lastSegment = prog.segmentIndex;
     racers_.push_back(player);
@@ -50,6 +51,7 @@ void RaceState::initAiRacer(int aiIndex, int totalCars)
     ai.car.position() = track_.startPosition(aiIndex + 1, totalCars);
     ai.car.heading() = track_.startHeading();
     ai.car.velocityHeading() = ai.car.heading();
+    applyTrackHeight(ai, 0.0f);
     Track::Progress prog = track_.projectPosition(ai.car.position());
     ai.lastSegment = prog.segmentIndex;
     racers_.push_back(ai);
@@ -113,11 +115,22 @@ void RaceState::updateSingleRacer(
     racer.lastInput = input;
     racer.car.update(input, dt);
     Track::Progress prog = track_.projectPosition(racer.car.position());
+    applyTrackHeight(racer, dt);
+    prog = track_.projectPosition(racer.car.position());
     applySurfaceGrip(racer, prog);
     updateMidpointFlag(racer, prog, numSegments);
     updateLapCount(racer, prog, numSegments);
     racer.lastSegment = prog.segmentIndex;
     finalizePlayerIfDone(racer);
+}
+
+void RaceState::applyTrackHeight(RacerEntry& racer, float /*dt*/)
+{
+    constexpr float kTrackSurfaceY = 0.06f;
+
+    racer.car.position().y = kTrackSurfaceY;
+    racer.car.verticalVelocity() = 0.0f;
+    racer.car.airborne() = false;
 }
 
 void RaceState::applySurfaceGrip(

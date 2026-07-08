@@ -49,6 +49,8 @@ private:
     using ArchInstance = TrackArchInstance;
 
     SurfaceStyle surfaceStyle_ = SurfaceStyle::PROPRE;
+    float groundSpan_ = 650.0f;
+    Vector3 groundCenter_{};
     Vector3 startGantryBase_{};
     Vector3 startGantryAlong_{};
     Vector3 startGantryPerp_{};

@@ -189,4 +189,3 @@ int main(int argc, char **argv)
     return allOk ? 0 : 1;
 }
 
-#include "Tools/RaceSimPrinter.cpp"

@@ -25,7 +25,28 @@ VfxCamBasis VfxDrawPass::makeCamBasis(const Camera3D &cam)
     b.right = Vector3{v.m0, v.m4, v.m8};
     b.up = Vector3{v.m1, v.m5, v.m9};
     b.fwd = Vector3Normalize(Vector3Subtract(cam.target, cam.position));
+    b.pos = cam.position;
     return b;
+}
+
+// Attenue les particules proches de la camera : un billboard traverse par
+// la camera de poursuite couvre tout l'ecran et voile la scene en blanc
+// (tres visible au depart quand la camera traverse les flammes de nitro).
+unsigned char VfxDrawPass::nearCameraFade(
+    const VfxParticle &p, const VfxCamBasis &cb, unsigned char alpha)
+{
+    const Vector3 d = Vector3Subtract(p.pos, cb.pos);
+    const float dist = Vector3Length(d);
+    constexpr float kFadeStart = 3.0f;
+    constexpr float kFadeEnd = 0.8f;
+
+    if (dist >= kFadeStart)
+        return alpha;
+    if (dist <= kFadeEnd)
+        return 0;
+    const float t = (dist - kFadeEnd) / (kFadeStart - kFadeEnd);
+
+    return static_cast<unsigned char>(static_cast<float>(alpha) * t);
 }
 
 void VfxDrawPass::emitQuad(
@@ -123,8 +144,8 @@ void VfxDrawPass::computeAxes(
     }
 }
 
-void VfxDrawPass::drawVfxParticlesOfType(
-    const VfxParticle *pool, int count, PType type,
+void VfxDrawPass::drawParticlesOfType(
+    const VfxParticle *pool, int count, VfxPType type,
     const Texture2D &tex, const VfxCamBasis &cb)
 {
     for (int i = 0; i < count; ++i) {
@@ -137,6 +158,9 @@ void VfxDrawPass::drawVfxParticlesOfType(
         Vector3 hr{0.0f, 0.0f, 0.0f};
         Vector3 hu{0.0f, 0.0f, 0.0f};
 
+        col.a = nearCameraFade(p, cb, col.a);
+        if (col.a == 0)
+            continue;
         computeAxes(p, cb, hr, hu);
         emitQuad(tex, p.pos, hr, hu, col);
     }

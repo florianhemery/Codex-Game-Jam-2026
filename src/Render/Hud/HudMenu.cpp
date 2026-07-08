@@ -129,6 +129,74 @@ void HudMenu::drawTrackCard(const TrackDef &def, Rectangle card, bool selected)
     drawTrackCardBadge(def, card);
 }
 
+HudMenuLayout HudMenu::computeLayout(
+    const std::vector<TrackDef> &presets, int screenWidth, int screenHeight)
+{
+    HudMenuLayout layout;
+    int count = static_cast<int>(presets.size());
+
+    if (count <= 0) {
+        return layout;
+    }
+    const float gap = 20.0f;
+    float cardW = std::min(250.0f,
+        (static_cast<float>(screenWidth) - 60.0f -
+            gap * static_cast<float>(count - 1)) /
+        static_cast<float>(count));
+    const float cardH = 280.0f;
+    float totalW = cardW * static_cast<float>(count) +
+        gap * static_cast<float>(count - 1);
+    float x0 = (static_cast<float>(screenWidth) - totalW) * 0.5f;
+    const float y0 = 246.0f;
+
+    layout.cards.reserve(static_cast<size_t>(count));
+    for (int i = 0; i < count; ++i) {
+        Rectangle card{x0 + static_cast<float>(i) * (cardW + gap), y0,
+            cardW, cardH};
+
+        layout.cards.push_back(card);
+    }
+    const char *label = "DEMARRER";
+    int labelW = HudGfx::measureText(label, 24);
+    float btnW = static_cast<float>(labelW) + 48.0f;
+    float btnH = 46.0f;
+
+    layout.startButton = Rectangle{
+        (static_cast<float>(screenWidth) - btnW) * 0.5f,
+        static_cast<float>(screenHeight) - 108.0f, btnW, btnH,
+    };
+    return layout;
+}
+
+int HudMenu::pickCard(const HudMenuLayout &layout, Vector2 mouse)
+{
+    for (size_t i = 0; i < layout.cards.size(); ++i) {
+        if (CheckCollisionPointRec(mouse, layout.cards[i])) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
+}
+
+bool HudMenu::hitStartButton(const HudMenuLayout &layout, Vector2 mouse)
+{
+    return CheckCollisionPointRec(mouse, layout.startButton);
+}
+
+void HudMenu::drawStartButton(const HudMenuLayout &layout)
+{
+    const char *label = "DEMARRER";
+    bool hover = CheckCollisionPointRec(GetMousePosition(), layout.startButton);
+    Color fill = hover ? Color{255, 196, 40, 255} : Color{230, 150, 24, 255};
+
+    HudGfx::drawRectangleRounded(layout.startButton, 0.35f, 8, fill);
+    HudGfx::drawRectangleRoundedLinesEx(
+        layout.startButton, 0.35f, 8, 2.0f, Fade(BLACK, 0.35f));
+    HudGfx::drawTextCentered(label,
+        static_cast<int>(layout.startButton.x + layout.startButton.width * 0.5f),
+        static_cast<int>(layout.startButton.y + 12.0f), 24, BLACK);
+}
+
 void HudMenu::drawTitle(int screenWidth)
 {
     const char *title = "RACER";
@@ -150,25 +218,11 @@ void HudMenu::drawTitle(int screenWidth)
 void HudMenu::drawCards(const std::vector<TrackDef> &presets, int selectedIndex,
     int screenWidth)
 {
+    HudMenuLayout layout = computeLayout(presets, screenWidth, GetScreenHeight());
     int count = static_cast<int>(presets.size());
 
-    if (count <= 0) {
-        return;
-    }
-    const float gap = 20.0f;
-    float cardW = std::min(250.0f,
-        (static_cast<float>(screenWidth) - 60.0f -
-            gap * static_cast<float>(count - 1)) /
-        static_cast<float>(count));
-    const float cardH = 280.0f;
-    float totalW = cardW * static_cast<float>(count) +
-        gap * static_cast<float>(count - 1);
-    float x0 = (static_cast<float>(screenWidth) - totalW) * 0.5f;
-    const float y0 = 246.0f;
-
     for (int i = 0; i < count; ++i) {
-        Rectangle card{x0 + static_cast<float>(i) * (cardW + gap), y0,
-            cardW, cardH};
+        Rectangle card = layout.cards[static_cast<size_t>(i)];
         bool selected = (i == selectedIndex);
 
         if (selected) {

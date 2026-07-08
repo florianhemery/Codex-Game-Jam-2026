@@ -21,7 +21,7 @@ VfxParticle *VfxSystem::Impl::alloc()
 {
     VfxParticle *slot = nullptr;
 
-    if (count_ < kMaxVfxParticles)
+    if (count_ < kVfxMaxParticles)
         slot = &pool_[static_cast<std::size_t>(count_++)];
     return slot;
 }
@@ -137,7 +137,10 @@ void VfxSystem::Impl::applyOffroadDust(VfxParticle &p, float dt)
 
 void VfxSystem::Impl::applyNitroFlame(VfxParticle &p, float dt)
 {
-    float d = std::max(0.0f, 1.0f - 5.0f * dt);
+    // Trainee faible : un freinage fort (5/s) immobilisait les particules
+    // au meme endroit quand la voiture est lente, et leur accumulation
+    // additive saturait l'ecran en blanc (flash au depart de course).
+    float d = std::max(0.0f, 1.0f - 2.0f * dt);
 
     p.vel.x *= d;
     p.vel.y *= d;
@@ -231,17 +234,33 @@ void VfxSystem::Impl::initNitroFlame(
         pos.x + backDir.x * VfxTextureFactory::frand(0.0f, 0.15f),
         pos.y + backDir.y * VfxTextureFactory::frand(0.0f, 0.15f),
         pos.z + backDir.z * VfxTextureFactory::frand(0.0f, 0.15f)};
+    // Seule une fraction de la vitesse voiture est heritee : a pleine
+    // vitesse (carSpeed ~= eject), une addition complete annulerait la
+    // vitesse relative et figerait les particules sur place (paquet
+    // opaque qui ne se disperse pas -> flash blanc au 1er seconde).
+    constexpr float kCarVelInherit = 0.3f;
+
+    // Ejection legerement vers le sol : la camera de poursuite regarde la
+    // voiture a travers le panache d'echappement ; des particules a hauteur
+    // de caisse recouvraient la carrosserie a l'ecran (voiture blanchie).
     p->vel = Vector3{
-        backDir.x * eject + carVel.x + VfxTextureFactory::frand(-1.0f, 1.0f),
-        backDir.y * eject + carVel.y + VfxTextureFactory::frand(-1.0f, 1.0f),
-        backDir.z * eject + carVel.z + VfxTextureFactory::frand(-1.0f, 1.0f)};
-    p->maxLife = p->life = VfxTextureFactory::frand(0.15f, 0.3f);
-    p->size = VfxTextureFactory::frand(0.42f, 0.6f);
+        backDir.x * eject + carVel.x * kCarVelInherit
+            + VfxTextureFactory::frand(-1.0f, 1.0f),
+        VfxTextureFactory::frand(-1.6f, -0.4f),
+        backDir.z * eject + carVel.z * kCarVelInherit
+            + VfxTextureFactory::frand(-1.0f, 1.0f)};
+    // Vie tres courte : le jet meurt colle a l'echappement au lieu de
+    // s'accumuler dans le couloir camera->voiture.
+    p->maxLife = p->life = VfxTextureFactory::frand(0.06f, 0.10f);
+    // Quads petits et bien satures : vus de la camera de poursuite, les
+    // flammes sont DEVANT la carrosserie a l'ecran ; des gros quads laiteux
+    // recouvraient la voiture et la faisaient paraitre blanche.
+    p->size = VfxTextureFactory::frand(0.24f, 0.36f);
     p->sizeGrowth = VfxTextureFactory::frand(-1.3f, -0.9f);
     p->rot = VfxTextureFactory::frand(0.0f, 360.0f);
     p->rotVel = VfxTextureFactory::frand(-200.0f, 200.0f);
     p->phase = 0.0f;
-    p->colorStart = VfxTextureFactory::rgba(185, 210, 255, 255);
+    p->colorStart = VfxTextureFactory::rgba(120, 175, 255, 150);
     p->colorEnd = VfxTextureFactory::rgba(255, 110, 15, 0);
 }
 
@@ -291,4 +310,6 @@ void VfxSystem::Impl::initConfetti(VfxParticle *p, Vector3 pos)
     p->phase = VfxTextureFactory::frand(0.0f, 6.2831f);
     setConfettiColors(p);
 }
+
+} // namespace racer
 

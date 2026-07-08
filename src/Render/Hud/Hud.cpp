@@ -53,12 +53,15 @@ void Hud::drawMenu(const std::vector<TrackDef> &presets, int selectedIndex,
         Color{22, 26, 40, 255}, Color{10, 11, 18, 255});
 
     int centerX = screenWidth / 2;
+    HudMenuLayout layout =
+        HudMenu::computeLayout(presets, screenWidth, screenHeight);
 
     HudMenu::drawTitle(screenWidth);
     HudMenu::drawCards(presets, selectedIndex, screenWidth);
+    HudMenu::drawStartButton(layout);
     HudGfx::drawTextCentered(
-        "Haut/Bas : choisir   --   Entree : demarrer", centerX,
-        screenHeight - 56, 20, GRAY);
+        "Haut/Bas ou clic : choisir   --   Entree ou bouton : demarrer",
+        centerX, screenHeight - 56, 20, GRAY);
 }
 
 } // namespace racer

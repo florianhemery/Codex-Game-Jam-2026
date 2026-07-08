@@ -48,23 +48,17 @@ float SunVisibility(float ndl)
     if (proj.z >= 1.0) return 1.0;
     if (proj.x <= 0.0 || proj.x >= 1.0 || proj.y <= 0.0 || proj.y >= 1.0) return 1.0;
 
-    // Biais adaptatif : plus l'incidence est rasante, plus le biais est grand.
-    float bias = max(0.00030*(1.0 - ndl), 0.00004);
+    // Biais plus genereux pour limiter l'acne sur surfaces planes et petites pieces.
+    float bias = max(0.0025*(1.0 - ndl), 0.00035);
 
-    // PCF 3x3 avec rotation aleatoire par pixel : les bandes de quantification
-    // (visibles sur les longues ombres rasantes) deviennent un bruit discret,
-    // masque ensuite par le grain du post-process.
-    float angle = 6.2831853*fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233)))*43758.5453);
-    vec2 rot = vec2(cos(angle), sin(angle));
-
+    // PCF 3x3 : noyau fixe pour limiter le scintillement des ombres en mouvement.
     float lit = 0.0;
     for (int x = -1; x <= 1; x++)
     {
         for (int y = -1; y <= 1; y++)
         {
-            vec2 o = vec2(float(x), float(y));
-            o = vec2(o.x*rot.x - o.y*rot.y, o.x*rot.y + o.y*rot.x);
-            float depth = texture(shadowMap, proj.xy + o*(shadowTexel*1.4)).r;
+            vec2 o = vec2(float(x), float(y)) * shadowTexel * 1.4;
+            float depth = texture(shadowMap, proj.xy + o).r;
             lit += (proj.z - bias > depth) ? 0.0 : 1.0;
         }
     }
@@ -113,7 +107,7 @@ void main()
     float k = a*0.5;
     float vis = 1.0/max((ndl*(1.0 - k) + k)*(ndv*(1.0 - k) + k), 1e-4);
     float fres = 0.04 + 0.96*pow(1.0 - max(dot(H, V), 0.0), 5.0);
-    vec3 spec = sunColor*(ndf*vis*fres*0.25*ndl*visibility);
+    vec3 spec = sunColor*(ndf*vis*fres*0.03*ndl*visibility);
 
     // Point lights : Lambert + attenuation 1/(1 + 0.12 d + 0.045 d^2).
     vec3 points = vec3(0.0);

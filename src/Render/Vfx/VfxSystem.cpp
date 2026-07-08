@@ -61,13 +61,21 @@ void VfxSystem::draw(const Camera3D &camera) const
         s.pool_.data(), s.count_, VfxPType::SPLASH, s.texStreak_, cb);
     VfxDrawPass::drawParticlesOfType(
         s.pool_.data(), s.count_, VfxPType::RAIN, s.texStreak_, cb);
-    BeginBlendMode(BLEND_ADDITIVE);
+    // Flammes nitro en blend alpha (borne a leur propre couleur) : en
+    // additif, l'empilement des quads depassait le blanc et delavait la
+    // voiture vue de derriere au depart de course.
     VfxDrawPass::drawParticlesOfType(
         s.pool_.data(), s.count_, VfxPType::NITRO_FLAME, s.texPuff_, cb);
+    BeginBlendMode(BLEND_ADDITIVE);
     VfxDrawPass::drawParticlesOfType(
         s.pool_.data(), s.count_, VfxPType::SPARK, s.texStreak_, cb);
     EndBlendMode();
     rlDrawRenderBatchActive();
+    // Restaure la texture blanche par defaut : rlSetTexture persiste entre
+    // les frames, et la texture "puff" restee bindee corrompait l'albedo de
+    // toute la geometrie immediate suivante (voiture blanche/fantome des
+    // qu'une particule etait vivante, ex. flammes de nitro au depart).
+    rlSetTexture(0);
     rlEnableBackfaceCulling();
     rlEnableDepthMask();
 }
@@ -100,7 +108,11 @@ void VfxSystem::emitOffroadDust(Vector3 pos, Vector3 carVel)
 
 void VfxSystem::emitNitroFlame(Vector3 pos, Vector3 backDir, Vector3 carVel)
 {
-    int n = GetRandomValue(4, 5);
+    float speed = std::sqrt(carVel.x * carVel.x + carVel.z * carVel.z);
+    // Debit reduit a basse vitesse : le point d'emission ne bougeant pas,
+    // les particules s'empilent au meme endroit et le blend additif
+    // sature en blanc (flash au depart de course).
+    int n = (speed < 6.0f) ? 1 : GetRandomValue(2, 3);
 
     for (int i = 0; i < n; ++i) {
         VfxParticle *p = impl_->alloc();

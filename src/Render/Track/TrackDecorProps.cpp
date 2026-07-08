@@ -121,17 +121,17 @@ void TrackDecorBuilder::populateWaypointDecor(
     float extraOffset = 4.0f + static_cast<float>(h % 100) * 0.05f;
     float dist = halfWidth + extraOffset;
     Vector3 pos{
-        wp[i].x + perp[i].x * dist * sideSign, 0.0f,
+        wp[i].x + perp[i].x * dist * sideSign, 0.06f,
         wp[i].y + perp[i].y * dist * sideSign,
     };
 
     addWaypointProp(renderer, pos, h, renderer.surfaceStyle_);
-    if (h % 7 == 0)
+    if (h % 5 == 0)
         addWaypointNpc(renderer, pos, perp[i], sideSign, h);
-    if (h % 11 == 0)
+    if (h % 9 == 0)
         addWaypointTireStack(
             renderer, track, perp, halfWidth, sideSign, i, h);
-    if (h % 13 == 0)
+    if (h % 7 == 0)
         addWaypointPennant(renderer, pos, h);
 }
 
@@ -141,14 +141,15 @@ TrackGrandstandInstance TrackDecorBuilder::makeGrandstandInstance(
 {
     const auto &wp = track.waypoints();
     TrackGrandstandInstance gs;
+    constexpr float kInnerClearance = 5.0f;
 
     gs.origin = Vector3{
-        wp[mid].x + outward.x * (halfWidth + 10.0f), 0.0f,
-        wp[mid].y + outward.y * (halfWidth + 10.0f),
+        wp[mid].x + outward.x * (halfWidth + kInnerClearance), 0.0f,
+        wp[mid].y + outward.y * (halfWidth + kInnerClearance),
     };
     gs.along = Vector3{along.x, 0.0f, along.y};
     gs.outward = Vector3{outward.x, 0.0f, outward.y};
-    gs.length = alongLen * 0.7f;
+    gs.length = alongLen * 0.65f;
     return gs;
 }
 
@@ -182,10 +183,9 @@ void TrackDecorBuilder::tryAddGrandstand(
     size_t mid = 0;
     float alongLen = 0.0f;
 
-    (void)perp;
     if (!computeStraightAlong(track, runStart, runEnd, along, mid, alongLen))
         return;
-    Vector2 outward{-along.y, along.x};
+    Vector2 outward{perp[mid].x, perp[mid].y};
     float side = (wp[mid].x * outward.x + wp[mid].y * outward.y) > 0.0f
         ? 1.0f : -1.0f;
 

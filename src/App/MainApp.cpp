@@ -21,14 +21,16 @@ int MainApp::run()
     const std::vector<racer::TrackDef> &presets = racer::Track::presets();
     racer::app::GameLoop::Context ctx(presets);
 
-    SetConfigFlags(FLAG_MSAA_4X_HINT);
+    SetConfigFlags(FLAG_VSYNC_HINT);
     InitWindow(ctx.screenWidth, ctx.screenHeight, "racer");
     SetTargetFPS(60);
+    ctx.vfx = std::make_unique<racer::VfxSystem>();
     racer::app::initCamera(ctx.camera);
     ctx.pipeline = std::make_unique<racer::engine::RenderPipeline>(
         ctx.screenWidth, ctx.screenHeight);
     racer::app::GameLoop::run(ctx);
     ctx.pipeline.reset();
+    ctx.vfx.reset();
     CloseWindow();
     return 0;
 }

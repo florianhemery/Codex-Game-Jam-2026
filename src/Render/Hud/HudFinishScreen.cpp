@@ -104,7 +104,7 @@ void HudFinishScreen::drawHeader(const RaceState &race, const Rectangle &panel,
         static_cast<int>(panel.y + 20.0f), 34, YELLOW, 3
     };
 
-    drawTextShadowCentered(title, titleShadow);
+    HudGfx::drawTextShadowCentered(title, titleShadow);
 
     const std::vector<RacerEntry> &racers = race.racers();
     const RacerEntry &player = racers[static_cast<size_t>(race.playerIndex())];
@@ -144,7 +144,7 @@ void HudFinishScreen::draw(const RaceState &race, const HudExtras &extras,
     HudGfx::drawRectangleRounded(panel, 0.08f, 8, HudGfx::fade(BLACK, 0.55f));
     Color panelBorder = HudGfx::fade(YELLOW, 0.35f);
     HudGfx::drawRectangleRoundedLinesEx(panel, 0.08f, 8, 2.0f, panelBorder);
-    drawFinishScreenHeader(race, panel, panelW);
+    drawHeader(race, panel, panelW);
 
     for (size_t i = 0; i < order.size(); ++i) {
         size_t idx = static_cast<size_t>(order[i]);
@@ -153,7 +153,7 @@ void HudFinishScreen::draw(const RaceState &race, const HudExtras &extras,
         HudFinishRowParams rowParams{race, racers[idx], idx,
             static_cast<int>(i) + 1, extras, panel, panelW, rowY};
 
-        drawFinishScreenRow(rowParams);
+        drawRow(rowParams);
     }
     HudGfx::drawTextCentered("R rejouer      M menu",
         static_cast<int>(panel.x + panelW * 0.5f),

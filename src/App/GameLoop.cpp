@@ -6,15 +6,51 @@
 */
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 
 #include "raylib.h"
 
 #include "App/CameraController.hpp"
 #include "App/GameLoop.hpp"
+#include "App/RacerColors.hpp"
+#include "Render/Car/CarWheelDraw.hpp"
+#include "Render/CarRenderer.hpp"
+#include "Render/Hud.hpp"
+#include "Render/Hud/HudMenu.hpp"
 
 namespace racer {
 namespace app {
+
+void GameLoop::OpaquePass::operator()() const
+{
+    if (!ctx_.trackRenderer)
+        return;
+    ctx_.trackRenderer->drawOpaqueGeometry();
+}
+
+void GameLoop::LitPass::operator()() const
+{
+    if (!ctx_.trackRenderer)
+        return;
+    ctx_.trackRenderer->draw(static_cast<float>(GetTime()));
+    const auto &racers = ctx_.race->racers();
+    const auto &pipeParams = ctx_.pipeline->params();
+
+    for (size_t i = 0; i < racers.size(); ++i) {
+        const auto &r = racers[i];
+        CarVisual vis = GameLoop::buildCarVisual(
+            ctx_, r, pipeParams.headlights);
+
+        CarRenderer::drawCarEx(
+            r.car, vis, colorForRacerIndex(i, racers[i].isPlayer));
+    }
+}
+
+void GameLoop::VfxPass::operator()() const
+{
+    ctx_.vfx->draw(ctx_.camera);
+}
 
 GameLoop::Context::Context(const std::vector<TrackDef> &trackPresets)
     : presets(trackPresets)
@@ -37,8 +73,8 @@ void GameLoop::startRace(Context &ctx, int trackIndex)
     ctx.wheelSpin = 0.0f;
     ctx.lapTimer = {};
     ctx.confettiEmitted = false;
-    ctx.vfx.clear();
-    ctx.vfx.setRain(ctx.currentAmbiance == engine::Ambiance::ORAGE);
+    ctx.vfx->clear();
+    ctx.vfx->setRain(ctx.currentAmbiance == engine::Ambiance::ORAGE);
 }
 
 void GameLoop::pollShaders(Context &ctx)
@@ -48,15 +84,95 @@ void GameLoop::pollShaders(Context &ctx)
         ctx.trackRenderer->applyShader(ctx.pipeline->litShader());
 }
 
+namespace {
+
+bool keyJustPressed(int primary, int alternate = 0)
+{
+    if (IsKeyPressed(primary)) {
+        return true;
+    }
+    return alternate != 0 && IsKeyPressed(alternate);
+}
+
+bool keyHeld(int primary, int alternate = 0)
+{
+    if (IsKeyDown(primary)) {
+        return true;
+    }
+    return alternate != 0 && IsKeyDown(alternate);
+}
+
+bool charJustPressed(char lower, char upper)
+{
+    int ch = GetCharPressed();
+
+    while (ch > 0) {
+        if (ch == lower || ch == upper) {
+            return true;
+        }
+        ch = GetCharPressed();
+    }
+    return false;
+}
+
+bool menuConfirmPressed()
+{
+    return keyJustPressed(KEY_ENTER) || keyJustPressed(KEY_SPACE);
+}
+
+bool menuUpPressed()
+{
+    return keyJustPressed(KEY_UP) || keyJustPressed(KEY_W, KEY_Z);
+}
+
+bool menuDownPressed()
+{
+    return keyJustPressed(KEY_DOWN) || keyJustPressed(KEY_S);
+}
+
+bool menuReturnPressed()
+{
+    return keyJustPressed(KEY_M) || keyJustPressed(KEY_ESCAPE)
+        || charJustPressed('m', 'M');
+}
+
+float readSteerTarget()
+{
+    if (keyHeld(KEY_A, KEY_Q) || keyHeld(KEY_LEFT)) {
+        return 1.0f;
+    }
+    if (keyHeld(KEY_D) || keyHeld(KEY_RIGHT)) {
+        return -1.0f;
+    }
+    return 0.0f;
+}
+
+} // namespace
+
 bool GameLoop::handleMenuFrame(Context &ctx)
 {
     int count = static_cast<int>(ctx.presets.size());
+    HudMenuLayout layout = HudMenu::computeLayout(
+        ctx.presets, ctx.screenWidth, ctx.screenHeight);
+    Vector2 mouse = GetMousePosition();
 
-    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W))
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        int picked = HudMenu::pickCard(layout, mouse);
+
+        if (picked >= 0) {
+            ctx.selectedTrack = picked;
+        } else if (HudMenu::hitStartButton(layout, mouse)) {
+            startRace(ctx, ctx.selectedTrack);
+            ctx.appState = AppState::RACING;
+        }
+    }
+    if (menuUpPressed()) {
         ctx.selectedTrack = (ctx.selectedTrack + count - 1) % count;
-    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S))
+    }
+    if (menuDownPressed()) {
         ctx.selectedTrack = (ctx.selectedTrack + 1) % count;
-    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+    }
+    if (menuConfirmPressed()) {
         startRace(ctx, ctx.selectedTrack);
         ctx.appState = AppState::RACING;
     }
@@ -71,10 +187,26 @@ bool GameLoop::handleMenuFrame(Context &ctx)
 
 bool GameLoop::shouldReturnToMenu(Context &ctx)
 {
-    if (ctx.race->phase() != RacePhase::FINISHED)
+    if (ctx.race->phase() != RacePhase::FINISHED) {
         return false;
-    if (!IsKeyPressed(KEY_M))
+    }
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        const char *menuHint = "M / Echap / clic : retour au menu";
+        int hw = MeasureText(menuHint, 20);
+        Rectangle hint{
+            static_cast<float>(ctx.screenWidth / 2 - hw / 2),
+            static_cast<float>(ctx.screenHeight / 2 + 42),
+            static_cast<float>(hw), 30.0f,
+        };
+
+        if (CheckCollisionPointRec(GetMousePosition(), hint)) {
+            ctx.appState = AppState::MENU;
+            return true;
+        }
+    }
+    if (!menuReturnPressed()) {
         return false;
+    }
     ctx.appState = AppState::MENU;
     return true;
 }
@@ -85,28 +217,16 @@ void GameLoop::handleRaceRestart(Context &ctx)
         startRace(ctx, ctx.selectedTrack);
 }
 
-namespace {
-
-float readSteerTarget()
-{
-    if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))
-        return 1.0f;
-    if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT))
-        return -1.0f;
-    return 0.0f;
-}
-
-} // namespace
-
 void GameLoop::readPlayerInput(Context &ctx, float dt)
 {
     CarInput input;
     float steerTarget = readSteerTarget();
 
-    if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP))
+    if (keyHeld(KEY_W, KEY_Z) || keyHeld(KEY_UP)) {
         input.throttle = 1.0f;
-    else if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN))
+    } else if (keyHeld(KEY_S) || keyHeld(KEY_DOWN)) {
         input.throttle = -1.0f;
+    }
     ctx.steerSmoothed += (steerTarget - ctx.steerSmoothed)
         * std::min(1.0f, 8.0f * dt);
     input.steer = ctx.steerSmoothed;
@@ -131,7 +251,7 @@ void GameLoop::updateConfetti(Context &ctx, const Car &playerCar)
         return;
     Vector3 pos{playerCar.position().x, 3.0f, playerCar.position().z};
 
-    ctx.vfx.emitConfetti(pos);
+    ctx.vfx->emitConfetti(pos);
     ctx.confettiEmitted = true;
 }
 
@@ -159,7 +279,7 @@ void GameLoop::buildHudExtras(Context &ctx, HudExtras &extras)
 
 void GameLoop::drawFinishedHint(Context &ctx)
 {
-    const char *menuHint = "M : retour au menu";
+    const char *menuHint = "M / Echap / clic : retour au menu";
     int hw = MeasureText(menuHint, 20);
 
     DrawText(menuHint, ctx.screenWidth / 2 - hw / 2,
@@ -177,7 +297,7 @@ void GameLoop::simulateRace(Context &ctx, float dt)
     for (const auto &r : ctx.race->racers())
         updateRacerVfx(ctx, r);
     updateConfetti(ctx, player.car);
-    ctx.vfx.update(dt, player.car.position());
+    ctx.vfx->update(dt, player.car.position());
     updateCamera(ctx.camera, player.car, dt);
 }
 

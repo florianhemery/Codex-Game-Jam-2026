@@ -7,6 +7,9 @@
 
 #include "Render/Vfx/VfxSystemImpl.hpp"
 
+#include <algorithm>
+#include <cmath>
+
 namespace racer {
 
 void VfxSystem::Impl::integrateMotion(VfxParticle &p, float dt)
@@ -88,4 +91,3 @@ void VfxSystem::Impl::integrateAll(float dt)
 
 } // namespace racer
 
-} // namespace racer
