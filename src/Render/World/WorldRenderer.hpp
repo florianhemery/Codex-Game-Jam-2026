@@ -46,7 +46,17 @@ private:
         Mesh mesh{};
         Model model{};
         bool ready = false;
+        Model scatterModel{};
+        bool hasScatterModel = false;
     };
+
+    struct LandmarkCache {
+        Model model{};
+        bool built = false;
+        bool hasGeometry = false;
+    };
+
+    using LandmarkBuilder = Model (WorldPropBuilder::*)(float) const;
 
     Color surfaceColor(SurfaceKind kind, BiomeId biome, float height, float nx,
         float nz) const;
@@ -54,9 +64,16 @@ private:
         float localZ) const;
     void buildMesh(ChunkMesh &entry, const ChunkData &data);
     void freeMesh(ChunkMesh &entry);
+    void drawCachedLandmark(LandmarkCache &cache, Vector3 pos, float maxDist,
+        Vector3 focus, const ChunkStreamer &streamer,
+        LandmarkBuilder build) const;
 
     std::vector<ChunkMesh> meshes_;
     mutable WorldPropBuilder propBuilder_;
+    mutable LandmarkCache marinaLandmark_;
+    mutable LandmarkCache portLandmark_;
+    mutable LandmarkCache volcanoLandmark_;
+    mutable LandmarkCache forestLandmark_;
     Shader litShader_{};
     bool hasLitShader_ = false;
     int terrainModeLoc_ = -1;

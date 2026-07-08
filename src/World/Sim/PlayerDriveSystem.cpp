@@ -11,6 +11,7 @@
 #include <cmath>
 
 #include "Vehicle/Car.hpp"
+#include "World/Aurelia/AureliaBounds.hpp"
 
 namespace racer::world {
 
@@ -63,6 +64,8 @@ void PlayerDriveSystem::update(Car &car, const CarInput &input,
     wz = car.position().z;
     float groundY = streamer.sampleHeight(wx, wz);
     car.position().y = groundY + 0.06f;
+
+    softClampCar(car, dt);
 
     wheelSpinOut += car.speed() * dt / kWheelRadius;
     (void)steerSmoothed;

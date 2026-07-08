@@ -22,6 +22,7 @@ struct RoadEdge {
     int from = 0;
     int to = 0;
     float speedLimit = 35.0f;
+    Vector2 control{};
 };
 
 class RoadGraph {

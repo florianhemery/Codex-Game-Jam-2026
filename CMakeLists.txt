@@ -88,6 +88,7 @@ set(RACER_HUD_SOURCES
     src/Render/Hud/Hud.cpp
     src/Render/Hud/HudGfx.cpp
     src/Render/Hud/HudMinimap.cpp
+    src/Render/Hud/HudOpenWorldNav.cpp
     src/Render/Hud/HudMenu.cpp
     src/Render/Hud/HudRaceGauge.cpp
     src/Render/Hud/HudRaceOverlay.cpp

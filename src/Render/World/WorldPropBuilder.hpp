@@ -29,9 +29,7 @@ struct PropVariation {
 class WorldPropBuilder {
 public:
     enum class BatchId : std::uint8_t {
-        SCATTER = 0,
-        LANDMARK,
-        POI,
+        POI = 0,
         TRAFFIC,
         COUNT
     };
@@ -49,9 +47,15 @@ public:
     static uint32_t hashPosition(float x, float z);
     static PropVariation variationFromHash(uint32_t h, Color baseTint);
 
-    void placeScatterProp(std::uint8_t type, Vector3 base, float yaw,
-        float scale, BiomeId biome);
-    void placeMarinaLandmarks(float groundY);
+    // Built once per chunk / once per landmark cluster (not per frame) and
+    // cached by the caller — see WorldRenderer's scatter/landmark caches.
+    Model buildScatterModel(const std::vector<PropInstance> &props,
+        Vector3 chunkOrigin, const std::vector<float> &groundY) const;
+    Model buildMarinaLandmarksModel(float groundY) const;
+    Model buildPortLandmarksModel(float groundY) const;
+    Model buildVolcanoLandmarksModel(float groundY) const;
+    Model buildForestLandmarksModel(float groundY) const;
+
     void placeRaceGate(const PoiInstance &poi, float groundY, float timeSec);
     void placeGarage(const PoiInstance &poi, float groundY);
     void placeMissionMarker(const PoiInstance &poi, float groundY,
@@ -70,6 +74,7 @@ private:
     void appendToBatch(BatchId id, const MeshBuffers &geom, Vector3 pos,
         float yaw, float uniformScale, float heightScale, Color tint);
     void uploadAndDraw(BatchId id);
+    Model finalizeModel(const MeshBuffers &scratch) const;
 
     static void buildPine(MeshBuffers &mb, float scale, float heightScale,
         Color tint);
@@ -95,6 +100,8 @@ private:
     static void buildGarage(MeshBuffers &mb, Color accent);
     static void buildMissionMarker(MeshBuffers &mb, Color color, float bob);
     static void buildTrafficCar(MeshBuffers &mb, Color body);
+    static void buildObservatoryTower(MeshBuffers &mb, Color accent);
+    static void buildWatchtower(MeshBuffers &mb, Color accent);
 
     Shader shader_{};
     bool hasShader_ = false;

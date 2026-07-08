@@ -18,9 +18,6 @@ namespace racer::world {
 
 class WorldDecorDraw {
 public:
-    static void drawProp(WorldPropBuilder &builder, Vector3 worldPos,
-        std::uint8_t type, float yaw, float scale, BiomeId biome);
-    static void drawMarinaLandmarks(WorldPropBuilder &builder, float groundY);
     static void drawRaceGate(WorldPropBuilder &builder, const PoiInstance &poi,
         float groundY, float timeSec);
     static void drawGarage(WorldPropBuilder &builder, const PoiInstance &poi,

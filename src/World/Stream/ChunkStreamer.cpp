@@ -10,6 +10,7 @@
 #include <cmath>
 
 #include "World/Aurelia/AureliaData.hpp"
+#include "World/Aurelia/AureliaBounds.hpp"
 
 namespace racer::world {
 
@@ -29,7 +30,7 @@ float chunkOriginZ(ChunkId id)
 
 void ChunkStreamer::updateCenter(float worldX, float worldZ)
 {
-    center_ = worldToChunkId(worldX, worldZ);
+    center_ = worldToChunkId(clampWorldX(worldX), clampWorldZ(worldZ));
 }
 
 void ChunkStreamer::ensureLoaded()
@@ -45,6 +46,12 @@ void ChunkStreamer::ensureLoaded()
 void ChunkStreamer::loadChunk(ChunkId id)
 {
     if (index_.find(id) != index_.end()) {
+        return;
+    }
+    float ox = static_cast<float>(id.x) * kChunkSize;
+    float oz = static_cast<float>(id.z) * kChunkSize;
+    if (ox + kChunkSize < WorldBounds::minX || ox > WorldBounds::maxX
+        || oz + kChunkSize < WorldBounds::minZ || oz > WorldBounds::maxZ) {
         return;
     }
     ChunkData data = ChunkGenerator::generate(id);

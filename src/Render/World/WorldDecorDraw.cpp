@@ -9,18 +9,6 @@
 
 namespace racer::world {
 
-void WorldDecorDraw::drawProp(WorldPropBuilder &builder, Vector3 worldPos,
-    std::uint8_t type, float yaw, float scale, BiomeId biome)
-{
-    builder.placeScatterProp(type, worldPos, yaw, scale, biome);
-}
-
-void WorldDecorDraw::drawMarinaLandmarks(WorldPropBuilder &builder,
-    float groundY)
-{
-    builder.placeMarinaLandmarks(groundY);
-}
-
 void WorldDecorDraw::drawRaceGate(WorldPropBuilder &builder,
     const PoiInstance &poi, float groundY, float timeSec)
 {

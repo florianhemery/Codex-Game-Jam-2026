@@ -8,7 +8,9 @@
 #include "World/Chunk/ChunkGenerator.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstdio>
 
 #include "World/Aurelia/AureliaData.hpp"
 
@@ -18,7 +20,6 @@ namespace {
 
 constexpr float kBiomeBlend = 24.0f;
 constexpr float kRoadRadius = 10.0f;
-constexpr float kRoadTargetHeight = 2.2f;
 
 float fade(float t)
 {
@@ -44,6 +45,70 @@ int idx(int ix, int iz)
     return iz * kChunkResolution + ix;
 }
 
+float latticeHash(int ix, int iz, int seed)
+{
+    unsigned int h = static_cast<unsigned int>(ix) * 374761393u
+        + static_cast<unsigned int>(iz) * 668265263u
+        + static_cast<unsigned int>(seed) * 2147483647u;
+    h = (h ^ (h >> 13)) * 1274126177u;
+    h ^= h >> 16;
+    return static_cast<float>(h & 0x00FFFFFFu)
+        / static_cast<float>(0x01000000u);
+}
+
+// Road bed elevation profile, sampled at the same points used to paint the
+// road. Two edges sharing a node must agree on its height exactly (or the
+// roads visibly disconnect at the junction), which makes the endpoints hard
+// constraints. Some terrain (e.g. steep volcano caldera edges) has more raw
+// elevation change between its two endpoints than any max-grade clamp could
+// resolve over that distance while still hitting both endpoints exactly —
+// in that case a straight-line ramp between the endpoints is the smoothest
+// connection mathematically possible. So the profile is built as that
+// straight-line baseline (by arc length, always exact at both ends) plus a
+// small terrain-following "wiggle" on top, magnitude-limited so it can only
+// add gentle local variation without reintroducing a canyon or a cliff.
+constexpr int kRoadProfileSamples = 64;
+constexpr float kMaxWiggle = 2.5f;
+
+std::array<float, kRoadProfileSamples + 1> roadHeightProfile(
+    const RoadGraph &graph, int edgeIndex)
+{
+    std::array<float, kRoadProfileSamples + 1> raw{};
+    std::array<Vector2, kRoadProfileSamples + 1> pts{};
+    std::array<float, kRoadProfileSamples + 1> cumDist{};
+
+    for (int s = 0; s <= kRoadProfileSamples; ++s) {
+        float t = static_cast<float>(s)
+            / static_cast<float>(kRoadProfileSamples);
+        pts[static_cast<size_t>(s)] = graph.pointOnEdge(edgeIndex, t);
+        raw[static_cast<size_t>(s)] = ChunkGenerator::sampleWorldHeight(
+            pts[static_cast<size_t>(s)].x, pts[static_cast<size_t>(s)].y);
+    }
+
+    cumDist[0] = 0.0f;
+    for (int s = 1; s <= kRoadProfileSamples; ++s) {
+        float dx = pts[static_cast<size_t>(s)].x
+            - pts[static_cast<size_t>(s - 1)].x;
+        float dz = pts[static_cast<size_t>(s)].y
+            - pts[static_cast<size_t>(s - 1)].y;
+        cumDist[static_cast<size_t>(s)] = cumDist[static_cast<size_t>(s - 1)]
+            + std::sqrt(dx * dx + dz * dz);
+    }
+    float total = cumDist[static_cast<size_t>(kRoadProfileSamples)];
+
+    std::array<float, kRoadProfileSamples + 1> profile{};
+    float h0 = raw.front();
+    float hN = raw.back();
+    for (size_t s = 0; s < profile.size(); ++s) {
+        float u = total > 0.001f ? cumDist[s] / total : 0.0f;
+        float baseline = lerp(h0, hN, u);
+        float wiggle =
+            std::clamp(raw[s] - baseline, -kMaxWiggle, kMaxWiggle);
+        profile[s] = baseline + wiggle;
+    }
+    return profile;
+}
+
 float weightAbove(float value, float threshold, float blend)
 {
     return smoothstep(threshold - blend, threshold + blend, value);
@@ -58,8 +123,22 @@ float weightBelow(float value, float threshold, float blend)
 
 float ChunkGenerator::noise2d(float x, float z, int seed)
 {
-    float n = std::sin(x * 12.9898f + z * 78.233f + seed * 43.12f) * 43758.5453f;
-    return n - std::floor(n);
+    int ix0 = static_cast<int>(std::floor(x));
+    int iz0 = static_cast<int>(std::floor(z));
+    float fx = x - static_cast<float>(ix0);
+    float fz = z - static_cast<float>(iz0);
+
+    float v00 = latticeHash(ix0, iz0, seed);
+    float v10 = latticeHash(ix0 + 1, iz0, seed);
+    float v01 = latticeHash(ix0, iz0 + 1, seed);
+    float v11 = latticeHash(ix0 + 1, iz0 + 1, seed);
+
+    float sx = fx * fx * (3.0f - 2.0f * fx);
+    float sz = fz * fz * (3.0f - 2.0f * fz);
+
+    float a = v00 + (v10 - v00) * sx;
+    float b = v01 + (v11 - v01) * sx;
+    return a + (b - a) * sz;
 }
 
 float ChunkGenerator::fbm(float x, float z, int seed, int octaves)
@@ -345,33 +424,61 @@ void ChunkGenerator::paintRoads(ChunkData &chunk)
     float maxX = ox + kChunkSize;
     float minZ = oz;
     float maxZ = oz + kChunkSize;
+    float cellSize = kChunkSize / static_cast<float>(kChunkResolution - 1);
+
+    // Where two edges converge near a shared node, each edge's independently
+    // slope-limited profile only matches the other exactly at the node
+    // itself — a naive "whichever edge painted last wins" overwrite creates
+    // a seam a few meters out. Tracking the closest road sample per cell
+    // (across all edges) instead makes the hand-off follow whichever edge
+    // is actually nearest, which is inherently continuous.
+    std::array<float, kChunkResolution * kChunkResolution> originalHeight =
+        chunk.heightmap;
+    std::array<float, kChunkResolution * kChunkResolution> bestDist{};
+    bestDist.fill(kRoadRadius);
 
     for (size_t ei = 0; ei < graph.edges().size(); ++ei) {
-        for (int s = 0; s <= 32; ++s) {
-            float t = static_cast<float>(s) / 32.0f;
+        std::array<float, kRoadProfileSamples + 1> profile =
+            roadHeightProfile(graph, static_cast<int>(ei));
+
+        for (int s = 0; s <= kRoadProfileSamples; ++s) {
+            float t = static_cast<float>(s)
+                / static_cast<float>(kRoadProfileSamples);
             Vector2 p = graph.pointOnEdge(static_cast<int>(ei), t);
             if (p.x < minX - kRoadRadius || p.x > maxX + kRoadRadius
                 || p.y < minZ - kRoadRadius || p.y > maxZ + kRoadRadius) {
                 continue;
             }
+            float bedHeight = profile[static_cast<size_t>(s)];
             float lx = p.x - ox;
             float lz = p.y - oz;
-            for (int iz = 0; iz < kChunkResolution; ++iz) {
-                for (int ix = 0; ix < kChunkResolution; ++ix) {
-                    float cx = static_cast<float>(ix)
-                        / static_cast<float>(kChunkResolution - 1) * kChunkSize;
-                    float cz = static_cast<float>(iz)
-                        / static_cast<float>(kChunkResolution - 1) * kChunkSize;
+            int ixMin = std::clamp(
+                static_cast<int>(std::floor((lx - kRoadRadius) / cellSize)),
+                0, kChunkResolution - 1);
+            int ixMax = std::clamp(
+                static_cast<int>(std::ceil((lx + kRoadRadius) / cellSize)),
+                0, kChunkResolution - 1);
+            int izMin = std::clamp(
+                static_cast<int>(std::floor((lz - kRoadRadius) / cellSize)),
+                0, kChunkResolution - 1);
+            int izMax = std::clamp(
+                static_cast<int>(std::ceil((lz + kRoadRadius) / cellSize)),
+                0, kChunkResolution - 1);
+            for (int iz = izMin; iz <= izMax; ++iz) {
+                for (int ix = ixMin; ix <= ixMax; ++ix) {
+                    float cx = static_cast<float>(ix) * cellSize;
+                    float cz = static_cast<float>(iz) * cellSize;
                     float dx = cx - lx;
                     float dz = cz - lz;
                     float dist = std::sqrt(dx * dx + dz * dz);
-                    if (dist >= kRoadRadius) {
+                    size_t i = static_cast<size_t>(idx(ix, iz));
+                    if (dist >= kRoadRadius || dist >= bestDist[i]) {
                         continue;
                     }
+                    bestDist[i] = dist;
                     float feather = 1.0f - fade(dist / kRoadRadius);
-                    size_t i = static_cast<size_t>(idx(ix, iz));
-                    float h = chunk.heightmap[i];
-                    chunk.heightmap[i] = lerp(h, kRoadTargetHeight, feather);
+                    chunk.heightmap[i] =
+                        lerp(originalHeight[i], bedHeight, feather);
                     chunk.splat[i] = SurfaceKind::ASPHALT;
                 }
             }

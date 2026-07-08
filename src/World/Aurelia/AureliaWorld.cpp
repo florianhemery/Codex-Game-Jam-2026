@@ -11,7 +11,7 @@
 
 #include "raylib.h"
 
-#include "Engine/Render/ShaderLocations.hpp"
+#include "World/Aurelia/AureliaBounds.hpp"
 #include "Render/VfxSystem.hpp"
 
 namespace racer::world {
@@ -184,16 +184,22 @@ float AureliaWorld::fogDensity() const
 float AureliaWorld::pipelineFogDensity() const
 {
     BiomeId biome = currentBiome();
+    float base = 0.0020f;
     if (biome == BiomeId::FOREST) {
-        return 0.0024f;
+        base = 0.0024f;
+    } else if (biome == BiomeId::VOLCANO) {
+        base = 0.0045f;
+    } else if (biome == BiomeId::PORT) {
+        base = 0.0048f;
     }
-    if (biome == BiomeId::VOLCANO) {
-        return 0.0045f;
+
+    Vector3 pos = playerCar_.position();
+    float edge = distanceToWorldEdge(pos.x, pos.z);
+    if (edge < 40.0f) {
+        float t = 1.0f - std::clamp(edge / 40.0f, 0.0f, 1.0f);
+        base += t * 0.006f;
     }
-    if (biome == BiomeId::PORT) {
-        return 0.0048f;
-    }
-    return 0.0020f;
+    return base;
 }
 
 void AureliaWorld::drawOpaque()

@@ -223,7 +223,6 @@ void WorldPropBuilder::uploadAndDraw(BatchId id)
         return;
     }
     batch.model = LoadModelFromMesh(mesh);
-    UnloadMesh(mesh);
     if (hasShader_) {
         TrackMeshBuilder::applyShaderToModel(batch.model, shader_);
     }
@@ -510,50 +509,118 @@ void WorldPropBuilder::buildTrafficCar(MeshBuffers &mb, Color body)
     appendBoxY(mb, Vector3{0.0f, 0.22f, -1.55f}, 1.5f, 0.3f, 0.5f, shade(body, 0.78f));
 }
 
-void WorldPropBuilder::placeScatterProp(
-    std::uint8_t type, Vector3 base, float yaw, float scale, BiomeId biome)
+void WorldPropBuilder::buildObservatoryTower(MeshBuffers &mb, Color accent)
 {
-    uint32_t h = hashPosition(base.x, base.z);
-    PropVariation var = variationFromHash(h, WHITE);
-    float finalScale = scale * var.scaleMul;
-    MeshBuffers geom{};
+    Color wall = Color{92, 86, 84, 255};
+    Color dome = mulColor(Color{215, 210, 200, 255}, accent);
+    float towerH = 7.5f;
 
-    switch (type) {
-    case 1:
-        if (var.subVariant == 0) {
-            buildBroadleaf(geom, 1.0f, var.heightScale, var.tint);
-        } else {
-            buildPine(geom, 1.0f, var.heightScale, var.tint);
-        }
-        break;
-    case 2:
-        if (var.subVariant == 0) {
-            buildIndustrialSilo(geom, 1.0f, var.heightScale, var.tint);
-        } else if (var.subVariant == 1) {
-            buildIndustrialTank(geom, 1.0f, var.heightScale, var.tint);
-        } else {
-            buildIndustrialAnnex(geom, 1.0f, var.heightScale, var.tint);
-        }
-        break;
-    case 3:
-        buildRock(geom, 1.0f, var.heightScale, var.tint);
-        break;
-    default:
-        buildPalm(geom, 1.0f, var.heightScale, var.tint);
-        break;
-    }
-    (void)biome;
-    appendToBatch(
-        BatchId::SCATTER, geom, base, yaw, finalScale, var.heightScale,
-        WHITE);
+    appendCylinderY(mb, Vector3{0.0f, 0.0f, 0.0f}, 2.0f, 1.6f, towerH, 12,
+        wall);
+    appendCylinderY(
+        mb, Vector3{0.0f, towerH, 0.0f}, 1.7f, 1.7f, 0.4f, 12, shade(wall, 1.1f));
+    appendSphereApprox(
+        mb, Vector3{0.0f, towerH + 1.6f, 0.0f}, 1.9f, Fade(dome, 0.92f));
+    appendCylinderY(
+        mb, Vector3{0.0f, towerH + 0.4f, 0.0f}, 0.25f, 0.25f, 2.6f, 6,
+        shade(dome, 0.7f));
 }
 
-void WorldPropBuilder::placeMarinaLandmarks(float groundY)
+void WorldPropBuilder::buildWatchtower(MeshBuffers &mb, Color accent)
 {
+    Color wood = accent;
+    Color roof = shade(accent, 0.7f);
+    float legH = 4.5f;
+    float platformY = legH;
+
+    const float legX[4] = {-1.6f, 1.6f, 1.6f, -1.6f};
+    const float legZ[4] = {-1.6f, -1.6f, 1.6f, 1.6f};
+    for (int i = 0; i < 4; ++i) {
+        appendCylinderY(
+            mb, Vector3{legX[i], 0.0f, legZ[i]}, 0.22f, 0.22f, legH, 6, wood);
+    }
+    appendBoxY(
+        mb, Vector3{0.0f, platformY + 0.2f, 0.0f}, 3.6f, 0.4f, 3.6f,
+        shade(wood, 0.85f));
+    appendBoxY(
+        mb, Vector3{0.0f, platformY + 1.6f, 0.0f}, 3.0f, 2.4f, 3.0f,
+        shade(wood, 1.05f));
+    appendBoxY(
+        mb, Vector3{0.0f, platformY + 3.1f, 0.0f}, 3.6f, 0.35f, 3.6f, roof);
+}
+
+Model WorldPropBuilder::finalizeModel(const MeshBuffers &scratch) const
+{
+    if (scratch.vertices.empty()) {
+        return Model{};
+    }
+    Mesh mesh = TrackMeshBuilder::meshFromBuffers(scratch);
+    if (mesh.vertexCount <= 0 || mesh.triangleCount <= 0) {
+        return Model{};
+    }
+    Model model = LoadModelFromMesh(mesh);
+    if (hasShader_) {
+        TrackMeshBuilder::applyShaderToModel(model, shader_);
+    }
+    return model;
+}
+
+Model WorldPropBuilder::buildScatterModel(
+    const std::vector<PropInstance> &props, Vector3 chunkOrigin,
+    const std::vector<float> &groundY) const
+{
+    MeshBuffers scratch{};
+
+    for (size_t i = 0; i < props.size(); ++i) {
+        const PropInstance &prop = props[i];
+        float wx = chunkOrigin.x + prop.localX;
+        float wz = chunkOrigin.z + prop.localZ;
+        uint32_t h = hashPosition(wx, wz);
+        PropVariation var = variationFromHash(h, WHITE);
+        float finalScale = prop.scale * var.scaleMul;
+        MeshBuffers geom{};
+
+        switch (prop.type) {
+        case 1:
+            if (var.subVariant == 0) {
+                buildBroadleaf(geom, 1.0f, var.heightScale, var.tint);
+            } else {
+                buildPine(geom, 1.0f, var.heightScale, var.tint);
+            }
+            break;
+        case 2:
+            if (var.subVariant == 0) {
+                buildIndustrialSilo(geom, 1.0f, var.heightScale, var.tint);
+            } else if (var.subVariant == 1) {
+                buildIndustrialTank(geom, 1.0f, var.heightScale, var.tint);
+            } else {
+                buildIndustrialAnnex(geom, 1.0f, var.heightScale, var.tint);
+            }
+            break;
+        case 3:
+            buildRock(geom, 1.0f, var.heightScale, var.tint);
+            break;
+        default:
+            buildPalm(geom, 1.0f, var.heightScale, var.tint);
+            break;
+        }
+
+        appendTransformed(
+            scratch, geom, Vector3{wx, groundY[i], wz}, prop.yaw, finalScale,
+            var.heightScale, WHITE);
+    }
+
+    return finalizeModel(scratch);
+}
+
+Model WorldPropBuilder::buildMarinaLandmarksModel(float groundY) const
+{
+    MeshBuffers scratch{};
+
     Vector3 origin{24.0f, groundY, 18.0f};
     MeshBuffers building{};
     buildCoastalBuilding(building, 1.0f, WHITE);
-    appendToBatch(BatchId::LANDMARK, building, origin, 0.0f, 1.0f, 1.0f, WHITE);
+    appendTransformed(scratch, building, origin, 0.0f, 1.0f, 1.0f, WHITE);
 
     Color wood{120, 100, 80, 255};
     Color post{90, 75, 60, 255};
@@ -561,16 +628,92 @@ void WorldPropBuilder::placeMarinaLandmarks(float groundY)
         float px = 10.0f + static_cast<float>(i) * 5.5f;
         MeshBuffers pier{};
         buildPierSegment(pier, 4.0f, wood, post);
-        appendToBatch(
-            BatchId::LANDMARK, pier, Vector3{px, groundY, 28.0f}, 0.0f,
-            1.0f, 1.0f, WHITE);
+        appendTransformed(
+            scratch, pier, Vector3{px, groundY, 28.0f}, 0.0f, 1.0f, 1.0f,
+            WHITE);
     }
 
     MeshBuffers water{};
     buildWaterPlane(water, 14.0f, 7.0f, Fade(SKYBLUE, 0.48f));
-    appendToBatch(
-        BatchId::LANDMARK, water, Vector3{22.0f, groundY - 0.15f, 40.0f}, 0.0f,
-        1.0f, 1.0f, WHITE);
+    appendTransformed(
+        scratch, water, Vector3{22.0f, groundY - 0.15f, 40.0f}, 0.0f, 1.0f,
+        1.0f, WHITE);
+
+    return finalizeModel(scratch);
+}
+
+Model WorldPropBuilder::buildPortLandmarksModel(float groundY) const
+{
+    MeshBuffers scratch{};
+    Color tint = WHITE;
+
+    MeshBuffers silo{};
+    buildIndustrialSilo(silo, 1.8f, 1.2f, tint);
+    appendTransformed(
+        scratch, silo, Vector3{0.0f, groundY, 0.0f}, 0.3f, 1.0f, 1.0f, WHITE);
+
+    MeshBuffers silo2{};
+    buildIndustrialSilo(silo2, 1.6f, 1.0f, tint);
+    appendTransformed(
+        scratch, silo2, Vector3{5.5f, groundY, -2.0f}, -0.4f, 1.0f, 1.0f,
+        WHITE);
+
+    MeshBuffers tank{};
+    buildIndustrialTank(tank, 1.5f, 1.0f, tint);
+    appendTransformed(
+        scratch, tank, Vector3{-6.0f, groundY, 3.0f}, 0.0f, 1.0f, 1.0f,
+        WHITE);
+
+    MeshBuffers annex{};
+    buildIndustrialAnnex(annex, 1.6f, 1.3f, tint);
+    appendTransformed(
+        scratch, annex, Vector3{0.0f, groundY, 9.0f}, 0.0f, 1.0f, 1.0f,
+        WHITE);
+
+    return finalizeModel(scratch);
+}
+
+Model WorldPropBuilder::buildVolcanoLandmarksModel(float groundY) const
+{
+    MeshBuffers scratch{};
+
+    MeshBuffers tower{};
+    buildObservatoryTower(tower, Color{200, 90, 60, 255});
+    appendTransformed(
+        scratch, tower, Vector3{0.0f, groundY, 0.0f}, 0.0f, 1.0f, 1.0f,
+        WHITE);
+
+    MeshBuffers rock{};
+    buildRock(rock, 1.6f, 1.1f, Color{110, 90, 82, 255});
+    appendTransformed(
+        scratch, rock, Vector3{6.5f, groundY, 4.0f}, 0.6f, 1.0f, 1.0f, WHITE);
+
+    return finalizeModel(scratch);
+}
+
+Model WorldPropBuilder::buildForestLandmarksModel(float groundY) const
+{
+    MeshBuffers scratch{};
+
+    MeshBuffers tower{};
+    buildWatchtower(tower, Color{110, 82, 56, 255});
+    appendTransformed(
+        scratch, tower, Vector3{0.0f, groundY, 0.0f}, 0.0f, 1.0f, 1.0f,
+        WHITE);
+
+    MeshBuffers pine{};
+    buildPine(pine, 1.8f, 1.4f, Color{200, 210, 200, 255});
+    appendTransformed(
+        scratch, pine, Vector3{5.5f, groundY, -3.5f}, 0.4f, 1.0f, 1.0f,
+        WHITE);
+
+    MeshBuffers broadleaf{};
+    buildBroadleaf(broadleaf, 1.6f, 1.3f, Color{200, 210, 200, 255});
+    appendTransformed(
+        scratch, broadleaf, Vector3{-5.0f, groundY, 4.0f}, -0.3f, 1.0f, 1.0f,
+        WHITE);
+
+    return finalizeModel(scratch);
 }
 
 void WorldPropBuilder::placeRaceGate(

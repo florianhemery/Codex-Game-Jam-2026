@@ -14,6 +14,7 @@
 #include "Render/World/WorldDecorDraw.hpp"
 #include "Render/Track/TrackMeshBuilder.hpp"
 #include "Engine/Render/ShaderLocations.hpp"
+#include "World/Aurelia/AureliaBounds.hpp"
 #include "World/Aurelia/AureliaData.hpp"
 #include "World/Chunk/ChunkGenerator.hpp"
 
@@ -27,7 +28,7 @@ namespace {
 constexpr float kPropDrawDist = 200.0f;
 constexpr float kPoiDrawDist = 130.0f;
 constexpr float kCollectibleDrawDist = 55.0f;
-constexpr float kMarinaLandmarkDist = 160.0f;
+constexpr float kLandmarkDrawDist = 160.0f;
 constexpr float kTrafficDrawDist = 160.0f;
 
 float distXZ(Vector3 a, float x, float z)
@@ -104,6 +105,33 @@ void drawHorizonRing(Vector3 focus, float groundY)
     rlPopMatrix();
 }
 
+void drawBoundaryPosts(Vector3 focus, const ChunkStreamer &streamer)
+{
+    constexpr float kDrawDist = 220.0f;
+    const float corners[4][2] = {
+        {WorldBounds::minX, WorldBounds::minZ},
+        {WorldBounds::maxX, WorldBounds::minZ},
+        {WorldBounds::maxX, WorldBounds::maxZ},
+        {WorldBounds::minX, WorldBounds::maxZ},
+    };
+
+    for (const float *c : corners) {
+        float dx = focus.x - c[0];
+        float dz = focus.z - c[1];
+        if (dx * dx + dz * dz > kDrawDist * kDrawDist) {
+            continue;
+        }
+        if (!streamer.isLoaded(c[0], c[1])) {
+            continue;
+        }
+        float gy = streamer.sampleHeight(c[0], c[1]);
+        DrawCube(Vector3{c[0], gy + 4.0f, c[1]}, 1.2f, 8.0f, 1.2f,
+            Fade(ORANGE, 0.85f));
+        DrawCube(Vector3{c[0], gy + 8.5f, c[1]}, 0.8f, 1.0f, 0.8f,
+            Fade(RAYWHITE, 0.9f));
+    }
+}
+
 } // namespace
 
 WorldRenderer::WorldRenderer() = default;
@@ -113,10 +141,22 @@ WorldRenderer::~WorldRenderer()
     for (ChunkMesh &entry : meshes_) {
         freeMesh(entry);
     }
+    for (LandmarkCache *cache :
+        {&marinaLandmark_, &portLandmark_, &volcanoLandmark_,
+            &forestLandmark_}) {
+        if (cache->hasGeometry) {
+            UnloadModel(cache->model);
+            cache->hasGeometry = false;
+        }
+    }
 }
 
 void WorldRenderer::freeMesh(ChunkMesh &entry)
 {
+    if (entry.hasScatterModel) {
+        UnloadModel(entry.scatterModel);
+        entry.hasScatterModel = false;
+    }
     if (!entry.ready) {
         return;
     }
@@ -287,14 +327,28 @@ void WorldRenderer::buildMesh(ChunkMesh &entry, const ChunkData &data)
 
     UploadMesh(&entry.mesh, false);
     entry.model = LoadModelFromMesh(entry.mesh);
-    UnloadMesh(entry.mesh);
-    entry.mesh = {};
     if (hasLitShader_) {
         for (int i = 0; i < entry.model.materialCount; ++i) {
             entry.model.materials[i].shader = litShader_;
         }
     }
     entry.ready = true;
+
+    if (!entry.props.empty()) {
+        std::vector<float> groundY(entry.props.size());
+        for (size_t i = 0; i < entry.props.size(); ++i) {
+            groundY[i] = sampleChunkHeight(
+                entry, entry.props[i].localX, entry.props[i].localZ);
+        }
+        entry.scatterModel =
+            propBuilder_.buildScatterModel(entry.props, origin, groundY);
+        entry.hasScatterModel = entry.scatterModel.meshCount > 0;
+        if (entry.hasScatterModel && hasLitShader_) {
+            for (int i = 0; i < entry.scatterModel.materialCount; ++i) {
+                entry.scatterModel.materials[i].shader = litShader_;
+            }
+        }
+    }
 }
 
 float WorldRenderer::sampleChunkHeight(const ChunkMesh &entry, float localX,
@@ -315,11 +369,24 @@ void WorldRenderer::applyShader(Shader shader)
     biomeTintLoc_ = racer::engine::locOrArray(shader, "biomeTint", "biomeTint[0]");
     propBuilder_.setShader(shader);
     for (ChunkMesh &entry : meshes_) {
-        if (!entry.ready) {
-            continue;
+        if (entry.ready) {
+            for (int i = 0; i < entry.model.materialCount; ++i) {
+                entry.model.materials[i].shader = shader;
+            }
         }
-        for (int i = 0; i < entry.model.materialCount; ++i) {
-            entry.model.materials[i].shader = shader;
+        if (entry.hasScatterModel) {
+            for (int i = 0; i < entry.scatterModel.materialCount; ++i) {
+                entry.scatterModel.materials[i].shader = shader;
+            }
+        }
+    }
+    for (LandmarkCache *cache :
+        {&marinaLandmark_, &portLandmark_, &volcanoLandmark_,
+            &forestLandmark_}) {
+        if (cache->hasGeometry) {
+            for (int i = 0; i < cache->model.materialCount; ++i) {
+                cache->model.materials[i].shader = shader;
+            }
         }
     }
 }
@@ -395,37 +462,63 @@ void WorldRenderer::drawLit(float timeSec, Vector3 focus,
 
     float groundY = streamer.sampleHeight(focus.x, focus.z);
     drawHorizonRing(focus, groundY);
+    drawBoundaryPosts(focus, streamer);
 
-    propBuilder_.beginBatch(WorldPropBuilder::BatchId::LANDMARK);
-    float marinaDist = distXZ(focus, 24.0f, 18.0f);
-    if (marinaDist < kMarinaLandmarkDist
-        && streamer.isLoaded(24.0f, 18.0f)) {
-        WorldDecorDraw::drawMarinaLandmarks(propBuilder_,
-            streamer.sampleHeight(24.0f, 18.0f));
-    }
-    propBuilder_.flush(WorldPropBuilder::BatchId::LANDMARK);
+    drawCachedLandmark(marinaLandmark_, Vector3{24.0f, 0.0f, 18.0f},
+        kLandmarkDrawDist, focus, streamer,
+        &WorldPropBuilder::buildMarinaLandmarksModel);
+    drawCachedLandmark(portLandmark_, Vector3{168.0f, 0.0f, -32.0f},
+        kLandmarkDrawDist, focus, streamer,
+        &WorldPropBuilder::buildPortLandmarksModel);
+    drawCachedLandmark(volcanoLandmark_, Vector3{72.0f, 0.0f, 168.0f},
+        kLandmarkDrawDist, focus, streamer,
+        &WorldPropBuilder::buildVolcanoLandmarksModel);
+    drawCachedLandmark(forestLandmark_, Vector3{-72.0f, 0.0f, -128.0f},
+        kLandmarkDrawDist, focus, streamer,
+        &WorldPropBuilder::buildForestLandmarksModel);
 
-    propBuilder_.beginBatch(WorldPropBuilder::BatchId::SCATTER);
+    rlDisableBackfaceCulling();
     for (const ChunkMesh &entry : meshes_) {
+        if (!entry.hasScatterModel) {
+            continue;
+        }
         Vector3 origin = chunkWorldOrigin(entry.id);
+        float dist = distXZ(focus, origin.x + kChunkSize * 0.5f,
+            origin.z + kChunkSize * 0.5f);
+        if (dist > kPropDrawDist + kChunkSize) {
+            continue;
+        }
+        DrawModel(entry.scatterModel, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
+    }
+    rlEnableBackfaceCulling();
+}
 
-        for (const PropInstance &prop : entry.props) {
-            float wx = origin.x + prop.localX;
-            float wz = origin.z + prop.localZ;
-            float dist = distXZ(focus, wx, wz);
-            if (dist > kPropDrawDist) {
-                continue;
+void WorldRenderer::drawCachedLandmark(LandmarkCache &cache, Vector3 pos,
+    float maxDist, Vector3 focus, const ChunkStreamer &streamer,
+    LandmarkBuilder build) const
+{
+    if (distXZ(focus, pos.x, pos.z) > maxDist) {
+        return;
+    }
+    if (!cache.built) {
+        if (!streamer.isLoaded(pos.x, pos.z)) {
+            return;
+        }
+        float gy = streamer.sampleHeight(pos.x, pos.z);
+        cache.model = (propBuilder_.*build)(gy);
+        cache.hasGeometry = cache.model.meshCount > 0;
+        cache.built = true;
+        if (cache.hasGeometry && hasLitShader_) {
+            for (int i = 0; i < cache.model.materialCount; ++i) {
+                cache.model.materials[i].shader = litShader_;
             }
-            float scale = prop.scale;
-            if (dist > 140.0f) {
-                scale *= 0.75f;
-            }
-            float gy = sampleChunkHeight(entry, prop.localX, prop.localZ);
-            WorldDecorDraw::drawProp(propBuilder_,
-                Vector3{wx, gy, wz}, prop.type, prop.yaw, scale, entry.biome);
         }
     }
-    propBuilder_.flush(WorldPropBuilder::BatchId::SCATTER);
+    if (cache.hasGeometry) {
+        rlDisableBackfaceCulling();
+        DrawModel(cache.model, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
+        rlEnableBackfaceCulling();
+    }
 }
 
 void WorldRenderer::drawTriggers(float timeSec, Vector3 focus,

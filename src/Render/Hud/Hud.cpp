@@ -15,8 +15,8 @@
 #include "Render/Hud/HudGfx.hpp"
 #include "Render/Hud/HudMenu.hpp"
 #include "Render/Hud/HudMinimap.hpp"
+#include "Render/Hud/HudOpenWorldNav.hpp"
 #include "Render/Hud/HudRaceOverlay.hpp"
-#include "World/Aurelia/AureliaData.hpp"
 #include "World/Aurelia/AureliaWorld.hpp"
 #include "World/Chunk/ChunkTypes.hpp"
 
@@ -114,9 +114,9 @@ void Hud::drawOpenWorldHud(const world::AureliaWorld &world,
 {
     (void)presets;
     HudGfx::drawText("AURELIA", 16, 16, 24, ORANGE);
-    HudGfx::drawText("Tab : course rapide   |   M : carte   |   Echap : menu",
+    HudGfx::drawText("Tab : course rapide   |   M : grande carte   |   Echap : menu",
         16, 46, 16, HudGfx::fade(WHITE, 0.75f));
-    HudGfx::drawText("Suivez les routes grises pour rejoindre les circuits",
+    HudGfx::drawText("Mini-carte en bas a gauche — fleche = circuit le plus proche",
         16, 66, 14, HudGfx::fade(GRAY, 0.85f));
 
     char biomeBuf[96];
@@ -135,8 +135,8 @@ void Hud::drawOpenWorldHud(const world::AureliaWorld &world,
             screenWidth / 2, screenHeight - 64, 18,
             HudGfx::fade(WHITE, 0.80f));
     } else {
+        float nearestDist = 0.0f;
         const world::PoiInstance *nearest = nullptr;
-        float nearestDist = 1.0e9f;
         Vector3 pos = world.playerCar().position();
         for (const world::PoiInstance &poi : world.pois()) {
             if (poi.type != world::PoiType::RACE_ENTRY) {
@@ -149,7 +149,7 @@ void Hud::drawOpenWorldHud(const world::AureliaWorld &world,
             float dx = poi.worldX - pos.x;
             float dz = poi.worldZ - pos.z;
             float d = std::sqrt(dx * dx + dz * dz);
-            if (d < nearestDist) {
+            if (nearest == nullptr || d < nearestDist) {
                 nearestDist = d;
                 nearest = &poi;
             }
@@ -157,15 +157,10 @@ void Hud::drawOpenWorldHud(const world::AureliaWorld &world,
         if (nearest != nullptr) {
             char nbuf[128];
             std::snprintf(nbuf, sizeof(nbuf),
-                "Circuit le plus proche : %s (%.0f m) — prenez la route",
+                "Suivez la fleche vers %s (%.0f m)",
                 safeLabel(nearest->label, "Circuit"), nearestDist);
-            HudGfx::drawTextCentered(nbuf, screenWidth / 2, screenHeight - 72,
+            HudGfx::drawTextCentered(nbuf, screenWidth / 2, screenHeight - 96,
                 16, HudGfx::fade(WHITE, 0.70f));
-        } else {
-            HudGfx::drawTextCentered(
-                "Approchez une entree de circuit (anneau colore)",
-                screenWidth / 2, screenHeight - 72, 18,
-                HudGfx::fade(WHITE, 0.65f));
         }
     }
 
@@ -198,61 +193,12 @@ void Hud::drawOpenWorldHud(const world::AureliaWorld &world,
         world.progression().loreCollected());
     HudGfx::drawText(loreBuf, 16, 152, 14, Color{255, 220, 120, 255});
 
-    float y = static_cast<float>(screenHeight) - 130.0f;
-    const world::RegionId here = world::regionForBiome(world.currentBiome());
-    for (const world::PoiInstance &poi : world.pois()) {
-        if (poi.type != world::PoiType::RACE_ENTRY) {
-            continue;
-        }
-        if (poi.trackIndex == 4 && !world.progression().cendresCircuitUnlocked()) {
-            continue;
-        }
-        if (poi.region != here) {
-            continue;
-        }
-        const char *label = (poi.label != nullptr && poi.label[0] != '\0')
-            ? poi.label
-            : "Circuit";
-        HudGfx::drawText(label, 16, static_cast<int>(y), 14, poi.color);
-        y -= 18.0f;
-    }
+    HudOpenWorldNav::drawPersistentMinimap(world, screenWidth, screenHeight);
+    HudOpenWorldNav::drawCompass(world, screenWidth, screenHeight);
+    HudOpenWorldNav::drawEdgeWarning(world, screenWidth, screenHeight);
 
     if (world.showWorldMap()) {
-        Rectangle mapArea{
-            static_cast<float>(screenWidth) - 220.0f, 16.0f, 200.0f, 200.0f};
-        DrawRectangleRec(mapArea, Fade(BLACK, 0.65f));
-        DrawRectangleLinesEx(mapArea, 2.0f, ORANGE);
-
-        HudMapProjection proj{};
-        proj.worldCenter = Vector2{0.0f, 0.0f};
-        proj.screenCenter = Vector2{mapArea.x + mapArea.width * 0.5f,
-            mapArea.y + mapArea.height * 0.5f};
-        proj.scale = 0.45f;
-        proj.rotated = false;
-
-        const world::RoadGraph &roads = world::AureliaData::roadGraph();
-        for (size_t ei = 0; ei < roads.edges().size(); ++ei) {
-            std::vector<Vector2> pts;
-            pts.reserve(17);
-            for (int s = 0; s <= 16; ++s) {
-                float t = static_cast<float>(s) / 16.0f;
-                pts.push_back(roads.pointOnEdge(static_cast<int>(ei), t));
-            }
-            HudMinimap::drawPathPolyline(pts, proj, 3.0f,
-                HudGfx::fade(Color{180, 180, 190, 255}, 0.85f));
-        }
-
-        for (const world::PoiInstance &poi : world.pois()) {
-            Vector2 sp = proj.apply(Vector2{poi.worldX, poi.worldZ});
-            Color c = poi.color;
-            if (poi.type == world::PoiType::COLLECTIBLE) {
-                c = Fade(GOLD, 0.7f);
-            }
-            HudGfx::drawCircleV(sp, 3.0f, c);
-        }
-        Vector2 player = proj.apply(Vector2{
-            world.playerCar().position().x, world.playerCar().position().z});
-        HudGfx::drawCircleV(player, 5.0f, RED);
+        HudOpenWorldNav::drawExpandedMap(world, screenWidth, screenHeight);
     }
 }
 
