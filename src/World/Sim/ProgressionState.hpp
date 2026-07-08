@@ -26,6 +26,9 @@ public:
     bool cendresCircuitUnlocked() const;
     int loreCollected() const { return loreCollected_; }
     void collectLore(int index);
+    // Per-index query used by the pause-menu encyclopedia to know which of
+    // the 20 lore fragments have already been picked up.
+    bool loreCollectedAt(int index) const;
 
     // Raw accessors used by SaveSystem to persist/restore state without
     // going through the gameplay side-effects of addReputation()/

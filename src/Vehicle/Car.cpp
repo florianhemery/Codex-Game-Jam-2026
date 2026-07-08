@@ -14,6 +14,13 @@ namespace racer {
 
 namespace {
 
+// 1/kGripBlendRate ~= 140ms time constant for the grip-value low-pass in
+// Car::updateVelocityHeading (see the comment there for the telemetry that
+// motivated this). Fast enough that steady-state drift/grip feel is
+// unchanged within a couple of frames, slow enough to remove the single-
+// frame lateral-g spike measured at drift exit.
+constexpr float kGripBlendRate = 7.0f;
+
 float computeEngineAccel(Car &car, const CarInput &input, bool nitroActive)
 {
     float engineAccel = 0.0f;
@@ -112,13 +119,28 @@ void Car::updateHeading(Car &car, const CarInput &input, float dt)
 
 void Car::updateVelocityHeading(Car &car, float dt)
 {
-    float grip = car.tuning().gripNormal * car.surfaceGrip();
+    // Telemetry from a real scripted drive session (telemetry_session tool,
+    // see src/Vehicle/CarTelemetry.hpp) recorded a -11 g lateral spike the
+    // instant the handbrake was released mid-drift at ~27 u/s: grip jumped
+    // from gripDrift (0.8) straight to gripNormal (6.0) in a single physics
+    // frame, and since velocityHeading had slid far away from heading during
+    // the drift, that one frame yanked velocityHeading almost all the way
+    // back to heading -- an unrealistic near-instant direction snap. The
+    // same instant-step problem exists for surface grip changes (asphalt ->
+    // grass etc., see PlayerDriveSystem::applySurface). Fix: blend the grip
+    // value itself toward its target over ~140ms (kGripBlendRate) instead of
+    // applying it as a step, so both drift transitions and surface
+    // transitions ease in/out instead of snapping.
+    float targetGrip
+        = (car.isDrifting() ? car.tuning().gripDrift : car.tuning().gripNormal)
+        * car.surfaceGrip();
     float headingDiff = 0.0f;
 
-    if (car.isDrifting())
-        grip = car.tuning().gripDrift * car.surfaceGrip();
+    car.headingGrip() += (targetGrip - car.headingGrip())
+        * std::min(1.0f, kGripBlendRate * dt);
     headingDiff = normalizeAngle(car.heading() - car.velocityHeading());
-    car.velocityHeading() += headingDiff * std::min(1.0f, grip * dt);
+    car.velocityHeading()
+        += headingDiff * std::min(1.0f, car.headingGrip() * dt);
     car.velocityHeading() = normalizeAngle(car.velocityHeading());
 }
 

@@ -236,7 +236,124 @@ const LoreSpot kLoreSpots[20] = {
     {140.0f, 170.0f, RegionId::VOLCANO},
 };
 
+// Titres et textes de l'encyclopedie des Veilleurs, un par plaque (voir
+// kLoreSpots ci-dessus : indices 0-4 Marina, 5-9 Foret, 10-14 Port,
+// 15-19 Volcan). Contenu narratif ajoute pour l'ecran encyclopedie du
+// menu pause ; ne modifie pas le placement des collectibles existants.
+const char *const kLoreTitles[20] = {
+    // Marina
+    "Carnet de l'Anneau Vitesse",
+    "Note d'atelier, Garage Marina",
+    "Essais de nuit",
+    "La Corniche",
+    "Tableau des chronos",
+    // Foret
+    "Carnet des premiers releves",
+    "Freins dans la brume",
+    "Le vieux funiculaire",
+    "Racines et differentiel",
+    "La lanterne du soir",
+    // Port
+    "Veille des docks",
+    "Note de l'Usine Rouge",
+    "VEIL-01",
+    "Chronos de livraison",
+    "Devise du dernier quai",
+    // Volcan
+    "Pneus sur roche tiede",
+    "Registre de l'Observatoire",
+    "La route abimee",
+    "Le dernier tracé",
+    "Derniere plaque connue",
+};
+
+const char *const kLoreTexts[20] = {
+    // Marina (cote solaire)
+    "Plaque retrouvee pres de l'Anneau Vitesse. \"Ici, les Veilleurs "
+    "reglaient les carburateurs au son du ressac. Une bonne mise au "
+    "point ne se mesure pas au banc, disaient-ils, mais a l'oreille, "
+    "face a la mer.\"",
+    "Sous la tole rouillee du Garage Marina, une note d'atelier des "
+    "Veilleurs subsiste encore : \"Graissez les rotules avant chaque "
+    "maree haute. Le sel ne pardonne rien, mais une mecanique honnete "
+    "tient bon.\"",
+    "Fragment grave dans le beton du quai. Les Veilleurs y organisaient "
+    "leurs essais de nuit, phares eteints, pour apprendre la route par "
+    "coeur avant de la dompter de jour.",
+    "Une plaque tournee vers le large. On y lit : \"La corniche ne "
+    "pardonne pas les exces d'orgueil. Roulez comme si la mer vous "
+    "regardait, elle le fait.\" Signe, un Veilleur anonyme, 1986.",
+    "Vestige d'un vieux tableau d'affichage des chronos. Les meilleurs "
+    "temps de l'Anneau Vitesse y sont encore lisibles, a moitie effaces "
+    "par les embruns, comme un defi lance aux pilotes d'aujourd'hui.",
+    // Foret brumeuse
+    "Plaque humide, presque avalee par la mousse. Les Veilleurs "
+    "cartographiaient la foret a pied, un carnet et une lampe a "
+    "petrole, avant meme que la premiere route n'y soit tracee.",
+    "Ici, disent les archives des Veilleurs, la brume se levait "
+    "toujours au meme endroit a l'aube. Ils y testaient leurs freins, "
+    "sachant qu'on ne voit le danger qu'a la derniere seconde sous la "
+    "canopee.",
+    "Un morceau de rail rouille, vestige d'un ancien funiculaire "
+    "forestier. Les Veilleurs l'utilisaient pour hisser les pieces "
+    "detachees jusqu'a leur atelier cache entre les pins.",
+    "Plaque a demi enterree sous les racines. On y devine : \"La foret "
+    "ne se domine pas, elle se traverse avec respect, et un bon "
+    "differentiel.\"",
+    "Dernier repere avant le circuit sinueux. Les Veilleurs y "
+    "laissaient une lanterne allumee toute la nuit, pour guider les "
+    "mecaniciens en retard revenant de leurs essais.",
+    // Port industriel
+    "Plaque rivetee a une grue rouillee. Les Veilleurs y testaient "
+    "l'endurance des moteurs, faisant tourner les voitures au ralenti "
+    "des nuits entieres face aux docks, pour ecouter le moindre rate.",
+    "Note retrouvee dans un casier de l'Usine Rouge : \"Un moteur qui "
+    "tousse en dit plus qu'un ingenieur qui parle. Ecoutez avant de "
+    "demonter.\" Atelier des Veilleurs, section Port.",
+    "Fragment d'une plaque d'immatriculation d'essai, gravee \"VEIL-01\". "
+    "On raconte que c'etait la premiere voiture-laboratoire du Port, "
+    "jamais retrouvee depuis sa disparition en pleine tempete.",
+    "Plaque scellee dans le beton d'un quai desaffecte. Les Veilleurs y "
+    "chronometraient les livraisons comme des courses, convaincus que "
+    "la rigueur d'un pilote se forge aussi dans le travail ordinaire.",
+    "Dernier vestige industriel avant l'eau libre. On y lit une devise "
+    "a moitie rouillee : \"Charge honnete, moteur honnete, route "
+    "honnete.\"",
+    // Caldeira volcanique
+    "Plaque noircie par les cendres. Les Veilleurs y etudiaient la "
+    "tenue des pneus sur roche volcanique encore tiede, une science "
+    "qu'ils ne partageaient qu'a voix basse.",
+    "Sous l'Observatoire, un registre des Veilleurs recense chaque "
+    "ascension de la caldeira. La derniere entree, inachevee, s'arrete "
+    "au milieu d'une phrase sur la chaleur des freins.",
+    "Plaque tournee vers le crater. \"Ici, la route abimee n'est pas un "
+    "defaut, c'est un maitre. Elle vous apprend en un virage ce que dix "
+    "circuits lisses n'enseignent jamais.\"",
+    "Fragment retrouve au bord du Circuit des Cendres. Les Veilleurs y "
+    "auraient trace leur dernier parcours avant de disparaitre, "
+    "laissant derriere eux plus de questions que de reponses.",
+    "Derniere plaque connue des Veilleurs, presque effacee par la lave "
+    "refroidie. On y devine seulement : \"Merci d'avoir continue la "
+    "route.\" Le reste s'est perdu dans les cendres.",
+};
+
 } // namespace
+
+const char *AureliaData::loreTitle(int index)
+{
+    if (index < 0 || index >= 20) {
+        return "???";
+    }
+    return kLoreTitles[static_cast<size_t>(index)];
+}
+
+const char *AureliaData::loreText(int index)
+{
+    if (index < 0 || index >= 20) {
+        return "";
+    }
+    return kLoreTexts[static_cast<size_t>(index)];
+}
 
 void AureliaData::initCollectibles()
 {

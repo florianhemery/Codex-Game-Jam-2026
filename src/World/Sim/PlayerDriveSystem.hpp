@@ -23,7 +23,7 @@ public:
         float dt, ChunkStreamer &streamer, float &wheelSpinOut);
 
 private:
-    static void applySurface(Car &car, SurfaceKind surface);
+    static void applySurface(Car &car, SurfaceKind surface, float dt);
 };
 
 } // namespace racer::world

@@ -90,9 +90,11 @@ set(RACER_HUD_SOURCES
     src/Render/Hud/HudMinimap.cpp
     src/Render/Hud/HudOpenWorldNav.cpp
     src/Render/Hud/HudMenu.cpp
+    src/Render/Hud/HudEncyclopedia.cpp
     src/Render/Hud/HudRaceGauge.cpp
     src/Render/Hud/HudRaceOverlay.cpp
     src/Render/Hud/HudFinishScreen.cpp
+    src/Render/Hud/HudDebugOverlay.cpp
 )
 
 set(RACER_VFX_SOURCES
@@ -111,7 +113,9 @@ set(RACER_WORLD_SOURCES
     src/World/Aurelia/AureliaWorld.cpp
     src/World/Road/RoadGraph.cpp
     src/World/Stream/ChunkStreamer.cpp
+    src/World/Sim/AureliaEvents.cpp
     src/World/Sim/PlayerDriveSystem.cpp
+    src/Vehicle/CarTelemetry.cpp
     src/World/Sim/ProgressionState.cpp
     src/World/Sim/MissionSystem.cpp
     src/World/Sim/TrafficSystem.cpp
@@ -156,6 +160,8 @@ add_executable(racer
     src/Ai/AiDriver.cpp
     src/Race/RaceState.cpp
     src/Race/RaceContactResolver.cpp
+    src/Race/Leaderboard.cpp
+    src/Race/ReplayRecorder.cpp
     ${RACER_RENDER_SOURCES}
     ${RACER_WORLD_SOURCES}
     ${RACER_AUDIO_SOURCES}
@@ -246,6 +252,7 @@ racer_bundle_runtime_dlls(world_chunk_test)
 add_executable(regression_harness
     tests/regression_harness.cpp
     src/Vehicle/Car.cpp
+    src/Vehicle/CarTelemetry.cpp
     src/World/Chunk/ChunkTypes.cpp
     src/World/Chunk/ChunkGenerator.cpp
     src/World/Aurelia/AureliaTypes.cpp
@@ -258,6 +265,28 @@ target_include_directories(regression_harness PRIVATE src)
 target_link_libraries(regression_harness PRIVATE raylib)
 target_compile_features(regression_harness PRIVATE cxx_std_20)
 racer_bundle_runtime_dlls(regression_harness)
+
+# Outil headless : conduit le joueur (via PlayerDriveSystem, meme chemin
+# que le jeu) sur le reseau routier puis hors-piste, avec CarTelemetry
+# active, pour produire un vrai log CSV (vitesse, g lateral, inputs, grip
+# de surface) exploite lors des passes de tuning physique. Voir
+# src/Vehicle/CarTelemetry.hpp pour le format et l'activation opt-in.
+add_executable(telemetry_session
+    src/Tools/TelemetrySession.cpp
+    src/Vehicle/Car.cpp
+    src/Vehicle/CarTelemetry.cpp
+    src/World/Chunk/ChunkTypes.cpp
+    src/World/Chunk/ChunkGenerator.cpp
+    src/World/Aurelia/AureliaTypes.cpp
+    src/World/Aurelia/AureliaData.cpp
+    src/World/Stream/ChunkStreamer.cpp
+    src/World/Road/RoadGraph.cpp
+    src/World/Sim/PlayerDriveSystem.cpp
+)
+target_include_directories(telemetry_session PRIVATE src)
+target_link_libraries(telemetry_session PRIVATE raylib)
+target_compile_features(telemetry_session PRIVATE cxx_std_20)
+racer_bundle_runtime_dlls(telemetry_session)
 
 racer_add_demo(world_editor
     src/Tools/WorldEditor.cpp

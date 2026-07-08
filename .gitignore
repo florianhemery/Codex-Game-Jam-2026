@@ -9,3 +9,5 @@ out/
 .tools/
 *.log
 epitech_cpp_coding_style.pdf
+telemetry/
+scratch_*.txt

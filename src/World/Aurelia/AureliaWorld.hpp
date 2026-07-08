@@ -16,6 +16,7 @@
 #include "Vehicle/Car.hpp"
 #include "Vehicle/CarInput.hpp"
 #include "World/Aurelia/AureliaData.hpp"
+#include "World/Sim/AureliaEvents.hpp"
 #include "World/Sim/MissionSystem.hpp"
 #include "World/Sim/PlayerDriveSystem.hpp"
 #include "World/Sim/ProgressionState.hpp"
@@ -86,6 +87,17 @@ public:
 
     const std::vector<PoiInstance> &pois() const;
 
+    // Scripted "living world" moments (convoys, weather events). A future
+    // HUD pass can surface this label; the underlying fog/rain/traffic
+    // effect is already real and applied every frame.
+    bool hasActiveWorldEvent() const { return events_.hasActiveEvent(); }
+    const char *activeEventLabel() const { return events_.activeEventLabel(); }
+    float activeEventTimeLeft() const { return events_.activeEventTimeLeft(); }
+    bool activeEventIsConvoy() const
+    {
+        return events_.activeEventWantsConvoyBurst();
+    }
+
 private:
     void updateActivePois();
     void collectNearbyLore();
@@ -99,6 +111,7 @@ private:
     MissionSystem missions_;
     TrafficSystem traffic_;
     PlayerDriveSystem drive_;
+    AureliaEvents events_;
 
     float steerSmoothed_ = 0.0f;
     float wheelSpin_ = 0.0f;

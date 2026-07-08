@@ -18,6 +18,8 @@
 
 #include <memory>
 
+#include <string>
+
 
 
 #include "raylib.h"
@@ -41,6 +43,8 @@
 #include "Render/CarRenderer.hpp"
 
 #include "Render/Hud.hpp"
+
+#include "Render/Hud/HudDebugOverlay.hpp"
 
 #include "Render/Hud/HudFinishScreen.hpp"
 
@@ -151,7 +155,8 @@ GameLoop::Context::Context(const std::vector<TrackDef> &trackPresets)
     : presets(trackPresets)
 
 {
-
+    // Best-effort: a missing/corrupt leaderboard file just starts empty.
+    leaderboard.load();
 }
 
 
@@ -193,6 +198,9 @@ void GameLoop::startRace(Context &ctx, int trackIndex, bool fromOpenWorld)
     ctx.wheelSpin = 0.0f;
 
     ctx.lapTimer = {};
+
+    ctx.replayRecorder.start();
+    ctx.replaySaved = false;
 
     ctx.confettiEmitted = false;
 
@@ -741,7 +749,28 @@ void GameLoop::simulateRace(Context &ctx, float dt)
 
     readPlayerInput(ctx, dt);
 
-    updateLapTimer(ctx.lapTimer, player, dt, phase, ctx.race->lapsToWin());
+    const std::string circuitName =
+        ctx.presets[static_cast<size_t>(ctx.selectedTrack)].name;
+    updateLapTimer(ctx.lapTimer, player, dt, phase, ctx.race->lapsToWin(),
+        [&ctx, &circuitName](float lapTime) {
+            ctx.leaderboard.recordLap(circuitName, lapTime);
+            ctx.leaderboard.save();
+        },
+        [&ctx, &circuitName](float raceTime) {
+            ctx.leaderboard.recordRace(circuitName, raceTime);
+            ctx.leaderboard.save();
+        });
+    if (ctx.replayRecorder.active()) {
+        ctx.replayRecorder.update(dt, player.car.position().x,
+            player.car.position().z, player.car.heading(),
+            player.car.speed());
+    }
+    if (ctx.race->phase() == RacePhase::FINISHED && !ctx.replaySaved) {
+        ctx.replayRecorder.stop();
+        ctx.replayRecorder.save(
+            racer::race::ReplayRecorder::pathForCircuit(circuitName));
+        ctx.replaySaved = true;
+    }
     updateWheelSpin(ctx, dt);
     for (const auto &r : ctx.race->racers())
         updateRacerVfx(ctx, r);
@@ -779,6 +808,7 @@ void GameLoop::drawRaceFrame(Context &ctx)
     }
     engine::input::InputBindings::instance().drawDebugRemapOverlay(
         ctx.screenWidth, ctx.screenHeight);
+    hud::HudDebugOverlay::instance().draw(ctx.screenWidth, ctx.screenHeight);
     EndDrawing();
 }
 
@@ -814,6 +844,10 @@ void GameLoop::run(Context &ctx)
             HudGfx::toggleColorblindMode();
         }
 
+        // F3 : bascule l'overlay de debug FPS/frame-time (voir
+        // HudDebugOverlay). Purement additif : n'affecte pas le jeu.
+        hud::HudDebugOverlay::instance().update();
+
         const bool inMenu = ctx.appState == AppState::MENU;
         const bool inOpenWorld = ctx.appState == AppState::OPEN_WORLD
             && ctx.aurelia != nullptr;
@@ -838,6 +872,9 @@ void GameLoop::run(Context &ctx)
         if (ctx.appState == AppState::MENU) {
             if (ctx.menuScreen == MenuScreen::MAIN) {
                 if (handleMainMenuFrame(ctx))
+                    continue;
+            } else if (ctx.menuScreen == MenuScreen::ENCYCLOPEDIA) {
+                if (handleEncyclopediaFrame(ctx))
                     continue;
             } else if (handleMenuFrame(ctx)) {
                 continue;

@@ -44,6 +44,30 @@ bool HudFinishScreen::estimateGapSeconds(const RaceState &race, const RacerEntry
     return true;
 }
 
+namespace {
+
+// Podium-style rank coloring (gold/silver/bronze) so the top 3 read
+// instantly, matching the "real conclusion" feel the finish screen should
+// have rather than a plain sorted list.
+Color medalColorFor(int rank, bool isPlayer)
+{
+    if (isPlayer) {
+        return YELLOW;
+    }
+    switch (rank) {
+        case 1:
+            return Color{255, 215, 90, 255};
+        case 2:
+            return Color{205, 210, 218, 255};
+        case 3:
+            return Color{205, 145, 90, 255};
+        default:
+            return HudGfx::fade(WHITE, 0.85f);
+    }
+}
+
+} // namespace
+
 void HudFinishScreen::drawRow(const HudFinishRowParams &params)
 {
     if (params.racer.isPlayer) {
@@ -54,12 +78,17 @@ void HudFinishScreen::drawRow(const HudFinishRowParams &params)
         HudGfx::drawRectangleRounded(highlight, 0.4f, 6, HudGfx::fade(YELLOW, 0.14f));
     }
 
+    Color rankColor = medalColorFor(params.rank, params.racer.isPlayer);
     char pos[8];
 
     std::snprintf(pos, sizeof(pos), "%d", params.rank);
     HudGfx::drawTextRightAligned(pos, static_cast<int>(params.panel.x + 46.0f),
-        static_cast<int>(params.rowY), 20,
-        params.racer.isPlayer ? YELLOW : HudGfx::fade(WHITE, 0.85f));
+        static_cast<int>(params.rowY), 20, rankColor);
+    if (params.rank <= 3) {
+        HudGfx::drawCircleLinesV(
+            Vector2{params.panel.x + 30.0f, params.rowY + 10.0f}, 12.0f,
+            HudGfx::fade(rankColor, 0.55f));
+    }
 
     Vector2 dot{params.panel.x + 66.0f, params.rowY + 10.0f};
 
@@ -72,16 +101,34 @@ void HudFinishScreen::drawRow(const HudFinishRowParams &params)
         params.racer.isPlayer ? YELLOW : RAYWHITE);
 
     char right[32];
+    char gap[24] = "";
 
     if (params.racer.finished) {
         HudGfx::formatTime(params.racer.finishTime, right, sizeof(right));
+        if (params.rank > 1 && params.leaderFinishTime > 0.0f) {
+            std::snprintf(gap, sizeof(gap), "+%.2fs",
+                params.racer.finishTime - params.leaderFinishTime);
+        }
     } else {
-        std::snprintf(right, sizeof(right), "DNF");
+        float estSeconds = 0.0f;
+        if (estimateGapSeconds(params.race, params.racer, &estSeconds)
+            && estSeconds > 0.5f) {
+            std::snprintf(right, sizeof(right), "~%.0fs", estSeconds);
+        } else {
+            std::snprintf(right, sizeof(right), "DNF");
+        }
     }
-    HudGfx::drawTextRightAligned(right,
-        static_cast<int>(params.panel.x + params.panelW - 24.0f),
+    int timeRightX = static_cast<int>(params.panel.x + params.panelW - 24.0f);
+
+    HudGfx::drawTextRightAligned(right, timeRightX,
         static_cast<int>(params.rowY), 20,
         params.racer.finished ? RAYWHITE : HudGfx::fade(WHITE, 0.60f));
+    if (gap[0] != '\0') {
+        int timeWidth = HudGfx::measureText(right, 20);
+
+        HudGfx::drawTextRightAligned(gap, timeRightX - timeWidth - 10,
+            static_cast<int>(params.rowY) + 4, 12, HudGfx::fade(WHITE, 0.45f));
+    }
 }
 
 void HudFinishScreen::drawHeader(const RaceState &race, const HudExtras &extras,
@@ -191,12 +238,16 @@ void HudFinishScreen::draw(const RaceState &race, const HudExtras &extras,
     HudGfx::drawRectangleRoundedLinesEx(layout.panel, 0.08f, 8, 2.0f, panelBorder);
     drawHeader(race, extras, layout.panel, panelW);
 
+    const RacerEntry &leader = racers[static_cast<size_t>(order[0])];
+    float leaderFinishTime = leader.finished ? leader.finishTime : 0.0f;
+
     for (size_t i = 0; i < order.size(); ++i) {
         size_t idx = static_cast<size_t>(order[i]);
         float rowY = layout.panel.y + headerH + rowH * static_cast<float>(i);
 
         HudFinishRowParams rowParams{race, racers[idx], idx,
-            static_cast<int>(i) + 1, extras, layout.panel, panelW, rowY};
+            static_cast<int>(i) + 1, extras, layout.panel, panelW, rowY,
+            leaderFinishTime};
 
         drawRow(rowParams);
     }

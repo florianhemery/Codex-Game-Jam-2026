@@ -65,6 +65,7 @@ void AureliaWorld::update(float dt, const CarInput &input, float steerSmoothed,
     updateActivePois();
     collectNearbyLore();
     applyRegionalVfx(vfx);
+    events_.update(dt, timeOfDay_, currentBiome(), vfx);
 }
 
 void AureliaWorld::updateActivePois()

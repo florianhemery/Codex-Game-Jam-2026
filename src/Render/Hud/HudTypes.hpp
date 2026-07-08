@@ -53,6 +53,9 @@ struct HudStandingsRowParams {
     const HudExtras &extras;
     const Rectangle &panel;
     float rowY;
+    // Current rubber-band multiplier for this racer (1.0 = neutral). Lets the
+    // standings row show a subtle "catching up" / "pulling away" cue.
+    float rubberBand = 1.0f;
 };
 
 struct HudFinishRowParams {
@@ -64,6 +67,9 @@ struct HudFinishRowParams {
     const Rectangle &panel;
     float panelW;
     float rowY;
+    // Winner's finish time (0 if nobody has finished yet), used to show a
+    // "+x.xxs" gap-to-leader instead of a bare time for the rest of the pack.
+    float leaderFinishTime = 0.0f;
 };
 
 struct HudMapProjection {

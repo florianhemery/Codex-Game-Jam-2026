@@ -1,0 +1,194 @@
+name: Release Builds
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve latest LLVM-MinGW release
+        id: llvm-mingw-release
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/mstorsjo/llvm-mingw/releases/latest"
+          $tag = $release.tag_name
+          $dist = "llvm-mingw-$tag-ucrt-x86_64"
+          echo "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          echo "dist=$dist" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Cache LLVM-MinGW toolchain
+        id: cache-llvm-mingw
+        uses: actions/cache@v4
+        with:
+          path: C:\llvm-mingw
+          key: llvm-mingw-${{ steps.llvm-mingw-release.outputs.dist }}
+
+      - name: Download LLVM-MinGW toolchain
+        if: steps.cache-llvm-mingw.outputs.cache-hit != 'true'
+        shell: pwsh
+        env:
+          LLVM_MINGW_TAG: ${{ steps.llvm-mingw-release.outputs.tag }}
+          LLVM_MINGW_DIST: ${{ steps.llvm-mingw-release.outputs.dist }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $url = "https://github.com/mstorsjo/llvm-mingw/releases/download/$env:LLVM_MINGW_TAG/$env:LLVM_MINGW_DIST.zip"
+          Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\llvm-mingw.zip"
+          Expand-Archive -Path "$env:RUNNER_TEMP\llvm-mingw.zip" -DestinationPath "$env:RUNNER_TEMP\llvm-mingw-extract"
+          Move-Item -Path "$env:RUNNER_TEMP\llvm-mingw-extract\$env:LLVM_MINGW_DIST" -Destination "C:\llvm-mingw"
+
+      - name: Add LLVM-MinGW to PATH
+        shell: pwsh
+        run: echo "C:\llvm-mingw\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: Cache CMake FetchContent dependencies
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: fetchcontent-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Configure
+        shell: pwsh
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_CXX_COMPILER=C:\llvm-mingw\bin\x86_64-w64-mingw32-clang++.exe
+          -DCMAKE_C_COMPILER=C:\llvm-mingw\bin\x86_64-w64-mingw32-clang.exe
+
+      - name: Build
+        shell: pwsh
+        run: cmake --build build --target racer -j 4
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $stage = "dist/racer-windows-x64"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item build/racer.exe $stage/
+          Copy-Item build/*.dll $stage/ -ErrorAction SilentlyContinue
+          if (Test-Path assets) { Copy-Item assets $stage/ -Recurse }
+          if (Test-Path circuits) { Copy-Item circuits $stage/ -Recurse }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: racer-windows-x64
+          path: dist/racer-windows-x64
+
+  build-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libgl1-mesa-dev libx11-dev \
+            libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev libwayland-dev libxkbcommon-dev
+
+      - name: Cache CMake FetchContent dependencies
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: fetchcontent-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Configure
+        # Note: deliberately no CMAKE_BUILD_TYPE, matching the Windows CI
+        # config (see build.yml) which avoids a pre-existing linker error
+        # under -O3 for a constexpr static in VfxTextureFactory.cpp.
+        run: cmake -S . -B build -G Ninja
+
+      - name: Build
+        run: cmake --build build --target racer -j 4
+
+      - name: Package
+        run: |
+          set -e
+          stage="dist/racer-linux-x64"
+          mkdir -p "$stage"
+          cp build/racer "$stage/"
+          [ -d assets ] && cp -r assets "$stage/" || true
+          [ -d circuits ] && cp -r circuits "$stage/" || true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: racer-linux-x64
+          path: dist/racer-linux-x64
+
+  build-macos:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Ninja
+        run: brew install ninja
+
+      - name: Cache CMake FetchContent dependencies
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: fetchcontent-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Configure
+        # Note: deliberately no CMAKE_BUILD_TYPE, matching the Windows CI
+        # config (see build.yml) which avoids a pre-existing linker error
+        # under -O3 for a constexpr static in VfxTextureFactory.cpp.
+        run: cmake -S . -B build -G Ninja
+
+      - name: Build
+        run: cmake --build build --target racer -j 4
+
+      - name: Package
+        run: |
+          set -e
+          stage="dist/racer-macos-arm64"
+          mkdir -p "$stage"
+          cp build/racer "$stage/"
+          [ -d assets ] && cp -r assets "$stage/" || true
+          [ -d circuits ] && cp -r circuits "$stage/" || true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: racer-macos-arm64
+          path: dist/racer-macos-arm64
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Zip each platform build
+        run: |
+          set -e
+          mkdir -p release
+          for d in artifacts/*/; do
+            name=$(basename "$d")
+            (cd "$d" && zip -r "../../release/$name.zip" .)
+          done
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*.zip

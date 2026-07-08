@@ -41,7 +41,9 @@
 
 #include "Engine/Render/RenderPipeline.hpp"
 
+#include "Race/Leaderboard.hpp"
 #include "Race/RaceState.hpp"
+#include "Race/ReplayRecorder.hpp"
 
 #include "Render/Track/TrackRenderer.hpp"
 
@@ -91,6 +93,14 @@ struct GameLoop::Context {
 
     LapTimerState lapTimer;
 
+    // Persistent best-lap/best-race times, loaded once at startup and
+    // saved whenever a new entry is recorded. Ghost trajectory capture
+    // for the currently-running race, saved to saves/replay_<track>.rep
+    // when the race finishes.
+    racer::race::Leaderboard leaderboard;
+    racer::race::ReplayRecorder replayRecorder;
+    bool replaySaved = false;
+
     AudioFeedback audio;
 
     racer::audio::AudioSystem audioSystem;
@@ -111,6 +121,10 @@ struct GameLoop::Context {
     bool openWorldQuickRace = false;
 
     bool showHowToPlay = false;
+
+    // Encyclopedia screen (menu pause) : index of the lore tile currently
+    // selected/highlighted, -1 when nothing is selected yet.
+    int encyclopediaSelected = -1;
 
     float controlsHintTimer = 30.0f;
 

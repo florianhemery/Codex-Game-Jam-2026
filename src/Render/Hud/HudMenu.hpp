@@ -20,6 +20,7 @@ namespace racer {
 struct HudMainMenuLayout {
     Rectangle openWorldButton{};
     Rectangle quickRaceButton{};
+    Rectangle encyclopediaButton{};
     Rectangle helpButton{};
 };
 
@@ -33,6 +34,7 @@ struct HudMenu {
     static HudMainMenuLayout computeMainLayout(int screenWidth, int screenHeight);
     static bool hitOpenWorldButton(const HudMainMenuLayout &layout, Vector2 mouse);
     static bool hitQuickRaceButton(const HudMainMenuLayout &layout, Vector2 mouse);
+    static bool hitEncyclopediaButton(const HudMainMenuLayout &layout, Vector2 mouse);
     static bool hitHelpButtonMain(const HudMainMenuLayout &layout, Vector2 mouse);
     static void drawMainMenu(int screenWidth, int screenHeight, bool showHowToPlay);
     static HudMenuLayout computeLayout(

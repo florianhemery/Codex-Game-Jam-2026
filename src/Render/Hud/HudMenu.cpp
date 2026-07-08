@@ -338,7 +338,8 @@ HudMainMenuLayout HudMenu::computeMainLayout(int screenWidth, int screenHeight)
 
     layout.openWorldButton = Rectangle{x, y, btnW, btnH};
     layout.quickRaceButton = Rectangle{x, y + btnH + gap, btnW, btnH};
-    layout.helpButton = Rectangle{x, y + (btnH + gap) * 2.0f, btnW, btnH};
+    layout.encyclopediaButton = Rectangle{x, y + (btnH + gap) * 2.0f, btnW, btnH};
+    layout.helpButton = Rectangle{x, y + (btnH + gap) * 3.0f, btnW, btnH};
     return layout;
 }
 
@@ -350,6 +351,11 @@ bool HudMenu::hitOpenWorldButton(const HudMainMenuLayout &layout, Vector2 mouse)
 bool HudMenu::hitQuickRaceButton(const HudMainMenuLayout &layout, Vector2 mouse)
 {
     return CheckCollisionPointRec(mouse, layout.quickRaceButton);
+}
+
+bool HudMenu::hitEncyclopediaButton(const HudMainMenuLayout &layout, Vector2 mouse)
+{
+    return CheckCollisionPointRec(mouse, layout.encyclopediaButton);
 }
 
 bool HudMenu::hitHelpButtonMain(const HudMainMenuLayout &layout, Vector2 mouse)
@@ -368,6 +374,8 @@ void HudMenu::drawMainMenu(int screenWidth, int screenHeight, bool showHowToPlay
 
     bool hoverWorld = CheckCollisionPointRec(mouse, layout.openWorldButton);
     bool hoverQuick = CheckCollisionPointRec(mouse, layout.quickRaceButton);
+    bool hoverEncyclopedia =
+        CheckCollisionPointRec(mouse, layout.encyclopediaButton);
     bool hoverHelp = CheckCollisionPointRec(mouse, layout.helpButton);
 
     HudGfx::drawRectangleRounded(layout.openWorldButton, 0.35f, 8,
@@ -382,6 +390,12 @@ void HudMenu::drawMainMenu(int screenWidth, int screenHeight, bool showHowToPlay
         static_cast<int>(layout.quickRaceButton.x + layout.quickRaceButton.width * 0.5f),
         static_cast<int>(layout.quickRaceButton.y + 14.0f), 26, RAYWHITE);
 
+    HudGfx::drawRectangleRounded(layout.encyclopediaButton, 0.35f, 8,
+        hoverEncyclopedia ? HudGfx::fade(WHITE, 0.22f) : HudGfx::fade(WHITE, 0.10f));
+    HudGfx::drawTextCentered("ENCYCLOPEDIE",
+        static_cast<int>(layout.encyclopediaButton.x + layout.encyclopediaButton.width * 0.5f),
+        static_cast<int>(layout.encyclopediaButton.y + 14.0f), 26, RAYWHITE);
+
     HudGfx::drawRectangleRounded(layout.helpButton, 0.35f, 8,
         hoverHelp ? HudGfx::fade(WHITE, 0.18f) : HudGfx::fade(WHITE, 0.08f));
     HudGfx::drawTextCentered("COMMENT JOUER",
@@ -389,7 +403,7 @@ void HudMenu::drawMainMenu(int screenWidth, int screenHeight, bool showHowToPlay
         static_cast<int>(layout.helpButton.y + 16.0f), 22, RAYWHITE);
 
     HudGfx::drawTextCentered(
-        "O : monde ouvert   |   Q : course rapide   |   H : aide",
+        "O : monde ouvert   |   Q : course rapide   |   E : encyclopedie   |   H : aide",
         screenWidth / 2, screenHeight - 48, 18, GRAY);
     if (showHowToPlay) {
         drawHowToPlayOverlay(screenWidth, screenHeight);

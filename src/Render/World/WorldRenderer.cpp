@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "Render/World/WorldDecorDraw.hpp"
+#include "Render/World/WorldRenderTimings.hpp"
 #include "Render/Track/TrackMeshBuilder.hpp"
 #include "Engine/Render/ShaderLocations.hpp"
 #include "World/Aurelia/AureliaBounds.hpp"
@@ -428,6 +429,7 @@ void WorldRenderer::sync(const ChunkStreamer &streamer)
 
 void WorldRenderer::drawOpaque(BiomeId /*biome*/) const
 {
+    const double kSectionT0 = GetTime();
     const float terrainOn = 1.0f;
     const float terrainOff = 0.0f;
     Vector3 tints[4]{};
@@ -453,12 +455,14 @@ void WorldRenderer::drawOpaque(BiomeId /*biome*/) const
         SetShaderValue(litShader_, terrainModeLoc_, &terrainOff,
             SHADER_UNIFORM_FLOAT);
     }
+    worldRenderTimings().terrainMs = (GetTime() - kSectionT0) * 1000.0;
 }
 
 void WorldRenderer::drawLit(float timeSec, Vector3 focus,
     const ChunkStreamer &streamer) const
 {
     (void)timeSec;
+    const double kSectionT0 = GetTime();
 
     float groundY = streamer.sampleHeight(focus.x, focus.z);
     drawHorizonRing(focus, groundY);
@@ -491,6 +495,7 @@ void WorldRenderer::drawLit(float timeSec, Vector3 focus,
         DrawModel(entry.scatterModel, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
     }
     rlEnableBackfaceCulling();
+    worldRenderTimings().propsMs = (GetTime() - kSectionT0) * 1000.0;
 }
 
 void WorldRenderer::drawCachedLandmark(LandmarkCache &cache, Vector3 pos,
@@ -524,6 +529,7 @@ void WorldRenderer::drawCachedLandmark(LandmarkCache &cache, Vector3 pos,
 void WorldRenderer::drawTriggers(float timeSec, Vector3 focus,
     const ChunkStreamer &streamer) const
 {
+    const double kSectionT0 = GetTime();
     propBuilder_.beginBatch(WorldPropBuilder::BatchId::POI);
 
     for (const PoiInstance &poi : AureliaData::worldPois()) {
@@ -561,12 +567,14 @@ void WorldRenderer::drawTriggers(float timeSec, Vector3 focus,
     }
 
     propBuilder_.flush(WorldPropBuilder::BatchId::POI);
+    worldRenderTimings().triggersMs = (GetTime() - kSectionT0) * 1000.0;
 }
 
 void WorldRenderer::drawTraffic(const std::vector<TrafficVehicle> &vehicles,
     const RoadGraph &graph, Vector3 focus,
     const ChunkStreamer &streamer) const
 {
+    const double kSectionT0 = GetTime();
     propBuilder_.beginBatch(WorldPropBuilder::BatchId::TRAFFIC);
 
     for (const TrafficVehicle &v : vehicles) {
@@ -583,6 +591,7 @@ void WorldRenderer::drawTraffic(const std::vector<TrafficVehicle> &vehicles,
     }
 
     propBuilder_.flush(WorldPropBuilder::BatchId::TRAFFIC);
+    worldRenderTimings().trafficMs = (GetTime() - kSectionT0) * 1000.0;
 }
 
 } // namespace racer::world

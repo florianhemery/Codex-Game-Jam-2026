@@ -89,4 +89,12 @@ void ProgressionState::collectLore(int index)
     addReputation(RegionId::MARINA, 2);
 }
 
+bool ProgressionState::loreCollectedAt(int index) const
+{
+    if (index < 0 || index >= 20) {
+        return false;
+    }
+    return (loreMask_ & (1u << static_cast<unsigned>(index))) != 0;
+}
+
 } // namespace racer::world

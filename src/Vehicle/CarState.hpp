@@ -28,6 +28,12 @@ struct CarState {
     float startBoostTimer_ = 0.0f;
     float startBoostAccelMul_ = 1.0f;
     float startBoostSpeedBonus_ = 0.0f;
+    // Smoothed grip value actually used to blend velocityHeading toward
+    // heading (see Car::updateVelocityHeading). Kept as persistent state
+    // rather than recomputed fresh each frame so drift-enter/exit and
+    // surface-grip changes can be low-pass filtered instead of snapping
+    // instantly -- see CarTelemetry-driven tuning notes in Car.cpp.
+    float headingGrip_ = 6.0f;
     CarTuning tuning_{};
 
     Vector3 &position()
@@ -168,6 +174,16 @@ struct CarState {
     float startBoostSpeedBonus() const
     {
         return startBoostSpeedBonus_;
+    }
+
+    float &headingGrip()
+    {
+        return headingGrip_;
+    }
+
+    float headingGrip() const
+    {
+        return headingGrip_;
     }
 };
 

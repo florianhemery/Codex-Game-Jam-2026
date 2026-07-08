@@ -52,7 +52,7 @@ enum class AppState { MENU, OPEN_WORLD, RACING };
 
 
 
-enum class MenuScreen { MAIN, QUICK_RACE };
+enum class MenuScreen { MAIN, QUICK_RACE, ENCYCLOPEDIA };
 
 
 
@@ -95,6 +95,8 @@ private:
     static bool handleMainMenuFrame(Context &ctx);
 
     static bool handleMenuFrame(Context &ctx);
+
+    static bool handleEncyclopediaFrame(Context &ctx);
 
     static bool handleOpenWorldFrame(Context &ctx, float dt);
 

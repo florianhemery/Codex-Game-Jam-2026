@@ -23,6 +23,13 @@ public:
     static const RoadGraph &roadGraph();
     static void attachRaceLabels(const std::vector<TrackDef> &presets);
     static void initCollectibles();
+
+    // Encyclopedia content for the 20 "plaques des Veilleurs" lore
+    // fragments (see PoiInstance::loreIndex in initCollectibles()).
+    // index must be in [0, 19]; out-of-range returns a safe placeholder.
+    static const char *loreTitle(int index);
+    static const char *loreText(int index);
+    static constexpr int kLoreEntryCount = 20;
 };
 
 } // namespace racer::world

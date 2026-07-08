@@ -17,6 +17,8 @@
 #include "App/RacerColors.hpp"
 #include "Engine/Input/InputBindings.hpp"
 #include "Render/Hud.hpp"
+#include "Render/Hud/HudDebugOverlay.hpp"
+#include "Render/Hud/HudEncyclopedia.hpp"
 #include "Render/Hud/HudMenu.hpp"
 #include "Vehicle/Car.hpp"
 #include "World/Aurelia/AureliaWorld.hpp"
@@ -86,6 +88,10 @@ bool GameLoop::handleMainMenuFrame(Context &ctx)
         if (HudMenu::hitQuickRaceButton(layout, mouse)) {
             ctx.menuScreen = MenuScreen::QUICK_RACE;
         }
+        if (HudMenu::hitEncyclopediaButton(layout, mouse)) {
+            ctx.menuScreen = MenuScreen::ENCYCLOPEDIA;
+            ctx.encyclopediaSelected = -1;
+        }
         if (HudMenu::hitHelpButtonMain(layout, mouse)) {
             ctx.showHowToPlay = true;
         }
@@ -97,6 +103,11 @@ bool GameLoop::handleMainMenuFrame(Context &ctx)
     if (IsKeyPressed(KEY_Q) || charJustPressed('q', 'Q')) {
         ctx.menuScreen = MenuScreen::QUICK_RACE;
     }
+    if (!ctx.showHowToPlay
+        && (IsKeyPressed(KEY_E) || charJustPressed('e', 'E'))) {
+        ctx.menuScreen = MenuScreen::ENCYCLOPEDIA;
+        ctx.encyclopediaSelected = -1;
+    }
 
     BeginDrawing();
     ClearBackground(Color{20, 24, 36, 255});
@@ -104,6 +115,7 @@ bool GameLoop::handleMainMenuFrame(Context &ctx)
     hud.drawMainMenu(ctx.screenWidth, ctx.screenHeight, ctx.showHowToPlay);
     engine::input::InputBindings::instance().drawDebugRemapOverlay(
         ctx.screenWidth, ctx.screenHeight);
+    hud::HudDebugOverlay::instance().draw(ctx.screenWidth, ctx.screenHeight);
     EndDrawing();
     return ctx.appState == AppState::MENU;
 }
@@ -199,6 +211,7 @@ bool GameLoop::handleOpenWorldFrame(Context &ctx, float dt)
         ctx.screenHeight);
     engine::input::InputBindings::instance().drawDebugRemapOverlay(
         ctx.screenWidth, ctx.screenHeight);
+    hud::HudDebugOverlay::instance().draw(ctx.screenWidth, ctx.screenHeight);
     EndDrawing();
     return true;
 }
@@ -259,6 +272,69 @@ bool GameLoop::handleQuickRaceOverlay(Context &ctx)
         EndDrawing();
     }
     return true;
+}
+
+bool GameLoop::handleEncyclopediaFrame(Context &ctx)
+{
+    HudEncyclopediaLayout layout = HudEncyclopedia::computeLayout(
+        ctx.screenWidth, ctx.screenHeight);
+    Vector2 mouse = GetMousePosition();
+
+    if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE)) {
+        ctx.menuScreen = MenuScreen::MAIN;
+        return true;
+    }
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        int picked = HudEncyclopedia::pickTile(layout, mouse);
+        if (picked >= 0) {
+            ctx.encyclopediaSelected = picked;
+        } else if (HudEncyclopedia::hitBack(layout, mouse)) {
+            ctx.menuScreen = MenuScreen::MAIN;
+            return true;
+        }
+    }
+
+    // Keyboard grid navigation (4 region columns x 5 rows per region).
+    constexpr int kCols = 4;
+    constexpr int kRows = 5;
+    int sel = ctx.encyclopediaSelected < 0 ? 0 : ctx.encyclopediaSelected;
+    int col = sel / kRows;
+    int row = sel % kRows;
+    bool moved = false;
+
+    if (IsKeyPressed(KEY_LEFT)) {
+        col = (col + kCols - 1) % kCols;
+        moved = true;
+    }
+    if (IsKeyPressed(KEY_RIGHT)) {
+        col = (col + 1) % kCols;
+        moved = true;
+    }
+    if (IsKeyPressed(KEY_UP)) {
+        row = (row + kRows - 1) % kRows;
+        moved = true;
+    }
+    if (IsKeyPressed(KEY_DOWN)) {
+        row = (row + 1) % kRows;
+        moved = true;
+    }
+    if (moved) {
+        ctx.encyclopediaSelected = col * kRows + row;
+    }
+
+    const world::ProgressionState *progression = nullptr;
+    if (ctx.aurelia) {
+        progression = &ctx.aurelia->progression();
+    } else if (ctx.openWorldProgressionBackup) {
+        progression = &*ctx.openWorldProgressionBackup;
+    }
+
+    BeginDrawing();
+    ClearBackground(Color{20, 24, 36, 255});
+    HudEncyclopedia::draw(ctx.screenWidth, ctx.screenHeight, layout,
+        progression, ctx.encyclopediaSelected);
+    EndDrawing();
+    return ctx.appState == AppState::MENU;
 }
 
 } // namespace app

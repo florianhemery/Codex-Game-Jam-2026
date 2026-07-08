@@ -44,6 +44,16 @@ void Hud::drawHudEx(const RaceState &race, int screenWidth, int screenHeight,
         break;
     case RacePhase::RACING:
         HudRaceOverlay::drawGoFlash(race, screenWidth, screenHeight);
+        HudRaceOverlay::drawStartFeedback(race, screenWidth, screenHeight);
+        HudRaceOverlay::drawStatusBadges(extras, screenWidth);
+        HudRaceOverlay::drawLapBanner(extras, screenWidth, screenHeight);
+        if (extras.showControlsBanner) {
+            HudRaceOverlay::drawControlsBanner(screenWidth, screenHeight);
+        }
+        break;
+    case RacePhase::WRAP_UP:
+        HudRaceOverlay::drawStatusBadges(extras, screenWidth);
+        HudRaceOverlay::drawWrapUpBanner(screenWidth);
         break;
     case RacePhase::FINISHED:
         HudFinishScreen::draw(race, extras, screenWidth, screenHeight);

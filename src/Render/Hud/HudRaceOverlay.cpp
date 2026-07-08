@@ -15,6 +15,22 @@
 
 namespace racer {
 
+namespace {
+
+const char *difficultyLabel(AiDifficulty difficulty)
+{
+    switch (difficulty) {
+        case AiDifficulty::Easy:
+            return "Facile";
+        case AiDifficulty::Hard:
+            return "Difficile";
+        default:
+            return "Normal";
+    }
+}
+
+} // namespace
+
 void HudRaceOverlay::drawStandingsFinishFlag(int x, int y)
 {
     HudGfx::drawRectangle(x, y, 5, 5, RAYWHITE);
@@ -57,6 +73,18 @@ void HudRaceOverlay::drawStandingsRow(const HudStandingsRowParams &params)
         drawStandingsFinishFlag(
             static_cast<int>(params.panel.x + params.panel.width - 26.0f),
             static_cast<int>(params.rowY + 3.0f));
+    } else if (!params.racer.isPlayer
+        && std::fabs(params.rubberBand - 1.0f) > 0.03f) {
+        // Subtle rubber-band cue: a lightly boosted AI is "catching up", a
+        // lightly reined-in one is "pulling back" -- purely informative, not
+        // a gameplay element, so keep it small and low-contrast.
+        bool boosted = params.rubberBand > 1.0f;
+        Color cue = boosted ? HudGfx::fade(Color{140, 230, 120, 255}, 0.75f)
+            : HudGfx::fade(Color{255, 140, 120, 255}, 0.55f);
+
+        HudGfx::drawText(boosted ? "^" : "v",
+            static_cast<int>(params.panel.x + params.panel.width - 22.0f),
+            static_cast<int>(params.rowY - 1.0f), 16, cue);
     }
 }
 
@@ -89,7 +117,8 @@ void HudRaceOverlay::drawStandingsPanel(const RaceState &race, const HudExtras &
         float rowY = panel.y + 50.0f + rowH * static_cast<float>(i);
 
         HudStandingsRowParams rowParams{racers[idx], idx,
-            static_cast<int>(i) + 1, extras, panel, rowY};
+            static_cast<int>(i) + 1, extras, panel, rowY,
+            race.rubberBandFactor(static_cast<int>(idx))};
 
         drawStandingsRow(rowParams);
     }
@@ -125,6 +154,9 @@ void HudRaceOverlay::drawTimersPanel(const RaceState &race, const HudExtras &ext
     HudGfx::drawPanel(panel, 0.45f);
     HudGfx::drawText("TEMPS DE COURSE", static_cast<int>(panel.x + 14.0f),
         static_cast<int>(panel.y + 10.0f), 12, HudGfx::fade(WHITE, 0.55f));
+    HudGfx::drawTextRightAligned(difficultyLabel(race.difficulty()),
+        static_cast<int>(panel.x + panel.width - 14.0f),
+        static_cast<int>(panel.y + 10.0f), 12, HudGfx::fade(WHITE, 0.45f));
 
     char total[32];
 
