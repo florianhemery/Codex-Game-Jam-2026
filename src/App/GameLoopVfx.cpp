@@ -12,6 +12,7 @@
 #include "App/RacerColors.hpp"
 #include "Render/CarRenderer.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 namespace racer {

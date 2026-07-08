@@ -5,6 +5,7 @@
 ** HUD speed gauge drawing
 */
 
+#include <algorithm>
 #include <cmath>
 
 #include "Render/Hud/HudRaceOverlay.hpp"

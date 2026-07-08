@@ -9,6 +9,7 @@
 
 #include "Render/Hud/HudOpenWorldNav.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <vector>
 

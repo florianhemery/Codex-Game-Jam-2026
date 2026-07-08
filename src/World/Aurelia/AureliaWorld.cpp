@@ -7,6 +7,7 @@
 
 #include "World/Aurelia/AureliaWorld.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 #include "raylib.h"
