@@ -94,6 +94,57 @@ void appendCylinderY(
     }
 }
 
+void appendCylinderX(
+    TrackMeshBuilder::MeshBuffers &mb, Vector3 base, float radius,
+    float width, int sides, Color color)
+{
+    if (sides < 3) {
+        sides = 3;
+    }
+    for (int i = 0; i < sides; ++i) {
+        float a0 = kPi * 2.0f * static_cast<float>(i) / static_cast<float>(sides);
+        float a1 = kPi * 2.0f * static_cast<float>(i + 1)
+            / static_cast<float>(sides);
+        Vector3 b0{
+            base.x, base.y + std::cos(a0) * radius,
+            base.z + std::sin(a0) * radius,
+        };
+        Vector3 b1{
+            base.x, base.y + std::cos(a1) * radius,
+            base.z + std::sin(a1) * radius,
+        };
+        Vector3 t0{
+            base.x + width, base.y + std::cos(a0) * radius,
+            base.z + std::sin(a0) * radius,
+        };
+        Vector3 t1{
+            base.x + width, base.y + std::cos(a1) * radius,
+            base.z + std::sin(a1) * radius,
+        };
+        float midA = (a0 + a1) * 0.5f;
+        Vector3 n{0.0f, std::cos(midA), std::sin(midA)};
+
+        TrackMeshBuilder::appendQuad(mb, b0, b1, t1, t0, n, color);
+    }
+}
+
+// Builds a box tilted around the X axis: `w` stays the ridge-parallel
+// width (along X, unrotated), `d` becomes the slope run — it sweeps into
+// both Z and Y as `pitch` increases, which is what a roof panel or a
+// sloped hood/trunk deck needs (rising as it goes front-to-back), rather
+// than a Z-axis rotation which would swing the panel sideways past the
+// building instead of down toward the eaves.
+void appendBoxPitchX(
+    TrackMeshBuilder::MeshBuffers &mb, Vector3 center, float pitch, float w,
+    float h, float d, Color color)
+{
+    float c = std::cos(pitch);
+    float s = std::sin(pitch);
+    TrackMeshBuilder::appendBox(
+        mb, center, Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.0f, c, -s},
+        Vector3{0.0f, s, c}, w * 0.5f, h * 0.5f, d * 0.5f, color);
+}
+
 void appendFrond(
     TrackMeshBuilder::MeshBuffers &mb, Vector3 root, float yaw, float len,
     float scale, Color color)
@@ -120,6 +171,10 @@ void appendSphereApprox(
         mb,
         Vector3{center.x, center.y + radius * 0.35f, center.z},
         radius * 1.2f, radius * 0.9f, radius * 1.1f, shade(color, 1.08f));
+    appendBoxY(
+        mb,
+        Vector3{center.x, center.y - radius * 0.25f, center.z},
+        radius * 1.3f, radius * 0.7f, radius * 1.35f, shade(color, 0.92f));
 }
 
 void appendTransformed(
@@ -280,13 +335,24 @@ void WorldPropBuilder::buildPine(
     appendCylinderY(
         mb, Vector3{0.0f, 0.0f, 0.0f}, 0.22f * scale, 0.28f * scale,
         trunkH, 6, trunk);
-    appendCylinderY(
-        mb, Vector3{0.0f, trunkH, 0.0f}, 1.5f * scale, 0.2f * scale,
-        2.4f * scale * hs, 8, foliage);
+
+    // Three stacked, shrinking tiers give a layered conifer silhouette
+    // instead of a single cone blob.
+    float tierH = 1.15f * scale * hs;
+    float baseR = 1.55f * scale;
+    for (int tier = 0; tier < 3; ++tier) {
+        float t = static_cast<float>(tier);
+        float y = trunkH + t * tierH * 0.72f;
+        float rBot = baseR * (1.0f - t * 0.3f);
+        float rTop = rBot * 0.18f;
+        Color tierColor = shade(foliage, 1.0f - t * 0.06f);
+        appendCylinderY(mb, Vector3{0.0f, y, 0.0f}, rBot, rTop, tierH, 8,
+            tierColor);
+    }
     appendSphereApprox(
         mb,
-        Vector3{0.0f, trunkH + 2.9f * scale * hs, 0.0f},
-        0.85f * scale, Fade(foliage, 0.85f));
+        Vector3{0.0f, trunkH + tierH * 2.5f, 0.0f},
+        0.4f * scale, Fade(shade(foliage, 0.9f), 0.9f));
 }
 
 void WorldPropBuilder::buildBroadleaf(
@@ -300,14 +366,28 @@ void WorldPropBuilder::buildBroadleaf(
     appendCylinderY(
         mb, Vector3{0.0f, 0.0f, 0.0f}, 0.26f * scale, 0.3f * scale,
         trunkH, 6, trunk);
+    // A short branch fork before the canopy breaks up the straight trunk.
+    appendCylinderY(
+        mb, Vector3{0.0f, trunkH * 0.72f, 0.0f}, 0.16f * scale, 0.1f * scale,
+        0.55f * scale * hs, 5, shade(trunk, 0.92f));
+
+    // An asymmetric cluster of offset lobes reads as a fuller, less
+    // perfectly-round canopy than a couple of centered spheres.
+    appendSphereApprox(
+        mb, Vector3{0.0f, trunkH + 1.35f * scale * hs, 0.0f},
+        1.15f * scale, foliage);
     appendSphereApprox(
         mb,
-        Vector3{0.0f, trunkH + 1.4f * scale * hs, 0.0f},
-        1.35f * scale, foliage);
+        Vector3{0.62f * scale, trunkH + 0.95f * scale * hs, 0.25f * scale},
+        0.82f * scale, shade(foliage, 0.95f));
     appendSphereApprox(
         mb,
-        Vector3{0.55f * scale, trunkH + 1.0f * scale * hs, 0.2f * scale},
-        0.9f * scale, shade(foliage, 0.95f));
+        Vector3{-0.5f * scale, trunkH + 1.05f * scale * hs, -0.35f * scale},
+        0.7f * scale, shade(foliage, 1.06f));
+    appendSphereApprox(
+        mb,
+        Vector3{0.1f * scale, trunkH + 1.75f * scale * hs, 0.35f * scale},
+        0.6f * scale, shade(foliage, 1.1f));
 }
 
 void WorldPropBuilder::buildPalm(
@@ -318,13 +398,31 @@ void WorldPropBuilder::buildPalm(
     Color frond = mulColor(Color{48, 130, 52, 255}, tint);
     float trunkH = 2.2f * scale * hs;
 
+    // A slight lean, built from two stacked segments offset in X, reads
+    // much more like a real palm than a dead-straight trunk.
+    float seg1H = trunkH * 0.55f;
+    float seg2H = trunkH - seg1H;
+    float lean = 0.35f * scale;
     appendCylinderY(
-        mb, Vector3{0.0f, 0.0f, 0.0f}, 0.18f * scale, 0.22f * scale,
-        trunkH, 5, trunk);
-    Vector3 crown{0.0f, trunkH, 0.0f};
-    for (int i = 0; i < 5; ++i) {
-        float a = static_cast<float>(i) / 5.0f * kPi * 2.0f;
-        appendFrond(mb, crown, a, 1.4f, scale, frond);
+        mb, Vector3{0.0f, 0.0f, 0.0f}, 0.2f * scale, 0.17f * scale,
+        seg1H, 6, trunk);
+    appendCylinderY(
+        mb, Vector3{lean * 0.5f, seg1H, 0.0f}, 0.17f * scale, 0.13f * scale,
+        seg2H, 6, shade(trunk, 0.95f));
+    Vector3 crown{lean, trunkH, 0.0f};
+    for (int i = 0; i < 6; ++i) {
+        float a = static_cast<float>(i) / 6.0f * kPi * 2.0f;
+        Color frondColor = (i % 2 == 0) ? frond : shade(frond, 1.08f);
+        appendFrond(mb, crown, a, 1.5f, scale, frondColor);
+    }
+    for (int i = 0; i < 3; ++i) {
+        float a = static_cast<float>(i) / 3.0f * kPi * 2.0f + 0.4f;
+        Vector3 coco{
+            crown.x + std::cos(a) * 0.3f * scale,
+            crown.y - 0.15f * scale,
+            crown.z + std::sin(a) * 0.3f * scale,
+        };
+        appendSphereApprox(mb, coco, 0.16f * scale, Color{92, 66, 40, 255});
     }
 }
 
@@ -332,13 +430,27 @@ void WorldPropBuilder::buildRock(
     MeshBuffers &mb, float scale, float heightScale, Color tint)
 {
     Color rock = mulColor(Color{68, 62, 58, 255}, tint);
-    appendBoxY(
-        mb, Vector3{0.0f, 0.8f * scale * heightScale, 0.0f},
-        2.2f * scale, 1.6f * scale * heightScale, 2.0f * scale, rock);
-    appendBoxY(
-        mb,
-        Vector3{0.35f * scale, 1.35f * scale * heightScale, -0.2f * scale},
-        1.2f * scale, 0.8f * scale, 1.0f * scale, shade(rock, 1.06f));
+    // A cluster of irregularly-rotated, unevenly-sized chunks reads as a
+    // weathered boulder pile instead of two stacked cubes.
+    struct Chunk {
+        float x, y, z, w, h, d, yaw, shadeMul;
+    };
+    const Chunk chunks[] = {
+        {0.0f, 0.75f, 0.0f, 2.0f, 1.5f, 1.9f, 0.15f, 1.0f},
+        {0.55f, 1.25f, -0.3f, 1.1f, 0.85f, 1.0f, -0.35f, 1.08f},
+        {-0.55f, 0.55f, 0.35f, 1.05f, 0.75f, 1.05f, 0.6f, 0.9f},
+        {0.15f, 1.6f, 0.35f, 0.7f, 0.55f, 0.65f, 1.0f, 1.12f},
+    };
+    for (const Chunk &c : chunks) {
+        float ch = std::cos(c.yaw);
+        float sh = std::sin(c.yaw);
+        Vector3 center{c.x * scale, c.y * scale * heightScale, c.z * scale};
+        TrackMeshBuilder::appendBox(
+            mb, center, Vector3{ch, 0.0f, sh}, Vector3{0.0f, 1.0f, 0.0f},
+            Vector3{-sh, 0.0f, ch}, c.w * 0.5f * scale,
+            c.h * 0.5f * scale * heightScale, c.d * 0.5f * scale,
+            shade(rock, c.shadeMul));
+    }
 }
 
 void WorldPropBuilder::buildIndustrialSilo(
@@ -346,19 +458,31 @@ void WorldPropBuilder::buildIndustrialSilo(
 {
     Color silo = mulColor(Color{140, 142, 148, 255}, tint);
     Color annex = mulColor(Color{90, 92, 98, 255}, tint);
+    Color band = shade(silo, 0.68f);
     float siloH = 5.5f * scale * heightScale;
 
     appendCylinderY(
         mb, Vector3{0.0f, 0.0f, 0.0f}, 1.2f * scale, 1.2f * scale,
         siloH, 10, silo);
+    for (int i = 1; i < 4; ++i) {
+        float y = siloH * static_cast<float>(i) / 4.0f;
+        appendCylinderY(mb, Vector3{0.0f, y, 0.0f}, 1.22f * scale,
+            1.22f * scale, 0.12f * scale, 10, band);
+    }
+    appendCylinderY(
+        mb, Vector3{0.95f * scale, 0.2f * scale, 0.75f * scale}, 0.05f * scale,
+        0.05f * scale, siloH * 0.85f, 4, shade(silo, 0.6f));
     appendBoxY(
         mb,
         Vector3{2.0f * scale, 1.5f * scale * heightScale, 0.0f},
         2.5f * scale, 2.0f * scale * heightScale, 3.0f * scale, annex);
+    appendCylinderY(
+        mb, Vector3{0.0f, siloH, 0.0f}, 1.25f * scale, 0.15f * scale,
+        0.9f * scale, 10, shade(silo, 0.75f));
     appendBoxY(
         mb,
-        Vector3{0.0f, siloH + 0.25f * scale, 0.0f},
-        0.5f * scale, 0.5f * scale, 0.5f * scale, shade(silo, 0.75f));
+        Vector3{0.0f, siloH + 1.05f * scale, 0.0f},
+        0.35f * scale, 0.35f * scale, 0.35f * scale, shade(silo, 0.65f));
 }
 
 void WorldPropBuilder::buildIndustrialTank(
@@ -367,10 +491,14 @@ void WorldPropBuilder::buildIndustrialTank(
     Color tank = mulColor(Color{118, 122, 130, 255}, tint);
     Color pipe = mulColor(Color{72, 74, 80, 255}, tint);
     float tankR = 1.6f * scale;
+    float tankH = 2.2f * scale * heightScale;
 
     appendCylinderY(
         mb, Vector3{0.0f, 0.6f * scale, 0.0f}, tankR, tankR,
-        2.2f * scale * heightScale, 10, tank);
+        tankH, 10, tank);
+    appendCylinderY(
+        mb, Vector3{0.0f, 0.6f * scale + tankH, 0.0f}, tankR, tankR * 0.15f,
+        0.5f * scale, 10, shade(tank, 0.85f));
     appendBoxY(
         mb,
         Vector3{0.0f, 0.25f * scale, 0.0f},
@@ -379,6 +507,14 @@ void WorldPropBuilder::buildIndustrialTank(
         mb,
         Vector3{tankR + 0.3f * scale, 1.2f * scale * heightScale, 0.0f},
         0.15f * scale, 0.15f * scale, 2.8f * scale * heightScale, 6, pipe);
+    appendCylinderY(
+        mb,
+        Vector3{-tankR - 0.3f * scale, 0.5f * scale, 0.0f},
+        0.13f * scale, 0.13f * scale, 1.6f * scale, 6, shade(pipe, 1.1f));
+    // Valve wheel on the near-side pipe.
+    appendCylinderX(
+        mb, Vector3{tankR + 0.15f * scale, 0.9f * scale, 0.0f}, 0.22f * scale,
+        0.05f * scale, 8, shade(pipe, 1.2f));
 }
 
 void WorldPropBuilder::buildIndustrialAnnex(
@@ -411,9 +547,25 @@ void WorldPropBuilder::buildCoastalBuilding(MeshBuffers &mb, float scale,
 {
     Color wall = mulColor(Color{220, 210, 190, 255}, tint);
     Color roof = mulColor(Color{180, 70, 50, 255}, tint);
+    Color trim = shade(wall, 0.8f);
 
-    appendBoxY(mb, Vector3{0.0f, 2.5f * scale, 0.0f}, 8.0f * scale, 5.0f * scale, 6.0f * scale, wall);
-    appendBoxY(mb, Vector3{0.0f, 5.8f * scale, 0.0f}, 7.0f * scale, 1.2f * scale, 5.0f * scale, roof);
+    appendBoxY(mb, Vector3{0.0f, 2.5f * scale, 0.0f}, 8.0f * scale,
+        5.0f * scale, 6.0f * scale, wall);
+    appendBoxY(mb, Vector3{0.0f, 5.05f * scale, 0.0f}, 8.2f * scale,
+        0.2f * scale, 6.2f * scale, trim);
+
+    // Pitched roof instead of a flat slab, matching the garage's language.
+    appendBoxPitchX(
+        mb, Vector3{0.0f, 5.9f * scale, 1.7f * scale}, -0.5f, 8.6f * scale,
+        0.18f * scale, 3.6f * scale, roof);
+    appendBoxPitchX(
+        mb, Vector3{0.0f, 5.9f * scale, -1.7f * scale}, 0.5f, 8.6f * scale,
+        0.18f * scale, 3.6f * scale, shade(roof, 0.9f));
+    appendBoxY(mb, Vector3{0.0f, 6.85f * scale, 0.0f}, 8.7f * scale,
+        0.22f * scale, 0.5f * scale, shade(roof, 1.1f));
+    appendCylinderY(mb, Vector3{2.6f * scale, 5.9f * scale, -0.6f * scale},
+        0.3f * scale, 0.3f * scale, 2.0f * scale, 6, shade(trim, 0.75f));
+
     for (int i = 0; i < 4; ++i) {
         appendBoxY(
             mb,
@@ -423,7 +575,16 @@ void WorldPropBuilder::buildCoastalBuilding(MeshBuffers &mb, float scale,
             },
             0.6f * scale, 0.9f * scale, 0.08f * scale,
             Color{120, 180, 220, 210});
+        appendBoxY(
+            mb,
+            Vector3{
+                (-2.4f + static_cast<float>(i) * 1.6f) * scale,
+                2.2f * scale, 3.1f * scale,
+            },
+            0.66f * scale, 0.98f * scale, 0.04f * scale, trim);
     }
+    appendBoxY(mb, Vector3{0.0f, 0.6f * scale, 3.02f * scale}, 2.2f * scale,
+        1.6f * scale, 0.1f * scale, Color{110, 78, 48, 255});
 }
 
 void WorldPropBuilder::buildPierSegment(
@@ -476,14 +637,48 @@ void WorldPropBuilder::buildGarage(MeshBuffers &mb, Color accent)
     Color wall = Color{160, 168, 180, 255};
     Color frame = Fade(accent, 0.8f);
     Color door = Color{80, 180, 255, 200};
+    Color roof = shade(accent, 0.55f);
+    Color glass = Color{150, 200, 230, 200};
 
-    appendBoxY(mb, Vector3{0.0f, 2.0f, 0.0f}, 7.0f, 4.0f, 8.0f, wall);
-    appendBoxY(mb, Vector3{0.0f, 4.15f, 0.0f}, 7.4f, 0.35f, 8.4f, shade(wall, 0.82f));
-    appendBoxY(mb, Vector3{0.0f, 1.2f, 4.05f}, 5.0f, 3.0f, 0.15f, door);
-    appendBoxY(mb, Vector3{-3.55f, 2.0f, 0.0f}, 0.12f, 4.2f, 8.2f, frame);
-    appendBoxY(mb, Vector3{3.55f, 2.0f, 0.0f}, 0.12f, 4.2f, 8.2f, frame);
-    appendBoxY(mb, Vector3{0.0f, 2.0f, -4.05f}, 7.2f, 4.2f, 0.12f, frame);
-    appendBoxY(mb, Vector3{0.0f, 0.35f, 0.0f}, 6.2f, 0.25f, 7.2f, shade(wall, 0.7f));
+    appendBoxY(mb, Vector3{0.0f, 2.0f, 0.0f}, 7.0f, 3.4f, 8.0f, wall);
+    appendBoxY(mb, Vector3{0.0f, 3.72f, 0.0f}, 7.3f, 0.28f, 8.3f,
+        shade(wall, 0.82f));
+
+    // Pitched roof: two panels meeting at a ridge, plus gable end caps.
+    appendBoxPitchX(
+        mb, Vector3{0.0f, 4.25f, 2.3f}, -0.42f, 7.6f, 0.16f, 4.7f, roof);
+    appendBoxPitchX(
+        mb, Vector3{0.0f, 4.25f, -2.3f}, 0.42f, 7.6f, 0.16f, 4.7f,
+        shade(roof, 0.92f));
+    appendBoxY(mb, Vector3{0.0f, 5.0f, 0.0f}, 7.65f, 0.2f, 0.5f,
+        shade(roof, 1.08f));
+
+    // Roll-up door with visible ribbing.
+    appendBoxY(mb, Vector3{0.0f, 1.1f, 4.05f}, 5.0f, 2.6f, 0.15f, door);
+    for (int i = 1; i < 5; ++i) {
+        float y = 0.05f + static_cast<float>(i) * 0.52f;
+        appendBoxY(mb, Vector3{0.0f, y, 4.13f}, 4.9f, 0.05f, 0.03f,
+            shade(door, 0.7f));
+    }
+
+    // Side windows and corner posts.
+    for (float side : {-1.0f, 1.0f}) {
+        appendBoxY(mb, Vector3{side * 3.58f, 2.4f, 1.5f}, 0.08f, 0.9f, 1.4f,
+            glass);
+        appendBoxY(mb, Vector3{side * 3.55f, 2.0f, 0.0f}, 0.12f, 3.6f, 8.2f,
+            frame);
+    }
+    appendBoxY(mb, Vector3{0.0f, 2.0f, -4.05f}, 7.2f, 3.6f, 0.12f, frame);
+    appendBoxY(mb, Vector3{0.0f, 0.15f, 0.0f}, 7.2f, 0.3f, 8.2f,
+        shade(wall, 0.6f));
+
+    // Corner drainpipe for a lived-in detail.
+    appendCylinderY(mb, Vector3{3.6f, 0.0f, -3.9f}, 0.08f, 0.08f, 3.8f, 6,
+        shade(wall, 0.6f));
+
+    // Wall-mounted sign above the door, tinted with the region accent.
+    appendBoxY(mb, Vector3{0.0f, 3.35f, 4.02f}, 3.0f, 0.5f, 0.08f,
+        Fade(accent, 0.92f));
 }
 
 void WorldPropBuilder::buildMissionMarker(
@@ -498,15 +693,54 @@ void WorldPropBuilder::buildMissionMarker(
         mb, Vector3{0.0f, 2.2f + bob, 0.0f}, 0.55f, color);
 }
 
-void WorldPropBuilder::buildTrafficCar(MeshBuffers &mb, Color body)
+void WorldPropBuilder::buildTrafficCar(MeshBuffers &mb, Color color)
 {
+    Color body = color;
     Color dark = shade(body, 0.55f);
-    Color cabin = shade(body, 0.92f);
+    Color glass = Color{40, 52, 62, 235};
+    Color tire = Color{18, 18, 20, 255};
+    Color hub = Color{140, 142, 148, 255};
+    Color lightF = Color{255, 244, 200, 255};
+    Color lightR = Color{200, 40, 30, 255};
 
-    appendBoxY(mb, Vector3{0.0f, 0.0f, 0.0f}, 1.8f, 0.5f, 3.6f, dark);
-    appendBoxY(mb, Vector3{0.0f, 0.35f, 0.15f}, 1.6f, 0.55f, 2.2f, cabin);
-    appendBoxY(mb, Vector3{0.0f, 0.28f, 1.55f}, 1.3f, 0.35f, 0.7f, body);
-    appendBoxY(mb, Vector3{0.0f, 0.22f, -1.55f}, 1.5f, 0.3f, 0.5f, shade(body, 0.78f));
+    appendBoxY(mb, Vector3{0.0f, 0.22f, 0.0f}, 1.75f, 0.42f, 3.5f, dark);
+    // Hood/trunk deck built as two pitched panels instead of flat boxes,
+    // sloping down toward the bumpers for a wedge silhouette.
+    appendBoxPitchX(
+        mb, Vector3{0.0f, 0.44f, 1.15f}, -0.22f, 1.55f, 0.12f, 1.3f, body);
+    appendBoxPitchX(
+        mb, Vector3{0.0f, 0.4f, -1.15f}, 0.18f, 1.55f, 0.12f, 1.3f,
+        shade(body, 0.9f));
+    appendBoxY(mb, Vector3{0.0f, 0.62f, 0.05f}, 1.55f, 0.5f, 2.0f, body);
+    appendBoxY(mb, Vector3{0.0f, 0.86f, 0.0f}, 1.35f, 0.42f, 1.65f, glass);
+    appendBoxY(mb, Vector3{0.0f, 1.06f, -0.05f}, 1.3f, 0.1f, 1.5f,
+        shade(body, 1.05f));
+
+    // Headlights / taillights.
+    appendBoxY(mb, Vector3{0.68f, 0.32f, 1.78f}, 0.32f, 0.16f, 0.06f, lightF);
+    appendBoxY(mb, Vector3{-0.68f, 0.32f, 1.78f}, 0.32f, 0.16f, 0.06f, lightF);
+    appendBoxY(mb, Vector3{0.68f, 0.3f, -1.78f}, 0.3f, 0.16f, 0.06f, lightR);
+    appendBoxY(mb, Vector3{-0.68f, 0.3f, -1.78f}, 0.3f, 0.16f, 0.06f, lightR);
+    // Side mirrors.
+    appendBoxY(mb, Vector3{0.92f, 0.78f, 0.75f}, 0.14f, 0.12f, 0.16f,
+        shade(body, 0.85f));
+    appendBoxY(mb, Vector3{-0.92f, 0.78f, 0.75f}, 0.14f, 0.12f, 0.16f,
+        shade(body, 0.85f));
+
+    // Four wheels: a dark tire cylinder oriented with its axle along X
+    // (so the round face reads correctly from the side) plus a small
+    // hubcap cap on the outward face.
+    const float wheelX[4] = {1.0f, -1.0f, 1.0f, -1.0f};
+    const float wheelZ[4] = {1.25f, 1.25f, -1.25f, -1.25f};
+    for (int i = 0; i < 4; ++i) {
+        float side = wheelX[i] > 0.0f ? 1.0f : -1.0f;
+        appendCylinderX(
+            mb, Vector3{wheelX[i] - 0.14f, 0.42f, wheelZ[i]}, 0.42f, 0.28f,
+            10, tire);
+        appendCylinderX(
+            mb, Vector3{wheelX[i] + side * 0.14f, 0.42f, wheelZ[i]}, 0.2f,
+            side * 0.03f, 8, hub);
+    }
 }
 
 void WorldPropBuilder::buildObservatoryTower(MeshBuffers &mb, Color accent)

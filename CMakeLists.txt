@@ -115,6 +115,8 @@ set(RACER_WORLD_SOURCES
     src/World/Sim/ProgressionState.cpp
     src/World/Sim/MissionSystem.cpp
     src/World/Sim/TrafficSystem.cpp
+    src/World/Sim/TuningSystem.cpp
+    src/Save/SaveSystem.cpp
     src/Render/World/WorldRenderer.cpp
     src/Render/World/WorldDecorDraw.cpp
     src/Render/World/WorldPropBuilder.cpp
@@ -124,6 +126,10 @@ set(RACER_TRACK_DOMAIN_SOURCES
     src/Track/Track.cpp
     src/Track/TrackPresets.cpp
     src/Track/TrackWaypoints.cpp
+)
+
+set(RACER_AUDIO_SOURCES
+    src/Audio/AudioSystem.cpp
 )
 
 set(RACER_RENDER_SOURCES
@@ -144,6 +150,7 @@ add_executable(racer
     src/App/CameraController.cpp
     src/App/LapTimer.cpp
     src/App/RacerColors.cpp
+    src/Engine/Input/InputBindings.cpp
     src/Vehicle/Car.cpp
     ${RACER_TRACK_DOMAIN_SOURCES}
     src/Ai/AiDriver.cpp
@@ -151,6 +158,7 @@ add_executable(racer
     src/Race/RaceContactResolver.cpp
     ${RACER_RENDER_SOURCES}
     ${RACER_WORLD_SOURCES}
+    ${RACER_AUDIO_SOURCES}
 )
 
 if(USE_AURELIA)

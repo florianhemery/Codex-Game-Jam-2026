@@ -35,6 +35,7 @@ public:
     const std::vector<RoadEdge> &edges() const { return edges_; }
 
     Vector2 pointOnEdge(int edgeIndex, float t) const;
+    Vector2 edgeTangent(int edgeIndex, float t) const;
     float edgeLength(int edgeIndex) const;
 
 private:

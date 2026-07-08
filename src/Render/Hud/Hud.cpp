@@ -118,6 +118,10 @@ void Hud::drawOpenWorldHud(const world::AureliaWorld &world,
         16, 46, 16, HudGfx::fade(WHITE, 0.75f));
     HudGfx::drawText("Mini-carte en bas a gauche — fleche = circuit le plus proche",
         16, 66, 14, HudGfx::fade(GRAY, 0.85f));
+    HudGfx::drawText(HudGfx::colorblindMode()
+            ? "F1 : mode daltonien (actif)   |   F2 : remapper les touches"
+            : "F1 : mode daltonien   |   F2 : remapper les touches",
+        16, 172, 12, HudGfx::fade(GRAY, 0.7f));
 
     char biomeBuf[96];
     std::snprintf(biomeBuf, sizeof(biomeBuf), "Biome : %s",
@@ -171,6 +175,20 @@ void Hud::drawOpenWorldHud(const world::AureliaWorld &world,
             safeLabel(mission->label, "Mission"));
         HudGfx::drawTextCentered(mbuf, screenWidth / 2, screenHeight - 128, 16,
             GREEN);
+    }
+
+    const world::PoiInstance *garage = world.activeGaragePoi();
+    if (garage) {
+        world::RegionId garageRegion = garage->region;
+        char gbuf[160];
+        std::snprintf(gbuf, sizeof(gbuf),
+            "Garage (rep %d) : G moteur(%d) / H grip(%d) / J freins(%d)",
+            world.progression().reputation(garageRegion),
+            world.tuningUpgradeCost(world::TuningCategory::ENGINE),
+            world.tuningUpgradeCost(world::TuningCategory::GRIP),
+            world.tuningUpgradeCost(world::TuningCategory::BRAKES));
+        HudGfx::drawTextCentered(gbuf, screenWidth / 2, screenHeight - 150, 16,
+            SKYBLUE);
     }
 
     int activeMission = world.missions().activeMissionIndex();

@@ -81,6 +81,28 @@ Vector2 RoadGraph::pointOnEdge(int edgeIndex, float t) const
     };
 }
 
+Vector2 RoadGraph::edgeTangent(int edgeIndex, float t) const
+{
+    if (edgeIndex < 0 || edgeIndex >= static_cast<int>(edges_.size())) {
+        return Vector2{0.0f, 0.0f};
+    }
+    const RoadEdge &edge = edges_[static_cast<size_t>(edgeIndex)];
+    if (edge.from < 0 || edge.from >= static_cast<int>(nodes_.size())
+        || edge.to < 0 || edge.to >= static_cast<int>(nodes_.size())) {
+        return Vector2{0.0f, 0.0f};
+    }
+    const RoadNode &a = nodes_[static_cast<size_t>(edge.from)];
+    const RoadNode &b = nodes_[static_cast<size_t>(edge.to)];
+    t = std::clamp(t, 0.0f, 1.0f);
+    float u = 1.0f - t;
+    return Vector2{
+        2.0f * u * (edge.control.x - a.position.x)
+            + 2.0f * t * (b.position.x - edge.control.x),
+        2.0f * u * (edge.control.y - a.position.y)
+            + 2.0f * t * (b.position.y - edge.control.y)
+    };
+}
+
 float RoadGraph::edgeLength(int edgeIndex) const
 {
     if (edgeIndex < 0 || edgeIndex >= static_cast<int>(edges_.size())) {

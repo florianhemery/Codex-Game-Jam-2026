@@ -32,6 +32,16 @@ void ProgressionState::addReputation(RegionId region, int amount)
     }
 }
 
+bool ProgressionState::spendReputation(RegionId region, int amount)
+{
+    size_t i = static_cast<size_t>(region);
+    if (i >= rep_.size() || amount <= 0 || rep_[i] < amount) {
+        return false;
+    }
+    rep_[i] -= amount;
+    return true;
+}
+
 bool ProgressionState::garageUnlocked(RegionId region) const
 {
     size_t i = static_cast<size_t>(region);
@@ -44,6 +54,25 @@ bool ProgressionState::garageUnlocked(RegionId region) const
 bool ProgressionState::cendresCircuitUnlocked() const
 {
     return reputation(RegionId::VOLCANO) >= 50;
+}
+
+void ProgressionState::setReputation(RegionId region, int amount)
+{
+    size_t i = static_cast<size_t>(region);
+    if (i >= rep_.size()) {
+        return;
+    }
+    rep_[i] = amount;
+}
+
+void ProgressionState::setLoreMask(std::uint32_t mask)
+{
+    loreMask_ = mask;
+    int count = 0;
+    for (std::uint32_t bit = mask; bit != 0; bit &= bit - 1) {
+        ++count;
+    }
+    loreCollected_ = count;
 }
 
 void ProgressionState::collectLore(int index)

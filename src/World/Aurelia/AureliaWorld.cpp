@@ -37,6 +37,7 @@ AureliaWorld::AureliaWorld(const std::vector<TrackDef> &presets,
         }
     }
     drive_.reset(playerCar_, spawnX, spawnZ, 0.0f);
+    TuningSystem::apply(tuningState_, playerCar_);
     streamer_.updateCenter(playerCar_.position().x, playerCar_.position().z);
     streamer_.ensureLoaded();
     renderer_.sync(streamer_);
@@ -71,6 +72,7 @@ void AureliaWorld::updateActivePois()
     activeRace_ = -1;
     activeMissionPoi_ = -1;
     activeCollectible_ = -1;
+    activeGaragePoi_ = -1;
 
     float px = playerCar_.position().x;
     float pz = playerCar_.position().z;
@@ -96,6 +98,9 @@ void AureliaWorld::updateActivePois()
             break;
         case PoiType::COLLECTIBLE:
             activeCollectible_ = static_cast<int>(i);
+            break;
+        case PoiType::GARAGE:
+            activeGaragePoi_ = static_cast<int>(i);
             break;
         default:
             break;
@@ -144,6 +149,29 @@ const PoiInstance *AureliaWorld::activeMissionPoi() const
         return nullptr;
     }
     return &AureliaData::worldPois()[static_cast<size_t>(activeMissionPoi_)];
+}
+
+const PoiInstance *AureliaWorld::activeGaragePoi() const
+{
+    if (activeGaragePoi_ < 0) {
+        return nullptr;
+    }
+    return &AureliaData::worldPois()[static_cast<size_t>(activeGaragePoi_)];
+}
+
+bool AureliaWorld::purchaseUpgrade(TuningCategory category)
+{
+    if (activeGaragePoi_ < 0) {
+        return false;
+    }
+    const PoiInstance &poi =
+        AureliaData::worldPois()[static_cast<size_t>(activeGaragePoi_)];
+    if (!TuningSystem::purchaseUpgrade(
+            tuningState_, category, progression_, poi.region)) {
+        return false;
+    }
+    TuningSystem::apply(tuningState_, playerCar_);
+    return true;
 }
 
 BiomeId AureliaWorld::currentBiome() const

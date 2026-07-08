@@ -16,6 +16,14 @@
 namespace racer {
 
 struct HudGfx {
+    // Colorblind-safe palette toggle. When enabled, HUD elements that would
+    // otherwise rely on hue alone (racer dots, minimap race markers, ...)
+    // switch to an Okabe-Ito-derived palette and/or add a redundant label so
+    // meaning survives even without full color discrimination.
+    static bool colorblindMode();
+    static void setColorblindMode(bool enabled);
+    static void toggleColorblindMode();
+
     static int measureText(const char *text, int fontSize);
     static float time();
     static Color fade(Color color, float alpha);

@@ -15,6 +15,7 @@
 #include "App/GameLoop.hpp"
 #include "App/GameLoopInput.hpp"
 #include "App/RacerColors.hpp"
+#include "Engine/Input/InputBindings.hpp"
 #include "Render/Hud.hpp"
 #include "Render/Hud/HudMenu.hpp"
 #include "Vehicle/Car.hpp"
@@ -101,6 +102,8 @@ bool GameLoop::handleMainMenuFrame(Context &ctx)
     ClearBackground(Color{20, 24, 36, 255});
     Hud hud;
     hud.drawMainMenu(ctx.screenWidth, ctx.screenHeight, ctx.showHowToPlay);
+    engine::input::InputBindings::instance().drawDebugRemapOverlay(
+        ctx.screenWidth, ctx.screenHeight);
     EndDrawing();
     return ctx.appState == AppState::MENU;
 }
@@ -114,10 +117,12 @@ bool GameLoop::handleOpenWorldFrame(Context &ctx, float dt)
         ctx.openWorldQuickRace = true;
         return true;
     }
-    if (IsKeyPressed(KEY_M)) {
+    if (engine::input::InputBindings::instance().isPressed(
+            engine::input::Action::ToggleMap)) {
         ctx.aurelia->toggleWorldMap();
     }
-    if (IsKeyPressed(KEY_ESCAPE)) {
+    if (engine::input::InputBindings::instance().isPressed(
+            engine::input::Action::Menu)) {
         ctx.appState = AppState::MENU;
         ctx.menuScreen = MenuScreen::MAIN;
         ctx.aurelia.reset();
@@ -128,16 +133,20 @@ bool GameLoop::handleOpenWorldFrame(Context &ctx, float dt)
     CarInput input{};
     float steerTarget = readSteerTarget();
 
-    if (keyHeld(KEY_W, KEY_Z) || keyHeld(KEY_UP)) {
+    if (engine::input::InputBindings::instance().isHeld(
+            engine::input::Action::Accelerate)) {
         input.throttle = 1.0f;
-    } else if (keyHeld(KEY_S) || keyHeld(KEY_DOWN)) {
+    } else if (engine::input::InputBindings::instance().isHeld(
+            engine::input::Action::Brake)) {
         input.throttle = -1.0f;
     }
     ctx.steerSmoothed += (steerTarget - ctx.steerSmoothed)
         * std::min(1.0f, 8.0f * dt);
     input.steer = ctx.steerSmoothed;
-    input.handbrake = IsKeyDown(KEY_SPACE);
-    input.nitro = IsKeyDown(KEY_LEFT_SHIFT);
+    input.handbrake = engine::input::InputBindings::instance().isHeld(
+        engine::input::Action::Handbrake);
+    input.nitro = engine::input::InputBindings::instance().isHeld(
+        engine::input::Action::Nitro);
     ctx.aurelia->update(dt, input, ctx.steerSmoothed, ctx.vfx.get());
 
     AudioDriveSnapshot audioSnap{};
@@ -169,6 +178,18 @@ bool GameLoop::handleOpenWorldFrame(Context &ctx, float dt)
         ctx.aurelia->missions().tryStartMission(missionPoi->missionIndex);
     }
 
+    if (ctx.aurelia->activeGaragePoi() != nullptr) {
+        if (IsKeyPressed(KEY_G)) {
+            ctx.aurelia->purchaseUpgrade(world::TuningCategory::ENGINE);
+        }
+        if (IsKeyPressed(KEY_H)) {
+            ctx.aurelia->purchaseUpgrade(world::TuningCategory::GRIP);
+        }
+        if (IsKeyPressed(KEY_J)) {
+            ctx.aurelia->purchaseUpgrade(world::TuningCategory::BRAKES);
+        }
+    }
+
     updateCamera(ctx.camera, ctx.aurelia->playerCar(), dt);
 
     BeginDrawing();
@@ -176,6 +197,8 @@ bool GameLoop::handleOpenWorldFrame(Context &ctx, float dt)
     Hud hud;
     hud.drawOpenWorldHud(*ctx.aurelia, ctx.presets, ctx.screenWidth,
         ctx.screenHeight);
+    engine::input::InputBindings::instance().drawDebugRemapOverlay(
+        ctx.screenWidth, ctx.screenHeight);
     EndDrawing();
     return true;
 }
@@ -230,6 +253,8 @@ bool GameLoop::handleQuickRaceOverlay(Context &ctx)
             Fade(BLACK, 0.55f));
         Hud hud;
         hud.drawQuickRaceOverlay(ctx.presets, ctx.selectedTrack,
+            ctx.screenWidth, ctx.screenHeight);
+        engine::input::InputBindings::instance().drawDebugRemapOverlay(
             ctx.screenWidth, ctx.screenHeight);
         EndDrawing();
     }

@@ -9,8 +9,13 @@
 
 #include "raylib.h"
 
+#include "Engine/Input/InputBindings.hpp"
+
 namespace racer {
 namespace app {
+
+using engine::input::Action;
+using engine::input::InputBindings;
 
 bool keyJustPressed(int primary, int alternate)
 {
@@ -64,10 +69,12 @@ bool menuReturnPressed()
 
 float readSteerTarget()
 {
-    if (keyHeld(KEY_A, KEY_Q) || keyHeld(KEY_LEFT)) {
+    const InputBindings &bindings = InputBindings::instance();
+
+    if (bindings.isHeld(Action::SteerLeft)) {
         return 1.0f;
     }
-    if (keyHeld(KEY_D) || keyHeld(KEY_RIGHT)) {
+    if (bindings.isHeld(Action::SteerRight)) {
         return -1.0f;
     }
     return 0.0f;

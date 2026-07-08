@@ -273,7 +273,10 @@ void HudOpenWorldNav::drawPersistentMinimap(const world::AureliaWorld &world,
     drawRoads(world::AureliaData::roadGraph(), proj, 2.0f,
         HudGfx::fade(Color{170, 170, 180, 255}, 0.8f));
     drawGarageMarkers(world, proj);
-    drawRaceMarkers(world, proj, false);
+    // Region markers already carry a letter (M/F/P/V) as a redundant, non-
+    // color cue; only show it on the small persistent minimap when
+    // colorblind mode is on, to keep the compact view uncluttered otherwise.
+    drawRaceMarkers(world, proj, HudGfx::colorblindMode());
 
     float nearestDist = 0.0f;
     const world::PoiInstance *nearest = findNearestRace(world, nearestDist);

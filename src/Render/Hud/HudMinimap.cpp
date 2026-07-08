@@ -8,7 +8,9 @@
 #include "Render/Hud/HudMinimap.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
+#include <string>
 
 #include "Render/Hud/HudGfx.hpp"
 
@@ -113,6 +115,24 @@ void HudMinimap::drawFinishLineTick(const std::vector<Vector2> &points,
         3.0f, color);
 }
 
+namespace {
+
+// Racer dots on the minimap otherwise rely on hue alone to tell opponents
+// apart; in colorblind mode stamp each dot with the racer's initial so the
+// distinction survives regardless of color perception.
+void drawRacerInitial(const std::string &name, Vector2 pos)
+{
+    if (!HudGfx::colorblindMode() || name.empty()) {
+        return;
+    }
+    char label[2] = {static_cast<char>(
+        std::toupper(static_cast<unsigned char>(name[0]))), '\0'};
+    HudGfx::drawTextCentered(label, static_cast<int>(pos.x),
+        static_cast<int>(pos.y) - 5, 10, BLACK);
+}
+
+} // namespace
+
 void HudMinimap::drawOpponents(const RaceState &race, const HudExtras &extras,
     const HudMapProjection &proj, const Rectangle &panel)
 {
@@ -132,6 +152,7 @@ void HudMinimap::drawOpponents(const RaceState &race, const HudExtras &extras,
             panel.y + panel.height - 10.0f);
         HudGfx::drawCircleV(pos, 4.5f, HudGfx::racerColorFor(extras, i, false));
         HudGfx::drawCircleLinesV(pos, 4.5f, HudGfx::fade(BLACK, 0.55f));
+        drawRacerInitial(racers[i].name, pos);
     }
 }
 

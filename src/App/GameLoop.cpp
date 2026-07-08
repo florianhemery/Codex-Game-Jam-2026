@@ -30,7 +30,9 @@
 
 #include "App/GameLoopInput.hpp"
 #include "App/RacerColors.hpp"
+#include "Engine/Input/InputBindings.hpp"
 
+#include "Save/SaveSystem.hpp"
 #include "World/Aurelia/AureliaWorld.hpp"
 #include "World/Aurelia/AureliaTypes.hpp"
 
@@ -41,6 +43,8 @@
 #include "Render/Hud.hpp"
 
 #include "Render/Hud/HudFinishScreen.hpp"
+
+#include "Render/Hud/HudGfx.hpp"
 
 #include "Render/Hud/HudMenu.hpp"
 
@@ -161,6 +165,11 @@ void GameLoop::startRace(Context &ctx, int trackIndex, bool fromOpenWorld)
         ctx.openWorldProgressionBackup = ctx.aurelia->progression();
         ctx.openWorldRespawnRegion =
             racer::world::regionForBiome(ctx.aurelia->currentBiome());
+        // Checkpoint save: persist progression whenever we leave the
+        // open world for a race, not just on full app exit.
+        racer::save::SaveSystem::save(
+            racer::save::SaveSystem::defaultProfileName(),
+            *ctx.openWorldProgressionBackup);
         ctx.aurelia.reset();
     }
     ctx.race = std::make_unique<RaceState>(Track::make(def), 3, 3);
@@ -410,6 +419,9 @@ bool GameLoop::handleMenuFrame(Context &ctx)
 
         ctx.screenHeight, ctx.showHowToPlay);
 
+    engine::input::InputBindings::instance().drawDebugRemapOverlay(
+        ctx.screenWidth, ctx.screenHeight);
+
     EndDrawing();
 
     return true;
@@ -499,14 +511,16 @@ void GameLoop::handlePauseInput(Context &ctx)
         ctx.racePaused = false;
         return;
     }
-    if (!ctx.racePaused && IsKeyPressed(KEY_ESCAPE)) {
+    if (!ctx.racePaused && engine::input::InputBindings::instance().isPressed(
+            engine::input::Action::Menu)) {
         ctx.racePaused = true;
         return;
     }
     if (!ctx.racePaused) {
         return;
     }
-    if (IsKeyPressed(KEY_ESCAPE) || menuConfirmPressed()) {
+    if (engine::input::InputBindings::instance().isPressed(
+            engine::input::Action::Menu) || menuConfirmPressed()) {
         ctx.racePaused = false;
         return;
     }
@@ -544,11 +558,13 @@ void GameLoop::readPlayerInput(Context &ctx, float dt)
 
 
 
-    if (keyHeld(KEY_W, KEY_Z) || keyHeld(KEY_UP)) {
+    if (engine::input::InputBindings::instance().isHeld(
+            engine::input::Action::Accelerate)) {
 
         input.throttle = 1.0f;
 
-    } else if (keyHeld(KEY_S) || keyHeld(KEY_DOWN)) {
+    } else if (engine::input::InputBindings::instance().isHeld(
+            engine::input::Action::Brake)) {
 
         input.throttle = -1.0f;
 
@@ -560,9 +576,11 @@ void GameLoop::readPlayerInput(Context &ctx, float dt)
 
     input.steer = ctx.steerSmoothed;
 
-    input.handbrake = IsKeyDown(KEY_SPACE);
+    input.handbrake = engine::input::InputBindings::instance().isHeld(
+        engine::input::Action::Handbrake);
 
-    input.nitro = IsKeyDown(KEY_LEFT_SHIFT);
+    input.nitro = engine::input::InputBindings::instance().isHeld(
+        engine::input::Action::Nitro);
 
     ctx.race->update(dt, input);
 
@@ -759,6 +777,8 @@ void GameLoop::drawRaceFrame(Context &ctx)
     if (ctx.racePaused) {
         hud.drawPauseOverlay(ctx.screenWidth, ctx.screenHeight);
     }
+    engine::input::InputBindings::instance().drawDebugRemapOverlay(
+        ctx.screenWidth, ctx.screenHeight);
     EndDrawing();
 }
 
@@ -786,6 +806,34 @@ void GameLoop::run(Context &ctx)
         updateDisplay(ctx);
 
         pollShaders(ctx);
+
+        engine::input::InputBindings::instance().updateDebugRemap();
+
+        // F1 : bascule la palette adaptee au daltonisme (voir HudGfx).
+        if (IsKeyPressed(KEY_F1)) {
+            HudGfx::toggleColorblindMode();
+        }
+
+        const bool inMenu = ctx.appState == AppState::MENU;
+        const bool inOpenWorld = ctx.appState == AppState::OPEN_WORLD
+            && ctx.aurelia != nullptr;
+        world::BiomeId biome = world::BiomeId::COAST;
+        float playerSpeed = 0.0f;
+        float playerMaxSpeed = 1.0f;
+
+        if (inOpenWorld) {
+            biome = ctx.aurelia->currentBiome();
+            playerSpeed = ctx.aurelia->playerCar().speed();
+            playerMaxSpeed = ctx.aurelia->playerCar().tuning().maxSpeed;
+        } else if (ctx.appState == AppState::RACING && ctx.race) {
+            const RacerEntry &player =
+                ctx.race->racers()[static_cast<size_t>(ctx.race->playerIndex())];
+
+            playerSpeed = player.car.speed();
+            playerMaxSpeed = player.car.tuning().maxSpeed;
+        }
+        ctx.audioSystem.update(dt, inMenu, inOpenWorld, biome,
+            playerSpeed, playerMaxSpeed);
 
         if (ctx.appState == AppState::MENU) {
             if (ctx.menuScreen == MenuScreen::MAIN) {

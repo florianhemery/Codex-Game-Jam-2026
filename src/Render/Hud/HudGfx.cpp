@@ -13,6 +13,27 @@
 
 namespace racer {
 
+namespace {
+
+bool g_colorblindMode = false;
+
+} // namespace
+
+bool HudGfx::colorblindMode()
+{
+    return g_colorblindMode;
+}
+
+void HudGfx::setColorblindMode(bool enabled)
+{
+    g_colorblindMode = enabled;
+}
+
+void HudGfx::toggleColorblindMode()
+{
+    g_colorblindMode = !g_colorblindMode;
+}
+
 int HudGfx::measureText(const char *text, int fontSize)
 {
     return MeasureText(text, fontSize);
@@ -125,8 +146,28 @@ Color HudGfx::lerpColor(Color a, Color b, float t)
 
 Color HudGfx::racerColorFor(const HudExtras &extras, size_t index, bool isPlayer)
 {
+    // Per-race extras.racerColors (see App::colorForRacerIndex) already
+    // honors the colorblind toggle, so prefer it when present; the palettes
+    // below only cover callers (demos, tests) that never populated extras.
     if (index < extras.racerColors.size()) {
         return extras.racerColors[index];
+    }
+    if (g_colorblindMode) {
+        // Okabe-Ito colorblind-safe palette: vermillion for the player (high
+        // contrast, distinguishable from the rest under all common CVD
+        // types), then blue / bluish-green / reddish-purple / sky-blue /
+        // yellow for opponents instead of the default red/blue/green/
+        // orange/purple set which collapses under protanopia/deuteranopia.
+        if (isPlayer) {
+            return Color{213, 94, 0, 255};
+        }
+        constexpr Color kColorblindFallback[] = {
+            Color{0, 114, 178, 255}, Color{0, 158, 115, 255},
+            Color{204, 121, 167, 255}, Color{86, 180, 233, 255},
+            Color{240, 228, 66, 255}
+        };
+        return kColorblindFallback[index
+            % (sizeof(kColorblindFallback) / sizeof(kColorblindFallback[0]))];
     }
     if (isPlayer) {
         return RED;

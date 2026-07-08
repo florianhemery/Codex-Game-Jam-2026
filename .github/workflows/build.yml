@@ -1,0 +1,90 @@
+name: Build and Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve latest LLVM-MinGW release
+        id: llvm-mingw-release
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/mstorsjo/llvm-mingw/releases/latest"
+          $tag = $release.tag_name
+          $dist = "llvm-mingw-$tag-ucrt-x86_64"
+          echo "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          echo "dist=$dist" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Cache LLVM-MinGW toolchain
+        id: cache-llvm-mingw
+        uses: actions/cache@v4
+        with:
+          path: C:\llvm-mingw
+          key: llvm-mingw-${{ steps.llvm-mingw-release.outputs.dist }}
+
+      - name: Download LLVM-MinGW toolchain
+        if: steps.cache-llvm-mingw.outputs.cache-hit != 'true'
+        shell: pwsh
+        env:
+          LLVM_MINGW_TAG: ${{ steps.llvm-mingw-release.outputs.tag }}
+          LLVM_MINGW_DIST: ${{ steps.llvm-mingw-release.outputs.dist }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $url = "https://github.com/mstorsjo/llvm-mingw/releases/download/$env:LLVM_MINGW_TAG/$env:LLVM_MINGW_DIST.zip"
+          Write-Host "Downloading $url"
+          Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\llvm-mingw.zip"
+          Expand-Archive -Path "$env:RUNNER_TEMP\llvm-mingw.zip" -DestinationPath "$env:RUNNER_TEMP\llvm-mingw-extract"
+          Move-Item -Path "$env:RUNNER_TEMP\llvm-mingw-extract\$env:LLVM_MINGW_DIST" -Destination "C:\llvm-mingw"
+
+      - name: Add LLVM-MinGW to PATH
+        shell: pwsh
+        run: echo "C:\llvm-mingw\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: Cache CMake FetchContent dependencies
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: fetchcontent-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Configure
+        shell: pwsh
+        # Note: deliberately no CMAKE_BUILD_TYPE. Setting it to Release (-O3)
+        # triggers a linker error (undefined symbol for a constexpr static
+        # method defined out-of-line in VfxTextureFactory.cpp) that does not
+        # reproduce with the default (unoptimized) flags this project is
+        # normally built with. Matching the local dev configuration avoids
+        # that pre-existing latent bug rather than working around it here.
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_CXX_COMPILER=C:\llvm-mingw\bin\x86_64-w64-mingw32-clang++.exe
+          -DCMAKE_C_COMPILER=C:\llvm-mingw\bin\x86_64-w64-mingw32-clang.exe
+
+      - name: Build
+        shell: pwsh
+        run: cmake --build build --target racer world_chunk_test -j 4
+
+      - name: Run test suite
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $output = & .\build\world_chunk_test.exe 2>&1 | Tee-Object -Variable capturedOutput
+          $exitCode = $LASTEXITCODE
+          $capturedOutput | Write-Host
+          if ($exitCode -ne 0) {
+            Write-Error "world_chunk_test exited with code $exitCode"
+          }
+          if (-not ($capturedOutput -join "`n" -match "OK: all \d+ Aurelia world checks passed")) {
+            Write-Error "world_chunk_test output did not contain the expected success line"
+          }

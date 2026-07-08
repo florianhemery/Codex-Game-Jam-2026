@@ -168,15 +168,22 @@ void TrafficSystem::update(float dt, const ChunkStreamer &streamer,
 
     for (TrafficVehicle &v : vehicles_) {
 
-        float len = graph_.edgeLength(v.edgeIndex);
+        Vector2 tangent = graph_.edgeTangent(v.edgeIndex, v.t);
 
-        if (len <= 0.001f) {
+        float speedPerT = std::sqrt(
+            tangent.x * tangent.x + tangent.y * tangent.y);
+
+        if (speedPerT <= 0.001f) {
 
             continue;
 
         }
 
-        v.t += (v.speed * dt) / len;
+        // Advance t by desired world-space speed divided by the local
+        // curve speed (|dBezier/dt|), so vehicles move at a constant
+        // world-space speed even where the Bezier's speed-per-t varies
+        // across the curve (e.g. faster near the bend's midpoint).
+        v.t += (v.speed * dt) / speedPerT;
 
         if (v.t >= 1.0f) {
 
@@ -186,15 +193,11 @@ void TrafficSystem::update(float dt, const ChunkStreamer &streamer,
 
                 % static_cast<int>(graph_.edges().size());
 
+            tangent = graph_.edgeTangent(v.edgeIndex, v.t);
+
         }
 
-        Vector2 p = graph_.pointOnEdge(v.edgeIndex, v.t);
-
-        float nextT = std::min(v.t + 0.05f, 1.0f);
-
-        Vector2 p2 = graph_.pointOnEdge(v.edgeIndex, nextT);
-
-        v.heading = std::atan2(p2.x - p.x, p2.y - p.y);
+        v.heading = std::atan2(tangent.x, tangent.y);
 
     }
 

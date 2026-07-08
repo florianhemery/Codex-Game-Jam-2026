@@ -20,6 +20,7 @@
 #include "World/Sim/PlayerDriveSystem.hpp"
 #include "World/Sim/ProgressionState.hpp"
 #include "World/Sim/TrafficSystem.hpp"
+#include "World/Sim/TuningSystem.hpp"
 #include "World/Stream/ChunkStreamer.hpp"
 
 namespace racer {
@@ -45,7 +46,19 @@ public:
     int activeRaceIndex() const { return activeRace_; }
     const PoiInstance *activeRacePoi() const;
     const PoiInstance *activeMissionPoi() const;
+    const PoiInstance *activeGaragePoi() const;
     int activeCollectibleIndex() const { return activeCollectible_; }
+
+    const TuningState &tuning() const { return tuningState_; }
+    int tuningTier(TuningCategory category) const
+    {
+        return tuningState_.tier(category);
+    }
+    int tuningUpgradeCost(TuningCategory category) const
+    {
+        return TuningSystem::upgradeCost(category, tuningState_.tier(category));
+    }
+    bool purchaseUpgrade(TuningCategory category);
 
     BiomeId currentBiome() const;
     racer::engine::Ambiance ambianceForTime() const;
@@ -93,7 +106,9 @@ private:
     int activeRace_ = -1;
     int activeMissionPoi_ = -1;
     int activeCollectible_ = -1;
+    int activeGaragePoi_ = -1;
     bool showWorldMap_ = false;
+    TuningState tuningState_{};
 };
 
 } // namespace racer::world

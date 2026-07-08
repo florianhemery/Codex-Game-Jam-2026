@@ -34,6 +34,8 @@
 
 #include "App/LapTimer.hpp"
 
+#include "Audio/AudioSystem.hpp"
+
 #include "World/Aurelia/AureliaWorld.hpp"
 #include "World/Sim/ProgressionState.hpp"
 
@@ -90,6 +92,8 @@ struct GameLoop::Context {
     LapTimerState lapTimer;
 
     AudioFeedback audio;
+
+    racer::audio::AudioSystem audioSystem;
 
     engine::Ambiance currentAmbiance = engine::Ambiance::MIDI;
 
