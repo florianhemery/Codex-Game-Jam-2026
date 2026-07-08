@@ -20,7 +20,15 @@ namespace racer {
 enum class RacePhase {
     COUNTDOWN,
     RACING,
+    WRAP_UP,
     FINISHED,
+};
+
+enum class StartLaunchGrade {
+    None,
+    Perfect,
+    Good,
+    Ok,
 };
 
 struct RacerEntry {
@@ -55,8 +63,40 @@ public:
     std::vector<int> standings() const;
     int playerPosition() const;
     int playerIndex() const { return playerIndex_; }
+    bool allRacersFinished() const;
+
+    StartLaunchGrade launchGrade() const { return launchGrade_; }
+    float launchBannerTimer() const { return launchBanner_; }
+    float falseStartBannerTimer() const { return falseStartBanner_; }
+    float startBoostRemaining() const;
 
 private:
+    void processCountdownInput(const CarInput &input);
+    void beginRacing();
+    void applyLaunchGrade(float reactionSeconds, RacerEntry &player);
+    void tickStartBanners(float dt);
+
+    Track track_;
+    std::vector<RacerEntry> racers_;
+    std::vector<AIDriver> aiDrivers_;
+    int playerIndex_ = 0;
+    int lapsToWin_;
+    RacePhase phase_ = RacePhase::COUNTDOWN;
+    float countdownRemaining_ = 3.0f;
+    float elapsedTime_ = 0.0f;
+    float wrapUpTimer_ = 0.0f;
+    bool revvedDuringCountdown_ = false;
+    bool waitingForLaunch_ = false;
+    StartLaunchGrade launchGrade_ = StartLaunchGrade::None;
+    float launchBanner_ = 0.0f;
+    float falseStartBanner_ = 0.0f;
+    int falseStartCount_ = 0;
+    static constexpr float kPerfectLaunchMax = 0.12f;
+    static constexpr float kGoodLaunchMax = 0.28f;
+    static constexpr float kOkLaunchMax = 0.50f;
+    static constexpr float kWrapUpMaxSeconds = 12.0f;
+    static constexpr float kWrapUpTimeScale = 3.0f;
+
     void initPlayer(int totalCars);
     void initAiRacer(int aiIndex, int totalCars);
     void updateCountdown(float dt);
@@ -69,17 +109,9 @@ private:
         RacerEntry& racer, const Track::Progress& prog, int numSegments);
     void updateLapCount(
         RacerEntry& racer, const Track::Progress& prog, int numSegments);
-    void finalizePlayerIfDone(const RacerEntry& racer);
+    void finalizePlayerIfDone(RacerEntry& racer);
+    void updateWrapUp(float dt);
     float raceProgress(const RacerEntry& racer) const;
-
-    Track track_;
-    std::vector<RacerEntry> racers_;
-    std::vector<AIDriver> aiDrivers_;
-    int playerIndex_ = 0;
-    int lapsToWin_;
-    RacePhase phase_ = RacePhase::COUNTDOWN;
-    float countdownRemaining_ = 3.0f;
-    float elapsedTime_ = 0.0f;
 };
 
 } // namespace racer

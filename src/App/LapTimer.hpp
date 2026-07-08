@@ -19,11 +19,14 @@ struct LapTimerState {
     float bestLapTime = 0.0f;
     int lastLapCount = 0;
     float lastLapFlash = 0.0f;
+    float lapBannerTimer = 0.0f;
+    int lapBannerLap = 0;
+    bool lapBannerIsFinal = false;
 };
 
 void updateLapTimer(
     LapTimerState &timer, const RacerEntry &player, float dt,
-    RacePhase phase);
+    RacePhase phase, int lapsToWin);
 
 } // namespace app
 } // namespace racer

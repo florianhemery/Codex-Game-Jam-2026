@@ -12,6 +12,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+option(USE_AURELIA "Enable Aurélia open world (replaces legacy hub)" ON)
+
 if(MSVC)
     add_compile_options(/W4 /permissive-)
 else()
@@ -100,6 +102,23 @@ set(RACER_VFX_SOURCES
     src/Render/Vfx/VfxTextureFactory.cpp
 )
 
+set(RACER_WORLD_SOURCES
+    src/World/Chunk/ChunkTypes.cpp
+    src/World/Chunk/ChunkGenerator.cpp
+    src/World/Aurelia/AureliaTypes.cpp
+    src/World/Aurelia/AureliaData.cpp
+    src/World/Aurelia/AureliaWorld.cpp
+    src/World/Road/RoadGraph.cpp
+    src/World/Stream/ChunkStreamer.cpp
+    src/World/Sim/PlayerDriveSystem.cpp
+    src/World/Sim/ProgressionState.cpp
+    src/World/Sim/MissionSystem.cpp
+    src/World/Sim/TrafficSystem.cpp
+    src/Render/World/WorldRenderer.cpp
+    src/Render/World/WorldDecorDraw.cpp
+    src/Render/World/WorldPropBuilder.cpp
+)
+
 set(RACER_TRACK_DOMAIN_SOURCES
     src/Track/Track.cpp
     src/Track/TrackPresets.cpp
@@ -118,6 +137,9 @@ add_executable(racer
     src/App/MainApp.cpp
     src/App/GameLoop.cpp
     src/App/GameLoopVfx.cpp
+    src/App/GameLoopWorld.cpp
+    src/App/GameLoopInput.cpp
+    src/App/AudioFeedback.cpp
     src/App/CameraController.cpp
     src/App/LapTimer.cpp
     src/App/RacerColors.cpp
@@ -127,7 +149,12 @@ add_executable(racer
     src/Race/RaceState.cpp
     src/Race/RaceContactResolver.cpp
     ${RACER_RENDER_SOURCES}
+    ${RACER_WORLD_SOURCES}
 )
+
+if(USE_AURELIA)
+    target_compile_definitions(racer PRIVATE USE_AURELIA=1)
+endif()
 
 target_include_directories(racer PRIVATE src)
 target_link_libraries(racer PRIVATE raylib engine_render)
@@ -183,4 +210,28 @@ racer_add_demo(hud_demo
     src/Ai/AiDriver.cpp
     src/Vehicle/Car.cpp
     ${RACER_TRACK_DOMAIN_SOURCES}
+)
+
+add_executable(world_chunk_test
+    tests/world_chunk_test.cpp
+    src/World/Chunk/ChunkTypes.cpp
+    src/World/Chunk/ChunkGenerator.cpp
+    src/World/Aurelia/AureliaTypes.cpp
+    src/World/Aurelia/AureliaData.cpp
+    src/World/Stream/ChunkStreamer.cpp
+    src/World/Road/RoadGraph.cpp
+)
+target_include_directories(world_chunk_test PRIVATE src)
+target_link_libraries(world_chunk_test PRIVATE raylib)
+target_compile_features(world_chunk_test PRIVATE cxx_std_20)
+racer_bundle_runtime_dlls(world_chunk_test)
+
+racer_add_demo(world_editor
+    src/Tools/WorldEditor.cpp
+    src/World/Chunk/ChunkTypes.cpp
+    src/World/Chunk/ChunkGenerator.cpp
+    src/World/Aurelia/AureliaTypes.cpp
+    src/World/Aurelia/AureliaData.cpp
+    src/World/Stream/ChunkStreamer.cpp
+    src/World/Road/RoadGraph.cpp
 )

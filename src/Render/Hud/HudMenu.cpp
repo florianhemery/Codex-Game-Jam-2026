@@ -18,6 +18,25 @@
 
 namespace racer {
 
+namespace {
+
+const char *ambianceLabelForTrack(int trackIndex, const TrackDef &def)
+{
+    if (def.surfaceStyle == SurfaceStyle::ABIMEE) {
+        return "Pluie / route abimee";
+    }
+    switch (trackIndex % 3) {
+    case 0:
+        return "Midi ensoleille";
+    case 1:
+        return "Aube doree";
+    default:
+        return "Crepuscule";
+    }
+}
+
+} // namespace
+
 const HudTrackPreview &HudMenu::getTrackPreview(const TrackDef &def)
 {
     static std::vector<HudTrackPreview> cache;
@@ -80,7 +99,8 @@ void HudMenu::drawTrackCardBadge(const TrackDef &def, Rectangle card)
         static_cast<int>(badge.y + 5.0f), 13, amber);
 }
 
-void HudMenu::drawTrackCard(const TrackDef &def, Rectangle card, bool selected)
+void HudMenu::drawTrackCard(const TrackDef &def, Rectangle card, bool selected,
+    int trackIndex)
 {
     HudGfx::drawRectangleRounded(card, 0.10f, 8,
         HudGfx::fade(BLACK, selected ? 0.55f : 0.42f));
@@ -126,6 +146,15 @@ void HudMenu::drawTrackCard(const TrackDef &def, Rectangle card, bool selected)
     };
 
     HudGfx::drawTextWrapped(def.description.c_str(), wrapped);
+
+    const char *goal = "3 tours — 3 adversaires";
+    HudGfx::drawTextCentered(goal,
+        static_cast<int>(card.x + card.width * 0.5f),
+        static_cast<int>(textTop + 92.0f), 14, HudGfx::fade(YELLOW, 0.85f));
+    const char *ambiance = ambianceLabelForTrack(trackIndex, def);
+    HudGfx::drawTextCentered(ambiance,
+        static_cast<int>(card.x + card.width * 0.5f),
+        static_cast<int>(textTop + 112.0f), 13, HudGfx::fade(WHITE, 0.50f));
     drawTrackCardBadge(def, card);
 }
 
@@ -162,7 +191,11 @@ HudMenuLayout HudMenu::computeLayout(
     float btnH = 46.0f;
 
     layout.startButton = Rectangle{
-        (static_cast<float>(screenWidth) - btnW) * 0.5f,
+        (static_cast<float>(screenWidth) - btnW) * 0.5f - 110.0f,
+        static_cast<float>(screenHeight) - 108.0f, btnW, btnH,
+    };
+    layout.helpButton = Rectangle{
+        (static_cast<float>(screenWidth) - btnW) * 0.5f + 110.0f,
         static_cast<float>(screenHeight) - 108.0f, btnW, btnH,
     };
     return layout;
@@ -183,6 +216,11 @@ bool HudMenu::hitStartButton(const HudMenuLayout &layout, Vector2 mouse)
     return CheckCollisionPointRec(mouse, layout.startButton);
 }
 
+bool HudMenu::hitHelpButton(const HudMenuLayout &layout, Vector2 mouse)
+{
+    return CheckCollisionPointRec(mouse, layout.helpButton);
+}
+
 void HudMenu::drawStartButton(const HudMenuLayout &layout)
 {
     const char *label = "DEMARRER";
@@ -195,6 +233,60 @@ void HudMenu::drawStartButton(const HudMenuLayout &layout)
     HudGfx::drawTextCentered(label,
         static_cast<int>(layout.startButton.x + layout.startButton.width * 0.5f),
         static_cast<int>(layout.startButton.y + 12.0f), 24, BLACK);
+}
+
+void HudMenu::drawHelpButton(const HudMenuLayout &layout)
+{
+    const char *label = "COMMENT JOUER";
+    bool hover = CheckCollisionPointRec(GetMousePosition(), layout.helpButton);
+    Color fill = hover ? HudGfx::fade(WHITE, 0.22f) : HudGfx::fade(WHITE, 0.10f);
+
+    HudGfx::drawRectangleRounded(layout.helpButton, 0.35f, 8, fill);
+    HudGfx::drawRectangleRoundedLinesEx(
+        layout.helpButton, 0.35f, 8, 2.0f, HudGfx::fade(WHITE, 0.35f));
+    HudGfx::drawTextCentered(label,
+        static_cast<int>(layout.helpButton.x + layout.helpButton.width * 0.5f),
+        static_cast<int>(layout.helpButton.y + 12.0f), 20, RAYWHITE);
+}
+
+void HudMenu::drawHowToPlayOverlay(int screenWidth, int screenHeight)
+{
+    HudGfx::drawRectangle(0, 0, screenWidth, screenHeight,
+        HudGfx::fade(BLACK, 0.78f));
+
+    const float panelW = 620.0f;
+    const float panelH = 360.0f;
+    Rectangle panel{
+        (static_cast<float>(screenWidth) - panelW) * 0.5f,
+        (static_cast<float>(screenHeight) - panelH) * 0.5f,
+        panelW, panelH
+    };
+
+    HudGfx::drawRectangleRounded(panel, 0.08f, 8, HudGfx::fade(BLACK, 0.70f));
+    HudGfx::drawRectangleRoundedLinesEx(panel, 0.08f, 8, 2.0f,
+        HudGfx::fade(ORANGE, 0.55f));
+    HudGfx::drawTextCentered("Comment jouer", screenWidth / 2,
+        static_cast<int>(panel.y + 18.0f), 32, ORANGE);
+
+    const char *lines[] = {
+        "Objectif : finir 3 tours en tete contre 3 adversaires.",
+        "",
+        "Z / W : accelerer          S : marche arriere",
+        "Q / A : gauche             D : droite",
+        "Shift : nitro (quand la jauge est pleine)",
+        "Espace : drift / frein a main",
+        "",
+        "Echap : pause en course      F11 / Alt+Entree : plein ecran",
+        "",
+        "H ou clic hors panneau : fermer"
+    };
+    int y = static_cast<int>(panel.y + 72.0f);
+
+    for (const char *line : lines) {
+        HudGfx::drawTextCentered(line, screenWidth / 2, y, 18,
+            HudGfx::fade(WHITE, line[0] == '\0' ? 0.0f : 0.82f));
+        y += (line[0] == '\0') ? 12 : 26;
+    }
 }
 
 void HudMenu::drawTitle(int screenWidth)
@@ -231,7 +323,76 @@ void HudMenu::drawCards(const std::vector<TrackDef> &presets, int selectedIndex,
             card.width += 14.0f;
             card.height += 14.0f;
         }
-        drawTrackCard(presets[static_cast<size_t>(i)], card, selected);
+        drawTrackCard(presets[static_cast<size_t>(i)], card, selected, i);
+    }
+}
+
+HudMainMenuLayout HudMenu::computeMainLayout(int screenWidth, int screenHeight)
+{
+    HudMainMenuLayout layout;
+    const float btnW = 340.0f;
+    const float btnH = 52.0f;
+    const float gap = 18.0f;
+    float x = (static_cast<float>(screenWidth) - btnW) * 0.5f;
+    float y = static_cast<float>(screenHeight) * 0.42f;
+
+    layout.openWorldButton = Rectangle{x, y, btnW, btnH};
+    layout.quickRaceButton = Rectangle{x, y + btnH + gap, btnW, btnH};
+    layout.helpButton = Rectangle{x, y + (btnH + gap) * 2.0f, btnW, btnH};
+    return layout;
+}
+
+bool HudMenu::hitOpenWorldButton(const HudMainMenuLayout &layout, Vector2 mouse)
+{
+    return CheckCollisionPointRec(mouse, layout.openWorldButton);
+}
+
+bool HudMenu::hitQuickRaceButton(const HudMainMenuLayout &layout, Vector2 mouse)
+{
+    return CheckCollisionPointRec(mouse, layout.quickRaceButton);
+}
+
+bool HudMenu::hitHelpButtonMain(const HudMainMenuLayout &layout, Vector2 mouse)
+{
+    return CheckCollisionPointRec(mouse, layout.helpButton);
+}
+
+void HudMenu::drawMainMenu(int screenWidth, int screenHeight, bool showHowToPlay)
+{
+    HudMainMenuLayout layout = computeMainLayout(screenWidth, screenHeight);
+    Vector2 mouse = GetMousePosition();
+
+    drawTitle(screenWidth);
+    HudGfx::drawTextCentered("Choisissez votre mode de jeu", screenWidth / 2, 168,
+        22, LIGHTGRAY);
+
+    bool hoverWorld = CheckCollisionPointRec(mouse, layout.openWorldButton);
+    bool hoverQuick = CheckCollisionPointRec(mouse, layout.quickRaceButton);
+    bool hoverHelp = CheckCollisionPointRec(mouse, layout.helpButton);
+
+    HudGfx::drawRectangleRounded(layout.openWorldButton, 0.35f, 8,
+        hoverWorld ? Color{255, 196, 40, 255} : Color{230, 150, 24, 255});
+    HudGfx::drawTextCentered("MONDE OUVERT",
+        static_cast<int>(layout.openWorldButton.x + layout.openWorldButton.width * 0.5f),
+        static_cast<int>(layout.openWorldButton.y + 14.0f), 26, BLACK);
+
+    HudGfx::drawRectangleRounded(layout.quickRaceButton, 0.35f, 8,
+        hoverQuick ? HudGfx::fade(WHITE, 0.22f) : HudGfx::fade(WHITE, 0.10f));
+    HudGfx::drawTextCentered("COURSE RAPIDE",
+        static_cast<int>(layout.quickRaceButton.x + layout.quickRaceButton.width * 0.5f),
+        static_cast<int>(layout.quickRaceButton.y + 14.0f), 26, RAYWHITE);
+
+    HudGfx::drawRectangleRounded(layout.helpButton, 0.35f, 8,
+        hoverHelp ? HudGfx::fade(WHITE, 0.18f) : HudGfx::fade(WHITE, 0.08f));
+    HudGfx::drawTextCentered("COMMENT JOUER",
+        static_cast<int>(layout.helpButton.x + layout.helpButton.width * 0.5f),
+        static_cast<int>(layout.helpButton.y + 16.0f), 22, RAYWHITE);
+
+    HudGfx::drawTextCentered(
+        "O : monde ouvert   |   Q : course rapide   |   H : aide",
+        screenWidth / 2, screenHeight - 48, 18, GRAY);
+    if (showHowToPlay) {
+        drawHowToPlayOverlay(screenWidth, screenHeight);
     }
 }
 

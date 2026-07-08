@@ -28,6 +28,7 @@ struct VfxSystem::Impl {
     float rainIntensity_ = 0.0f;
     float rainTarget_ = 0.0f;
     float rainAccum_ = 0.0f;
+    float fogDensity_ = 0.0f;
 
     VfxParticle *alloc();
     void resetScalars(VfxParticle *p);

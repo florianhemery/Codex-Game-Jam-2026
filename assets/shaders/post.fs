@@ -58,6 +58,15 @@ void main()
     }
     hdr /= total;
 
+    // Bloom leger sur les zones lumineuses (HDR, avant tonemap).
+    vec3 bloom = vec3(0.0);
+    const float bloomRadius = 0.0035;
+    bloom += max(texture(texture0, uv + vec2(bloomRadius, 0.0)).rgb - 0.82, 0.0);
+    bloom += max(texture(texture0, uv - vec2(bloomRadius, 0.0)).rgb - 0.82, 0.0);
+    bloom += max(texture(texture0, uv + vec2(0.0, bloomRadius)).rgb - 0.82, 0.0);
+    bloom += max(texture(texture0, uv - vec2(0.0, bloomRadius)).rgb - 0.82, 0.0);
+    hdr += bloom * 0.22;
+
     // Exposition + tonemap ACES.
     vec3 color = Aces(hdr*exposure);
 

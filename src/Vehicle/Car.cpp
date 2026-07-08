@@ -79,6 +79,15 @@ void Car::applyEngineAndDrag(
     float currentMaxSpeed = car.tuning().maxSpeed;
     float engineAccel = computeEngineAccel(car, input, nitroActive);
 
+    if (car.startBoostTimer() > 0.0f) {
+        engineAccel *= car.startBoostAccelMul();
+        currentMaxSpeed += car.startBoostSpeedBonus();
+        car.startBoostTimer() = std::max(0.0f, car.startBoostTimer() - dt);
+        if (car.startBoostTimer() <= 0.0f) {
+            car.startBoostAccelMul() = 1.0f;
+            car.startBoostSpeedBonus() = 0.0f;
+        }
+    }
     if (nitroActive)
         currentMaxSpeed += car.tuning().nitroMaxSpeedBonus;
     car.speed() += engineAccel * dt;

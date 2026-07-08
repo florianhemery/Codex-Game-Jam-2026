@@ -76,13 +76,7 @@ void HudFinishScreen::drawRow(const HudFinishRowParams &params)
     if (params.racer.finished) {
         HudGfx::formatTime(params.racer.finishTime, right, sizeof(right));
     } else {
-        float gap = 0.0f;
-
-        if (estimateGapSeconds(params.race, params.racer, &gap)) {
-            std::snprintf(right, sizeof(right), "+%.2fs", gap);
-        } else {
-            std::snprintf(right, sizeof(right), "en course");
-        }
+        std::snprintf(right, sizeof(right), "DNF");
     }
     HudGfx::drawTextRightAligned(right,
         static_cast<int>(params.panel.x + params.panelW - 24.0f),
@@ -90,8 +84,8 @@ void HudFinishScreen::drawRow(const HudFinishRowParams &params)
         params.racer.finished ? RAYWHITE : HudGfx::fade(WHITE, 0.60f));
 }
 
-void HudFinishScreen::drawHeader(const RaceState &race, const Rectangle &panel,
-    float panelW)
+void HudFinishScreen::drawHeader(const RaceState &race, const HudExtras &extras,
+    const Rectangle &panel, float panelW)
 {
     char ordinal[16];
 
@@ -114,13 +108,66 @@ void HudFinishScreen::drawHeader(const RaceState &race, const Rectangle &panel,
         timeBuf, sizeof(timeBuf));
     char timeLine[64];
 
-    std::snprintf(timeLine, sizeof(timeLine), "Temps de course : %s", timeBuf);
+    std::snprintf(timeLine, sizeof(timeLine), "Temps total : %s", timeBuf);
     HudGfx::drawTextCentered(timeLine, static_cast<int>(panel.x + panelW * 0.5f),
         static_cast<int>(panel.y + 66.0f), 18, HudGfx::fade(WHITE, 0.85f));
+
+    char bestBuf[32];
+    char statsLine[96];
+
+    if (extras.bestLapTime > 0.0f) {
+        HudGfx::formatLapTime(extras.bestLapTime, bestBuf, sizeof(bestBuf));
+        std::snprintf(statsLine, sizeof(statsLine),
+            "Meilleur tour : %s   |   Derapages : %d", bestBuf, extras.driftCount);
+    } else {
+        std::snprintf(statsLine, sizeof(statsLine),
+            "Derapages : %d", extras.driftCount);
+    }
+    HudGfx::drawTextCentered(statsLine, static_cast<int>(panel.x + panelW * 0.5f),
+        static_cast<int>(panel.y + 88.0f), 16, HudGfx::fade(WHITE, 0.65f));
     HudGfx::drawLineEx(
-        Vector2{panel.x + 24.0f, panel.y + 94.0f},
-        Vector2{panel.x + panelW - 24.0f, panel.y + 94.0f},
+        Vector2{panel.x + 24.0f, panel.y + 110.0f},
+        Vector2{panel.x + panelW - 24.0f, panel.y + 110.0f},
         1.0f, HudGfx::fade(WHITE, 0.20f));
+}
+
+HudFinishLayout HudFinishScreen::computeLayout(const RaceState &race,
+    int screenWidth, int screenHeight)
+{
+    HudFinishLayout layout;
+    const std::vector<RacerEntry> &racers = race.racers();
+    const float rowH = 30.0f;
+    const float panelW = 540.0f;
+    const float headerH = 120.0f;
+    const float footerH = 72.0f;
+    float panelH = headerH + rowH * static_cast<float>(racers.size()) + footerH;
+
+    layout.panel = Rectangle{
+        (static_cast<float>(screenWidth) - panelW) * 0.5f,
+        (static_cast<float>(screenHeight) - panelH) * 0.5f - 20.0f,
+        panelW, panelH
+    };
+
+    const float btnW = 180.0f;
+    const float btnH = 42.0f;
+    const float gap = 20.0f;
+    float btnY = layout.panel.y + panelH - btnH - 18.0f;
+    float totalBtnW = btnW * 2.0f + gap;
+    float btnX = layout.panel.x + (panelW - totalBtnW) * 0.5f;
+
+    layout.restartButton = Rectangle{btnX, btnY, btnW, btnH};
+    layout.menuButton = Rectangle{btnX + btnW + gap, btnY, btnW, btnH};
+    return layout;
+}
+
+bool HudFinishScreen::hitRestart(const HudFinishLayout &layout, Vector2 mouse)
+{
+    return CheckCollisionPointRec(mouse, layout.restartButton);
+}
+
+bool HudFinishScreen::hitMenu(const HudFinishLayout &layout, Vector2 mouse)
+{
+    return CheckCollisionPointRec(mouse, layout.menuButton);
 }
 
 void HudFinishScreen::draw(const RaceState &race, const HudExtras &extras,
@@ -129,35 +176,45 @@ void HudFinishScreen::draw(const RaceState &race, const HudExtras &extras,
     Color scrim = HudGfx::fade(BLACK, 0.65f);
     HudGfx::drawRectangle(0, 0, screenWidth, screenHeight, scrim);
 
+    HudFinishLayout layout = computeLayout(race, screenWidth, screenHeight);
     const std::vector<RacerEntry> &racers = race.racers();
     std::vector<int> order = race.standings();
     const float rowH = 30.0f;
-    const float panelW = 540.0f;
-    const float headerH = 104.0f;
-    float panelH = headerH + rowH * static_cast<float>(racers.size()) + 100.0f;
-    Rectangle panel{
-        (static_cast<float>(screenWidth) - panelW) * 0.5f,
-        (static_cast<float>(screenHeight) - panelH) * 0.5f - 30.0f,
-        panelW, panelH
-    };
+    const float headerH = 120.0f;
+    float panelW = layout.panel.width;
+    Vector2 mouse = GetMousePosition();
+    bool hoverRestart = CheckCollisionPointRec(mouse, layout.restartButton);
+    bool hoverMenu = CheckCollisionPointRec(mouse, layout.menuButton);
 
-    HudGfx::drawRectangleRounded(panel, 0.08f, 8, HudGfx::fade(BLACK, 0.55f));
+    HudGfx::drawRectangleRounded(layout.panel, 0.08f, 8, HudGfx::fade(BLACK, 0.55f));
     Color panelBorder = HudGfx::fade(YELLOW, 0.35f);
-    HudGfx::drawRectangleRoundedLinesEx(panel, 0.08f, 8, 2.0f, panelBorder);
-    drawHeader(race, panel, panelW);
+    HudGfx::drawRectangleRoundedLinesEx(layout.panel, 0.08f, 8, 2.0f, panelBorder);
+    drawHeader(race, extras, layout.panel, panelW);
 
     for (size_t i = 0; i < order.size(); ++i) {
         size_t idx = static_cast<size_t>(order[i]);
-        float rowY = panel.y + headerH + rowH * static_cast<float>(i);
+        float rowY = layout.panel.y + headerH + rowH * static_cast<float>(i);
 
         HudFinishRowParams rowParams{race, racers[idx], idx,
-            static_cast<int>(i) + 1, extras, panel, panelW, rowY};
+            static_cast<int>(i) + 1, extras, layout.panel, panelW, rowY};
 
         drawRow(rowParams);
     }
-    HudGfx::drawTextCentered("R rejouer      M menu",
-        static_cast<int>(panel.x + panelW * 0.5f),
-        static_cast<int>(panel.y + panelH - 40.0f), 20, LIGHTGRAY);
+
+    HudGfx::drawRectangleRounded(layout.restartButton, 0.35f, 8,
+        hoverRestart ? Color{255, 196, 40, 255} : Color{230, 150, 24, 255});
+    HudGfx::drawTextCentered("Rejouer",
+        static_cast<int>(layout.restartButton.x + layout.restartButton.width * 0.5f),
+        static_cast<int>(layout.restartButton.y + 10.0f), 22, BLACK);
+    HudGfx::drawRectangleRounded(layout.menuButton, 0.35f, 8,
+        hoverMenu ? HudGfx::fade(WHITE, 0.25f) : HudGfx::fade(WHITE, 0.12f));
+    HudGfx::drawTextCentered("Menu",
+        static_cast<int>(layout.menuButton.x + layout.menuButton.width * 0.5f),
+        static_cast<int>(layout.menuButton.y + 10.0f), 22, RAYWHITE);
+    HudGfx::drawTextCentered("R / Entree : rejouer   |   M / Echap : menu",
+        static_cast<int>(layout.panel.x + layout.panel.width * 0.5f),
+        static_cast<int>(layout.panel.y + layout.panel.height - 8.0f),
+        14, HudGfx::fade(WHITE, 0.45f));
 }
 
 } // namespace racer

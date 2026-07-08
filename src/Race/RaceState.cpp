@@ -66,22 +66,137 @@ void RaceState::initAiRacer(int aiIndex, int totalCars)
 void RaceState::update(float dt, const CarInput& playerInput)
 {
     if (phase_ == RacePhase::COUNTDOWN) {
+        processCountdownInput(playerInput);
         updateCountdown(dt);
+        tickStartBanners(dt);
         return;
     }
     if (phase_ == RacePhase::FINISHED) {
+        tickStartBanners(dt);
+        return;
+    }
+    if (phase_ == RacePhase::WRAP_UP) {
+        updateWrapUp(dt);
+        tickStartBanners(dt);
         return;
     }
     updateRacers(dt, playerInput);
+    tickStartBanners(dt);
+}
+
+bool RaceState::allRacersFinished() const
+{
+    for (const RacerEntry& racer : racers_) {
+        if (!racer.finished) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void RaceState::updateWrapUp(float dt)
+{
+    wrapUpTimer_ += dt;
+    const float simDt = dt * kWrapUpTimeScale;
+    int numSegments = static_cast<int>(track_.waypoints().size());
+    CarInput idle{};
+
+    elapsedTime_ += simDt;
+    for (size_t i = 0; i < racers_.size(); ++i) {
+        RacerEntry& racer = racers_[i];
+        if (racer.finished) {
+            continue;
+        }
+        CarInput input = racer.isPlayer
+            ? idle
+            : aiDrivers_[i - 1].computeInput(racer.car, track_);
+        racer.lastInput = input;
+        racer.car.update(input, simDt);
+        Track::Progress prog = track_.projectPosition(racer.car.position());
+        applyTrackHeight(racer, simDt);
+        prog = track_.projectPosition(racer.car.position());
+        applySurfaceGrip(racer, prog);
+        updateMidpointFlag(racer, prog, numSegments);
+        updateLapCount(racer, prog, numSegments);
+        racer.lastSegment = prog.segmentIndex;
+    }
+    RaceContactResolver::resolveAll(racers_);
+    if (allRacersFinished() || wrapUpTimer_ >= kWrapUpMaxSeconds) {
+        phase_ = RacePhase::FINISHED;
+    }
+}
+
+void RaceState::processCountdownInput(const CarInput &input)
+{
+    if (input.throttle > 0.08f || input.handbrake || input.nitro) {
+        revvedDuringCountdown_ = true;
+    }
+}
+
+void RaceState::beginRacing()
+{
+    phase_ = RacePhase::RACING;
+    elapsedTime_ = 0.0f;
+    waitingForLaunch_ = true;
+    launchGrade_ = StartLaunchGrade::None;
+}
+
+void RaceState::applyLaunchGrade(float reactionSeconds, RacerEntry &player)
+{
+    if (reactionSeconds <= kPerfectLaunchMax) {
+        launchGrade_ = StartLaunchGrade::Perfect;
+        player.car.startBoostTimer() = 3.5f;
+        player.car.startBoostAccelMul() = 1.38f;
+        player.car.startBoostSpeedBonus() = 5.0f;
+        player.car.nitroRemaining() = std::min(
+            player.car.tuning().nitroCapacity,
+            player.car.nitroRemaining() + 1.2f);
+        launchBanner_ = 2.2f;
+    } else if (reactionSeconds <= kGoodLaunchMax) {
+        launchGrade_ = StartLaunchGrade::Good;
+        player.car.startBoostTimer() = 2.5f;
+        player.car.startBoostAccelMul() = 1.22f;
+        player.car.startBoostSpeedBonus() = 3.0f;
+        launchBanner_ = 1.8f;
+    } else if (reactionSeconds <= kOkLaunchMax) {
+        launchGrade_ = StartLaunchGrade::Ok;
+        player.car.startBoostTimer() = 1.5f;
+        player.car.startBoostAccelMul() = 1.10f;
+        player.car.startBoostSpeedBonus() = 1.5f;
+        launchBanner_ = 1.4f;
+    }
+}
+
+void RaceState::tickStartBanners(float dt)
+{
+    launchBanner_ = std::max(0.0f, launchBanner_ - dt);
+    falseStartBanner_ = std::max(0.0f, falseStartBanner_ - dt);
+}
+
+float RaceState::startBoostRemaining() const
+{
+    if (playerIndex_ < 0
+        || playerIndex_ >= static_cast<int>(racers_.size())) {
+        return 0.0f;
+    }
+    return racers_[static_cast<size_t>(playerIndex_)].car.startBoostTimer();
 }
 
 void RaceState::updateCountdown(float dt)
 {
     countdownRemaining_ -= dt;
-    if (countdownRemaining_ <= 0.0f) {
-        countdownRemaining_ = 0.0f;
-        phase_ = RacePhase::RACING;
+    if (countdownRemaining_ > 0.0f) {
+        return;
     }
+    countdownRemaining_ = 0.0f;
+    if (revvedDuringCountdown_) {
+        revvedDuringCountdown_ = false;
+        falseStartCount_ += 1;
+        countdownRemaining_ = 3.0f;
+        falseStartBanner_ = 2.8f;
+        return;
+    }
+    beginRacing();
 }
 
 void RaceState::updateRacers(float dt, const CarInput& playerInput)
@@ -95,11 +210,13 @@ void RaceState::updateRacers(float dt, const CarInput& playerInput)
     RaceContactResolver::resolveAll(racers_);
 }
 
-void RaceState::finalizePlayerIfDone(const RacerEntry& racer)
+void RaceState::finalizePlayerIfDone(RacerEntry& racer)
 {
-    if (racer.isPlayer && racer.finished) {
-        phase_ = RacePhase::FINISHED;
+    if (!racer.isPlayer || !racer.finished || phase_ != RacePhase::RACING) {
+        return;
     }
+    phase_ = RacePhase::WRAP_UP;
+    wrapUpTimer_ = 0.0f;
 }
 
 void RaceState::updateSingleRacer(
@@ -112,6 +229,10 @@ void RaceState::updateSingleRacer(
     CarInput input = racer.isPlayer
         ? playerInput
         : aiDrivers_[index - 1].computeInput(racer.car, track_);
+    if (racer.isPlayer && waitingForLaunch_ && input.throttle > 0.08f) {
+        waitingForLaunch_ = false;
+        applyLaunchGrade(elapsedTime_, racer);
+    }
     racer.lastInput = input;
     racer.car.update(input, dt);
     Track::Progress prog = track_.projectPosition(racer.car.position());

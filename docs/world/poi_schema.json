@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AureliaPoi",
+  "type": "object",
+  "required": ["id", "type", "label", "worldX", "worldZ", "radius"],
+  "properties": {
+    "id": { "type": "string" },
+    "type": {
+      "enum": [
+        "race_entry",
+        "garage",
+        "mission_giver",
+        "viewpoint",
+        "collectible",
+        "garage_cosmetic"
+      ]
+    },
+    "label": { "type": "string" },
+    "worldX": { "type": "number" },
+    "worldZ": { "type": "number" },
+    "radius": { "type": "number", "minimum": 2 },
+    "trackIndex": { "type": "integer", "minimum": 0 },
+    "missionId": { "type": "string" },
+    "region": {
+      "enum": ["marina", "forest", "port", "volcano"]
+    },
+    "loreIndex": { "type": "integer", "minimum": 0, "maximum": 19 }
+  }
+}

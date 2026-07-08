@@ -33,5 +33,19 @@ engine::Ambiance ambianceForTrack(int trackIndex, const TrackDef &def)
     }
 }
 
+const char *ambianceLabelForTrack(int trackIndex, const TrackDef &def)
+{
+    if (def.surfaceStyle == SurfaceStyle::ABIMEE)
+        return "Pluie / route abimee";
+    switch (trackIndex % 3) {
+    case 0:
+        return "Midi ensoleille";
+    case 1:
+        return "Aube doree";
+    default:
+        return "Crepuscule";
+    }
+}
+
 } // namespace app
 } // namespace racer

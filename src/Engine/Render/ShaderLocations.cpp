@@ -36,6 +36,8 @@ void refreshLitLocs(const Shader &lit, LitLocs &locs)
     locs.lightsColor = locOrArray(lit, "lightsColor", "lightsColor[0]");
     locs.lightsCount = GetShaderLocation(lit, "lightsCount");
     locs.useTextureAlbedo = GetShaderLocation(lit, "useTextureAlbedo");
+    locs.terrainMode = GetShaderLocation(lit, "terrainMode");
+    locs.biomeTint = locOrArray(lit, "biomeTint", "biomeTint[0]");
 }
 
 void refreshSkyLocs(const Shader &sky, SkyLocs &locs)

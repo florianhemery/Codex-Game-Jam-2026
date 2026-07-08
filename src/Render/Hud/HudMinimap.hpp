@@ -23,6 +23,8 @@ struct HudMinimap {
         const std::vector<Vector2> &points, Rectangle area, bool allowRotate);
     static void drawTrackPolyline(const std::vector<Vector2> &points,
         const HudMapProjection &proj, float thickness, Color color);
+    static void drawPathPolyline(const std::vector<Vector2> &points,
+        const HudMapProjection &proj, float thickness, Color color);
     static void drawFinishLineTick(const std::vector<Vector2> &points,
         const HudMapProjection &proj, float halfLength, Color color);
     static void drawOpponents(const RaceState &race, const HudExtras &extras,

@@ -21,6 +21,8 @@ namespace app {
 Color colorForRacerIndex(size_t index, bool isPlayer);
 engine::Ambiance ambianceForTrack(int trackIndex, const TrackDef &def);
 
+const char *ambianceLabelForTrack(int trackIndex, const TrackDef &def);
+
 } // namespace app
 } // namespace racer
 

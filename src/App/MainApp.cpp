@@ -23,6 +23,8 @@ int MainApp::run()
 
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE);
     InitWindow(ctx.screenWidth, ctx.screenHeight, "racer");
+    // Escape ouvre le menu pause en course, ne doit pas quitter le jeu.
+    SetExitKey(0);
     SetWindowMinSize(640, 360);
     ctx.windowedWidth = ctx.screenWidth;
     ctx.windowedHeight = ctx.screenHeight;

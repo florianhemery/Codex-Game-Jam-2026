@@ -30,6 +30,8 @@ public:
     void emitSparks(Vector3 pos, Vector3 dir);
     void emitConfetti(Vector3 pos);
     void setRain(bool enabled);
+    void setFogDensity(float density);
+    float fogDensity() const;
     int activeCount() const;
     void clear();
 

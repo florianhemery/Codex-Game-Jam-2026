@@ -81,6 +81,17 @@ TrackDef makeRouteAbimeePreset()
     };
 }
 
+TrackDef makeCircuitCendresPreset()
+{
+    return {
+        "Circuit des Cendres",
+        "Virages chauds et cendres sur la caldeira",
+        180.0f, 36.0f, 22.0f,
+        12.0f, 16.0f, 2.5f,
+        SurfaceStyle::ABIMEE,
+    };
+}
+
 std::vector<TrackDef> buildTrackPresets()
 {
     return {
@@ -88,6 +99,7 @@ std::vector<TrackDef> buildTrackPresets()
         makeCircuitSinueuxPreset(),
         makeCircuitTechniquePreset(),
         makeRouteAbimeePreset(),
+        makeCircuitCendresPreset(),
     };
 }
 
@@ -95,6 +107,22 @@ const std::vector<TrackDef>& Track::presets()
 {
     static const std::vector<TrackDef> presets = buildTrackPresets();
     return presets;
+}
+
+TrackDef Track::hubDef()
+{
+    return {
+        "Hub Central",
+        "Monde ouvert — explorez et choisissez une course",
+        120.0f, 55.0f, 20.0f,
+        0.0f, 0.0f, 1.0f,
+        SurfaceStyle::PROPRE,
+    };
+}
+
+Track Track::makeHub()
+{
+    return make(hubDef());
 }
 
 } // namespace racer

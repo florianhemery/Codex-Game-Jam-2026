@@ -33,6 +33,7 @@ public:
     static const AmbianceParams &paramsFor(Ambiance a);
 
     void setAmbiance(Ambiance a);
+    void setFogDensity(float density);
     const AmbianceParams &params() const { return params_; }
 
     Shader litShader() const;

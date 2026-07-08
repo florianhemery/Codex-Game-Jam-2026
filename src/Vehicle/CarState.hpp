@@ -25,6 +25,9 @@ struct CarState {
     float surfaceDrag_ = 1.0f;
     float verticalVelocity_ = 0.0f;
     bool airborne_ = false;
+    float startBoostTimer_ = 0.0f;
+    float startBoostAccelMul_ = 1.0f;
+    float startBoostSpeedBonus_ = 0.0f;
     CarTuning tuning_{};
 
     Vector3 &position()
@@ -135,6 +138,36 @@ struct CarState {
     const CarTuning &tuning() const
     {
         return tuning_;
+    }
+
+    float &startBoostTimer()
+    {
+        return startBoostTimer_;
+    }
+
+    float startBoostTimer() const
+    {
+        return startBoostTimer_;
+    }
+
+    float &startBoostAccelMul()
+    {
+        return startBoostAccelMul_;
+    }
+
+    float startBoostAccelMul() const
+    {
+        return startBoostAccelMul_;
+    }
+
+    float &startBoostSpeedBonus()
+    {
+        return startBoostSpeedBonus_;
+    }
+
+    float startBoostSpeedBonus() const
+    {
+        return startBoostSpeedBonus_;
     }
 };
 

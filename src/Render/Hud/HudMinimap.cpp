@@ -63,6 +63,19 @@ HudMapProjection HudMinimap::fitTrackInRect(const std::vector<Vector2> &points,
     return proj;
 }
 
+void HudMinimap::drawPathPolyline(const std::vector<Vector2> &points,
+    const HudMapProjection &proj, float thickness, Color color)
+{
+    if (points.size() < 2) {
+        return;
+    }
+    for (size_t i = 0; i + 1 < points.size(); ++i) {
+        Vector2 a = proj.apply(points[i]);
+        Vector2 b = proj.apply(points[i + 1]);
+        HudGfx::drawLineEx(a, b, thickness, color);
+    }
+}
+
 void HudMinimap::drawTrackPolyline(const std::vector<Vector2> &points,
     const HudMapProjection &proj, float thickness, Color color)
 {

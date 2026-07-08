@@ -43,6 +43,21 @@ void uploadLitUniforms(Shader lit, const LitLocs &locs,
 
         SetShaderValue(lit, locs.useTextureAlbedo, &useTex, SHADER_UNIFORM_FLOAT);
     }
+    if (locs.terrainMode >= 0) {
+        const float off = 0.0f;
+
+        SetShaderValue(lit, locs.terrainMode, &off, SHADER_UNIFORM_FLOAT);
+    }
+    if (locs.biomeTint >= 0) {
+        const Vector3 neutral[4] = {
+            {1.0f, 1.0f, 1.0f},
+            {1.0f, 1.0f, 1.0f},
+            {1.0f, 1.0f, 1.0f},
+            {1.0f, 1.0f, 1.0f},
+        };
+
+        SetShaderValueV(lit, locs.biomeTint, neutral, SHADER_UNIFORM_VEC3, 4);
+    }
 }
 
 void uploadSkyUniforms(Shader sky, const SkyLocs &locs,

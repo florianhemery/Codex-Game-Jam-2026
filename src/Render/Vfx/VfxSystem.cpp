@@ -7,6 +7,8 @@
 
 #include "Render/Vfx/VfxSystem.hpp"
 
+#include <algorithm>
+
 #include "Render/Vfx/VfxDrawPass.hpp"
 #include "Render/Vfx/VfxSystemImpl.hpp"
 #include "Render/Vfx/VfxTextureFactory.hpp"
@@ -156,6 +158,16 @@ void VfxSystem::emitConfetti(Vector3 pos)
 void VfxSystem::setRain(bool enabled)
 {
     impl_->rainTarget_ = enabled ? 1.0f : 0.0f;
+}
+
+void VfxSystem::setFogDensity(float density)
+{
+    impl_->fogDensity_ = std::clamp(density, 0.0f, 1.0f);
+}
+
+float VfxSystem::fogDensity() const
+{
+    return impl_->fogDensity_;
 }
 
 int VfxSystem::activeCount() const

@@ -23,9 +23,10 @@ struct HudRaceOverlay {
         float angleMin, float angleSpan, float rOut);
     static void drawSpeedGaugeNeedle(const Vector2 &center, float ratio,
         float angleMin, float angleSpan, float rIn);
-    static void drawNitroBar(const Car &car, const Rectangle &panel,
-        float panelW, float panelH);
-    static void drawSpeedGauge(const Car &car, int screenHeight);
+    static void drawNitroBar(const Car &car, const HudExtras &extras,
+        const Rectangle &panel, float panelW, float panelH);
+    static void drawSpeedGauge(const Car &car, int screenHeight,
+        const HudExtras &extras);
     static void drawStandingsFinishFlag(int x, int y);
     static void drawStandingsRow(const HudStandingsRowParams &params);
     static void drawStandingsPanel(const RaceState &race,
@@ -34,11 +35,22 @@ struct HudRaceOverlay {
         const Rectangle &panel);
     static void drawTimersPanel(const RaceState &race, const HudExtras &extras,
         int screenWidth);
-    static void drawStartLights(int centerX, int y, int litCount, float alpha);
+    static void drawStartLights(int centerX, int y, int litCount,
+        bool goGreen, float alpha);
     static void drawCountdown(const RaceState &race, int screenWidth,
+        int screenHeight);
+    static void drawStartFeedback(const RaceState &race, int screenWidth,
         int screenHeight);
     static void drawGoFlash(const RaceState &race, int screenWidth,
         int screenHeight);
+    static void drawControlsBanner(int screenWidth, int screenHeight);
+    static void drawStatusBadges(const HudExtras &extras, int screenWidth);
+    static void drawLapBanner(const HudExtras &extras, int screenWidth,
+        int screenHeight);
+    static void drawPauseOverlay(int screenWidth, int screenHeight);
+    static bool hitPauseResume(int screenWidth, int screenHeight, Vector2 mouse);
+    static bool hitPauseMenu(int screenWidth, int screenHeight, Vector2 mouse);
+    static void drawWrapUpBanner(int screenWidth);
 };
 
 } // namespace racer

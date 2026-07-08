@@ -165,6 +165,11 @@ void RenderPipeline::setAmbiance(Ambiance a)
     params_ = paramsFor(a);
 }
 
+void RenderPipeline::setFogDensity(float density)
+{
+    params_.fogDensity = density;
+}
+
 Shader RenderPipeline::litShader() const
 {
     return lit_->get();

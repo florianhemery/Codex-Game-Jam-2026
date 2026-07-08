@@ -48,6 +48,8 @@ struct LitLocs {
     int lightsColor = -1;
     int lightsCount = -1;
     int useTextureAlbedo = -1;
+    int terrainMode = -1;
+    int biomeTint = -1;
 };
 
 struct SkyLocs {

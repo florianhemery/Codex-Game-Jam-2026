@@ -14,7 +14,7 @@ namespace app {
 
 void updateLapTimer(
     LapTimerState &timer, const RacerEntry &player, float dt,
-    RacePhase phase)
+    RacePhase phase, int lapsToWin)
 {
     if (phase != RacePhase::RACING)
         return;
@@ -26,9 +26,13 @@ void updateLapTimer(
             || timer.lastLapTime < timer.bestLapTime)
             timer.bestLapTime = timer.lastLapTime;
         timer.lastLapFlash = 3.0f;
+        timer.lapBannerTimer = 1.5f;
+        timer.lapBannerLap = player.lap + 1;
+        timer.lapBannerIsFinal = timer.lapBannerLap >= lapsToWin;
         timer.lastLapCount = player.lap;
     }
     timer.lastLapFlash = std::max(0.0f, timer.lastLapFlash - dt);
+    timer.lapBannerTimer = std::max(0.0f, timer.lapBannerTimer - dt);
 }
 
 } // namespace app

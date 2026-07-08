@@ -6,8 +6,10 @@
 */
 
 #include "App/GameLoop.hpp"
+
+#include "Render/CarRenderer.hpp"
+#include "World/Aurelia/AureliaWorld.hpp"
 #include "App/RacerColors.hpp"
-#include "Render/Car/CarWheelDraw.hpp"
 #include "Render/CarRenderer.hpp"
 
 #include <cmath>
@@ -82,31 +84,54 @@ CarVisual GameLoop::buildCarVisual(Context &ctx, const RacerEntry &entry,
 
 void GameLoop::setupHeadlights(Context &ctx)
 {
-    const auto &racers = ctx.race->racers();
     const auto &pipeParams = ctx.pipeline->params();
 
     ctx.pipeline->clearLights();
-    if (!pipeParams.headlights)
+    if (!pipeParams.headlights) {
         return;
-    for (size_t i = 0; i < racers.size(); ++i) {
-        auto lp = CarRenderer::getCarLightPoints(racers[i].car);
-
-        ctx.pipeline->addLight(lp.headL, Vector3{2.5f, 2.4f, 2.0f});
-        ctx.pipeline->addLight(lp.headR, Vector3{2.5f, 2.4f, 2.0f});
     }
+    if (ctx.race) {
+        const auto &racers = ctx.race->racers();
+        for (size_t i = 0; i < racers.size(); ++i) {
+            auto lp = CarRenderer::getCarLightPoints(racers[i].car);
+            ctx.pipeline->addLight(lp.headL, Vector3{2.5f, 2.4f, 2.0f});
+            ctx.pipeline->addLight(lp.headR, Vector3{2.5f, 2.4f, 2.0f});
+        }
+        return;
+    }
+    if (!ctx.aurelia) {
+        return;
+    }
+    auto lp = CarRenderer::getCarLightPoints(ctx.aurelia->playerCar());
+    ctx.pipeline->addLight(lp.headL, Vector3{2.5f, 2.4f, 2.0f});
+    ctx.pipeline->addLight(lp.headR, Vector3{2.5f, 2.4f, 2.0f});
 }
 
 engine::RenderPipeline::PostParams GameLoop::buildPostParams(Context &ctx)
 {
-    const RacerEntry &player =
-        ctx.race->racers()[static_cast<size_t>(ctx.race->playerIndex())];
-    float maxSpeed = player.car.tuning().maxSpeed;
-    bool nitroActive = player.lastInput.nitro
-        && player.car.nitroRemaining() > 0.0f;
-    if (nitroActive)
-        maxSpeed += player.car.tuning().nitroMaxSpeedBonus;
+    const Car *car = nullptr;
+    bool nitroActive = false;
+    float maxSpeed = 1.0f;
+
+    if (ctx.race) {
+        const RacerEntry &player =
+            ctx.race->racers()[static_cast<size_t>(ctx.race->playerIndex())];
+        car = &player.car;
+        maxSpeed = player.car.tuning().maxSpeed;
+        nitroActive = player.lastInput.nitro
+            && player.car.nitroRemaining() > 0.0f;
+    } else if (ctx.aurelia) {
+        car = &ctx.aurelia->playerCar();
+        maxSpeed = car->tuning().maxSpeed;
+    }
+    if (!car) {
+        return engine::RenderPipeline::PostParams{ctx.smoothedSpeedRatio, false};
+    }
+    if (nitroActive) {
+        maxSpeed += car->tuning().nitroMaxSpeedBonus;
+    }
     float targetRatio = std::clamp(
-        std::fabs(player.car.speed()) / maxSpeed, 0.0f, 1.0f);
+        std::fabs(car->speed()) / maxSpeed, 0.0f, 1.0f);
     float dt = std::min(GetFrameTime(), 0.1f);
     float blend = std::min(1.0f, 8.0f * dt);
 
